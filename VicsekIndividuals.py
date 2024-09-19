@@ -46,8 +46,8 @@ def pickPositionNeighbours(k, positions, neighbours, isMin=True):
     #a = np.argsort(neighbourDiffs, axis=1)
     
     minusOnes = np.full((n,k), -1)
-    trues = np.full((n,n), True)
-    falses = np.full((n,n), False)
+    #trues = np.full((n,n), True)
+    #falses = np.full((n,n), False)
 
     maskedArray = np.ma.MaskedArray(posDiff, mask=neighbours==False, fill_value=fillValue)
     sortedIndices = maskedArray.argsort(axis=1)
@@ -86,7 +86,8 @@ def computeNewOrientation(nsm, k, neighbours, positions, orientations, vals):
     match nsm:
         case NeighbourSelectionMechanism.NEAREST:
             pickedNeighbours = pickPositionNeighbours(k, positions, neighbours, maxSq)
-
+        case NeighbourSelectionMechanism.FARTHEST:
+            pickedNeighbours = pickPositionNeighbours(k, positions, neighbours, minSq)
 
     orientations = calculateMeanOrientations(orientations, pickedNeighbours)
     orientations = normalizeOrientations(orientations+generateNoise())
