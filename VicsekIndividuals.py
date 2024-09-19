@@ -44,16 +44,19 @@ def pickPositionNeighbours(k, positions, neighbours, isMin=True):
     #a = np.sort(posDiff, axis=1)
     #mask = neighbours.nonzero()
     #a = np.argsort(neighbourDiffs, axis=1)
-    diagonalIndices = np.diag_indices(n)[0]
+    
+    minusOnes = np.full((n,k), -1)
     maskedArray = np.ma.MaskedArray(posDiff, mask=neighbours==False, fill_value=fillValue)
-    candidates = maskedArray.argsort(axis=1)[:, :k]
+    sortedIndices = maskedArray.argsort(axis=1)
+    if isMin == False:
+        sortedIndices = np.flip(sortedIndices)
+    candidates = sortedIndices[:, :k]
+    
     pickedDistances = np.take_along_axis(posDiff, candidates, axis=1)
     # TODO: filter on actual neighbours, e.g. by replacing indices that aren't neighbours by the diagonal index (the agent's own index)
-    print("posdiff")
-    print(posDiff)
-    print("picked")
-    print("candidates")
-    return candidates
+    #diagonalIndices = np.diag_indices(n)[0]
+    picked = np.where(((pickedDistances == 0) | (pickedDistances > radius**2)), minusOnes, candidates)
+    return picked
 
 def computeNewOrientation(nsm, k, neighbours, positions, orientations, vals):
 
@@ -67,7 +70,7 @@ def computeNewOrientation(nsm, k, neighbours, positions, orientations, vals):
     """
     match nsm:
         case NeighbourSelectionMechanism.NEAREST:
-            pickedNeighbours = pickPositionNeighbours(k, positions, neighbours, True)
+            pickedNeighbours = pickPositionNeighbours(k, positions, neighbours, maxSq)
 
 
     orientations = calculateMeanOrientations(orientations, neighbours)
@@ -101,7 +104,6 @@ def getDecisions(t, previousSteps, localOrders, previousLocalOrders, vals, thres
 
     
 
-radius = 10
 noise = 0.063
 density = 0.09
 domainSize = (25, 25)
@@ -110,8 +112,10 @@ n = 56
 maxSq = domainSize[0] * domainSize[1] + 1
 minSq = -1
 
-radius = 20
+radius = 5
 n = 5
+k = 2
+nsm = NeighbourSelectionMechanism.NEAREST
 
 indices = []
 for i in range(n):
@@ -177,6 +181,6 @@ for t in range(20):
     vals = getDecisions(t, 10, localOrders, localOrdersHistory, vals)
     print("vals:")
     print(vals)
-    orientations = computeNewOrientation(NeighbourSelectionMechanism.NEAREST, 1, neighbours, positions, orientations, vals)
+    orientations = computeNewOrientation(nsm, k, neighbours, positions, orientations, vals)
     print("orientations:")
     print(orientations)
