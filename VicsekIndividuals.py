@@ -46,6 +46,9 @@ def pickPositionNeighbours(k, positions, neighbours, isMin=True):
     #a = np.argsort(neighbourDiffs, axis=1)
     
     minusOnes = np.full((n,k), -1)
+    trues = np.full((n,n), True)
+    falses = np.full((n,n), False)
+
     maskedArray = np.ma.MaskedArray(posDiff, mask=neighbours==False, fill_value=fillValue)
     sortedIndices = maskedArray.argsort(axis=1)
     if isMin == False:
@@ -53,10 +56,22 @@ def pickPositionNeighbours(k, positions, neighbours, isMin=True):
     candidates = sortedIndices[:, :k]
     
     pickedDistances = np.take_along_axis(posDiff, candidates, axis=1)
-    # TODO: filter on actual neighbours, e.g. by replacing indices that aren't neighbours by the diagonal index (the agent's own index)
+    # filter on actual neighbours, e.g. by replacing indices that aren't neighbours by the diagonal index (the agent's own index)
     #diagonalIndices = np.diag_indices(n)[0]
     picked = np.where(((pickedDistances == 0) | (pickedDistances > radius**2)), minusOnes, candidates)
-    return picked
+
+    # TODO replace loop
+    ns = np.full((n,n), False)
+    for i in range(n):
+        for j in range(n):
+            if j in picked[i]:
+                ns[i][j] = True
+
+    #mask = np.zeros((n,n), dtype=np.bool_)
+    #mask[picked] = True
+    #mask[picked[:,0], picked[:,1]]=True
+    #mask = []
+    return ns
 
 def computeNewOrientation(nsm, k, neighbours, positions, orientations, vals):
 
@@ -73,7 +88,7 @@ def computeNewOrientation(nsm, k, neighbours, positions, orientations, vals):
             pickedNeighbours = pickPositionNeighbours(k, positions, neighbours, maxSq)
 
 
-    orientations = calculateMeanOrientations(orientations, neighbours)
+    orientations = calculateMeanOrientations(orientations, pickedNeighbours)
     orientations = normalizeOrientations(orientations+generateNoise())
     return orientations
 
