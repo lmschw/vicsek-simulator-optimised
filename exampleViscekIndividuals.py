@@ -16,7 +16,16 @@ radius = 20
 k = 1
 nsm = NeighbourSelectionMechanism.NEAREST
 
-tmax = 15000
+noise = 0.063
+domainSize = (100, 100)
+n = 1000
+speed = 1
+
+radius = 20
+k = 5
+nsm = NeighbourSelectionMechanism.NEAREST
+
+tmax = 10000
 
 threshold = [0.1]
 
