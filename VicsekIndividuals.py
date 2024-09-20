@@ -31,6 +31,46 @@ class VicsekWithNeighbourSelection:
 
         self.minReplacementValue = -1
         self.maxReplacementValue = domainSize[0] * domainSize[1] + 1
+        self.events = None
+
+    def getParameterSummary(self, asString=False):
+        """
+        Creates a summary of all the model parameters ready for use for conversion to JSON or strings.
+
+        Parameters:
+            - asString (bool, default False) [optional]: if the summary should be returned as a dictionary or as a single string
+        
+        Returns:
+            A dictionary or a single string containing all model parameters.
+        """
+        summary = {"n": self.numberOfParticles,
+                    "k": self.k,
+                    "noise": self.noise,
+                    "speed": self.speed,
+                    "radius": self.radius,
+                    "neighbourSelectionMechanism": self.neighbourSelectionMechanism.name,
+                    "domainSize": self.domainSize,
+                    "tmax": self.tmax,
+                    "dt": self.dt,
+                    "thresholds": self.orderThresholds,
+                    "previousSteps": self.numberPreviousStepsForThreshold,
+                    "switchingActive": self.switchingActive,
+                    }
+        if self.switchingActive:
+            summary["switchType"] = self.switchType.name
+            summary["orderValue"] = self.orderSwitchValue
+            summary["disorderValue"] = self.disorderSwitchValue
+
+        if self.events:
+            eventsSummary = []
+            for event in self.events:
+                eventsSummary.append(event.getParameterSummary())
+            summary["events"] = eventsSummary
+
+        if asString:
+            strPrep = [tup[0] + ": " + tup[1] for tup in summary.values()]
+            return ", ".join(strPrep)
+        return summary
 
 
     def __initializeState(self, domainSize, numberOfParticles):
@@ -146,14 +186,14 @@ class VicsekWithNeighbourSelection:
         #ServiceGeneral.logWithTime(f"duration pickPositionNeighbours(): {ServiceGeneral.formatTime(te-ts)}")
         return ns
 
-    def computeNewOrientations(self, neighbours, positions, orientations, vals):
+    def computeNewOrientations(self, neighbours, positions, orientations, switchTypeValues):
         #ts = time.time()
         """
         match switchType:
             case SwitchType.NEIGHBOUR_SELECTION_MODE:
-                valsDf = pd.DataFrame(vals)
-                valsDf["val"] = valsDf["val"].case_when([(, valsB),
-                                    (((valsDf["localOrder"] <= threshold) & (valsDf["previousLocalOrder"] >= threshold)), valsA),
+                switchTypeValuesDf = pd.DataFrame(switchTypeValues)
+                switchTypeValuesDf["val"] = switchTypeValuesDf["val"].case_when([(, switchTypeValuesB),
+                                    (((switchTypeValuesDf["localOrder"] <= threshold) & (switchTypeValuesDf["previousLocalOrder"] >= threshold)), switchTypeValuesA),
                 ])
         """
         match self.neighbourSelectionMechanism:
@@ -189,7 +229,7 @@ class VicsekWithNeighbourSelection:
         #ServiceGeneral.logWithTime(f"duration getLowerAndUpperThreshold(): {ServiceGeneral.formatTime(te-ts)}")
         return switchDifferenceThresholdLower, switchDifferenceThresholdUpper
         
-    def getDecisions(self, t, localOrders, previousLocalOrders, vals):
+    def getDecisions(self, t, localOrders, previousLocalOrders, switchTypeValues):
         """
         Computes whether the individual chooses to use option A or option B as its value based on the local order, the average previous local order and a threshold.
         """
@@ -197,13 +237,13 @@ class VicsekWithNeighbourSelection:
         switchDifferenceThresholdLower, switchDifferenceThresholdUpper = self.__getLowerAndUpperThreshold()
 
         prev = np.average(previousLocalOrders[max(t-self.numberPreviousStepsForThreshold, 0):t+1], axis=0)
-        valsDf = pd.DataFrame(vals)
-        valsDf["localOrder"] = localOrders
-        valsDf["previousLocalOrder"] = prev
-        valsDf["val"] = valsDf["val"].case_when([(((valsDf["localOrder"] >= switchDifferenceThresholdUpper) & (valsDf["previousLocalOrder"] <= switchDifferenceThresholdUpper)), self.orderSwitchValue),
-                            (((valsDf["localOrder"] <= switchDifferenceThresholdLower) & (valsDf["previousLocalOrder"] >= switchDifferenceThresholdLower)), self.disorderSwitchValue),
+        switchTypeValuesDf = pd.DataFrame(switchTypeValues)
+        switchTypeValuesDf["localOrder"] = localOrders
+        switchTypeValuesDf["previousLocalOrder"] = prev
+        switchTypeValuesDf["val"] = switchTypeValuesDf["val"].case_when([(((switchTypeValuesDf["localOrder"] >= switchDifferenceThresholdUpper) & (switchTypeValuesDf["previousLocalOrder"] <= switchDifferenceThresholdUpper)), self.orderSwitchValue),
+                            (((switchTypeValuesDf["localOrder"] <= switchDifferenceThresholdLower) & (switchTypeValuesDf["previousLocalOrder"] >= switchDifferenceThresholdLower)), self.disorderSwitchValue),
         ])
-        a = pd.DataFrame(valsDf["val"])
+        a = pd.DataFrame(switchTypeValuesDf["val"])
 
         #te = time.time()
         #ServiceGeneral.logWithTime(f"duration getDecisions(): {ServiceGeneral.formatTime(te-ts)}")
@@ -213,7 +253,7 @@ class VicsekWithNeighbourSelection:
     def simulate(self, initialState=(None, None, None), dt=None, tmax=None):
         #ts = time.time()
         # Preparations and setting of parameters if they are not passed to the method
-        positions, orientations, vals = initialState
+        positions, orientations, switchTypeValues = initialState
         
         if any(ele is None for ele in initialState):
             positions, orientations, vals = self.__initializeState(self.domainSize, self.numberOfParticles)
@@ -232,7 +272,14 @@ class VicsekWithNeighbourSelection:
         t=0
         numIntervals=int(tmax/dt+1)
 
-        localOrdersHistory = []    
+        localOrdersHistory = []  
+        positionsHistory = np.zeros((numIntervals,self.numberOfParticles,len(self.domainSize)))
+        orientationsHistory = np.zeros((numIntervals,self.numberOfParticles,len(self.domainSize)))  
+        switchTypeValuesHistory = numIntervals * [self.numberOfParticles * [None]]
+
+        positionsHistory[0,:,:]=positions
+        orientationsHistory[0,:,:]=orientations
+        switchTypeValuesHistory[0]=switchTypeValues
 
         """
         print(f"t=prestart")
@@ -251,12 +298,16 @@ class VicsekWithNeighbourSelection:
             localOrders = self.getLocalOrders(orientations, neighbours)
             localOrdersHistory.append(localOrders)
 
-            #vals = self.getDecisions(t, localOrders, localOrdersHistory, vals)
+            #switchTypeValues = self.getDecisions(t, localOrders, localOrdersHistory, switchTypeValues)
 
             positions += dt*(self.speed*orientations)
             positions += (-self.domainSize[0], -self.domainSize[1])*np.floor(positions/self.domainSize)
 
-            orientations = self.computeNewOrientations(neighbours, positions, orientations, vals)
+            orientations = self.computeNewOrientations(neighbours, positions, orientations, switchTypeValues)
+
+            positionsHistory[t,:,:]=positions
+            orientationsHistory[t,:,:]=orientations
+            switchTypeValuesHistory[t]=switchTypeValues
             
             """
             print(f"t={t}")
@@ -268,3 +319,5 @@ class VicsekWithNeighbourSelection:
             
         #te = time.time()
         #ServiceGeneral.logWithTime(f"duration simulate(): {ServiceGeneral.formatTime(te-ts)}")
+
+        return (dt*np.arange(numIntervals), positionsHistory, orientationsHistory), switchTypeValuesHistory

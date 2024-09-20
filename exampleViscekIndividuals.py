@@ -5,6 +5,7 @@ from EnumNeighbourSelectionMechanism import NeighbourSelectionMechanism
 
 import ServicePreparation
 import ServiceGeneral
+import ServiceSavedModel
 
 #noise = 0.063
 noise = 0.063
@@ -18,11 +19,11 @@ nsm = NeighbourSelectionMechanism.NEAREST
 
 noise = 0.063
 domainSize = (100, 100)
-n = 1000
+n = 100
 speed = 1
 
-radius = 20
-k = 5
+radius = 50
+k = 1
 nsm = NeighbourSelectionMechanism.NEAREST
 
 tmax = 10000
@@ -44,7 +45,10 @@ simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
                                          orderThresholds=threshold,
                                          numberPreviousStepsForThreshold=10,
                                          switchingActive=False)
-simulator.simulate(initialState=initialState, tmax=tmax)
+simulationData, switchTypeValues = simulator.simulate(initialState=initialState, tmax=tmax)
+
+ServiceSavedModel.saveModel(simulationData=simulationData, path="test.json", 
+                            modelParams=simulator.getParameterSummary())
 
 tend = time.time()
 ServiceGeneral.logWithTime(f"duration: {ServiceGeneral.formatTime(tend-tstart)}")
