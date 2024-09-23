@@ -19,7 +19,7 @@ class ExternalStimulusOrientationChangeEvent:
     Representation of an event occurring at a specified time and place within the domain and affecting 
     a specified percentage of particles. After creation, the check()-method takes care of everything.
     """
-    def __init__(self, timestep, domainSize, eventEffect, distributionType, areas=None, angle=None):
+    def __init__(self, timestep, domainSize, eventEffect, distributionType, areas=None, angle=None, noisePercentage=None):
         """
         Creates an external stimulus event that affects part of the swarm at a given timestep.
 
@@ -42,6 +42,9 @@ class ExternalStimulusOrientationChangeEvent:
         self.distributionType = distributionType
         self.areas = areas
         self.domainSize = np.asarray(domainSize)
+        self.noisePercentage = noisePercentage
+        if self.noisePercentage != None:
+            self.noise = ServicePreparation.getNoiseAmplitudeValueForPercentage(self.noisePercentage)
 
         if self.distributionType != DistributionType.GLOBAL and self.areas == None:
             raise Exception("Local effects require the area to be specified")
@@ -118,8 +121,9 @@ class ExternalStimulusOrientationChangeEvent:
         match self.eventEffect:
             case EventEffect.ALIGN_TO_FIXED_ANGLE:
                 orientations[affected] = ServiceOrientations.computeUvCoordinates(self.angle)
-            #case EventEffect.ALIGN_TO_FIXED_ANGLE_NOISE:
-                #orientations = self.__applyNoiseDistribution(ServiceOrientations.computeUvCoordinates(self.angle))
+            case EventEffect.ALIGN_TO_FIXED_ANGLE_NOISE:
+                orientations[affected] = ServiceOrientations.computeUvCoordinates(self.angle)
+                orientations[affected] = self.__applyNoiseDistribution(orientations[affected])
             #case EventEffect.AWAY_FROM_ORIGIN:
                 #orientations = self.computeAwayFromOrigin(positions)
             #case EventEffect.RANDOM:
@@ -146,8 +150,8 @@ class ExternalStimulusOrientationChangeEvent:
 
         return ServiceOrientations.computeUvCoordinates(newAngle)
     
-    def __applyNoiseDistribution(self, orientation):
-        return orientation + np.random.normal(scale=self.noise, size=(1, len(self.domainSize)))
+    def __applyNoiseDistribution(self, orientations):
+        return orientations + np.random.normal(scale=self.noise, size=(len(orientations), len(self.domainSize)))
 
 
     def computeAwayFromOrigin(self, position):

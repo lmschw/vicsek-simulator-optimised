@@ -32,10 +32,11 @@ threshold = [0.1]
 
 event = ExternalStimulusOrientationChangeEvent(timestep=10, 
                                                domainSize=domainSize, 
-                                               eventEffect=EventEffect.ALIGN_TO_FIXED_ANGLE, 
+                                               eventEffect=EventEffect.ALIGN_TO_FIXED_ANGLE_NOISE, 
                                                distributionType=DistributionType.LOCAL_SINGLE_SITE, 
                                                areas=[[11, 11, radius]],
                                                angle=np.pi,
+                                               noisePercentage=1,
                                                )
 
 tstart = time.time()
