@@ -1,15 +1,10 @@
 import pandas as pd
 import numpy as np
-import random
-import time
-import math
-from heapq import nlargest
 
 from EnumNeighbourSelectionMechanism import NeighbourSelectionMechanism
 from EnumSwitchType import SwitchType
 
 import ServiceOrientations
-import ServiceGeneral
 
 import DefaultValues as dv
 
@@ -76,6 +71,15 @@ class VicsekWithNeighbourSelection:
 
 
     def __initializeState(self):
+        """
+        Initialises the state of the swarm at the start of the simulation.
+
+        Params:
+            None
+        
+        Returns:
+            Arrays of positions, orientations and switchTypeValues containing values for every individual within the system
+        """
         positions = self.domainSize*np.random.rand(self.numberOfParticles,len(self.domainSize))
         orientations = ServiceOrientations.normalizeOrientations(np.random.rand(self.numberOfParticles, len(self.domainSize))-0.5)
         match self.switchType:
@@ -88,62 +92,86 @@ class VicsekWithNeighbourSelection:
         return positions, orientations, switchTypeValues
 
     def generateNoise(self):
-        #ts = time.time()
-        a =  np.random.normal(scale=self.noise, size=(self.numberOfParticles, len(self.domainSize)))
+        """
+        Generates some noise based on the noise amplitude set at creation.
 
-        #te = time.time()
-        #ServiceGeneral.logWithTime(f"duration generateNoise(): {ServiceGeneral.formatTime(te-ts)}")
-        return a
+        Params:
+            None
+
+        Returns:
+            An array with the noise to be added to each individual
+        """
+        return np.random.normal(scale=self.noise, size=(self.numberOfParticles, len(self.domainSize)))
 
     def calculateMeanOrientations(self, orientations, neighbours):
-        #ts = time.time()
+        """
+        Computes the average of the orientations of all selected neighbours for every individual.
 
+        Params:
+            - orientations (array of floats): the orientation of every individual at the current timestep
+            - neighbours (array of arrays of booleans): the identity of every neighbour of every individual
+
+        Returns:
+            An array of floats containing the new, normalised orientations of every individual
+        """
         summedOrientations = np.sum(neighbours[:,:,np.newaxis]*orientations[np.newaxis,:,:],axis=1)
-        a =  ServiceOrientations.normalizeOrientations(summedOrientations)
-        #te = time.time()
-        #ServiceGeneral.logWithTime(f"duration calculateMeanOrientations(): {ServiceGeneral.formatTime(te-ts)}")
-        return a
+        return ServiceOrientations.normalizeOrientations(summedOrientations)
+    
+    def __getDifferences(self, array):
+        """
+        Computes the differences between all individuals for the values provided by the array.
+
+        Params:
+            - array (array of floats): the values to be compared
+
+        Returns:
+            An array of arrays of floats containing the difference between each pair of values.
+        """
+        rij=array[:,np.newaxis,:]-array   
+        rij = rij - self.domainSize*np.rint(rij/self.domainSize) #minimum image convention
+        return np.sum(rij**2,axis=2)
 
     def getOrientationDifferences(self, orientations):
-        rij=orientations[:,np.newaxis,:]-orientations   
-        rij = rij - self.domainSize*np.rint(rij/self.domainSize) #minimum image convention
-        rij2 = np.sum(rij**2,axis=2)
-        return rij2
+        """
+        Helper method to gloss over identical differences implementation for position and orientation. 
+        """
+        return self.__getDifferences(orientations)
     
     def getPositionDifferences(self, positions):
-
-        #ts = time.time()
-
-        rij=positions[:,np.newaxis,:]-positions
-        #rij=rij[~np.eye(rij.shape[0],dtype=bool),:].reshape(rij.shape[0],rij.shape[0]-1,-1) #remove i<>i interaction
-            
-        rij = rij - self.domainSize*np.rint(rij/self.domainSize) #minimum image convention
-
-        rij2 = np.sum(rij**2,axis=2)
-        #te = time.time()
-        #ServiceGeneral.logWithTime(f"duration getPositionDifferences(): {ServiceGeneral.formatTime(te-ts)}")
-        return rij2
+        """
+        Helper method to gloss over identical differences implementation for position and orientation. 
+        """
+        return self.__getDifferences(positions)
 
     def getNeighbours(self, positions):
-        #ts = time.time()
+        """
+        Determines all the neighbours for each individual.
 
+        Params:
+            - positions (array of floats): the position of every individual at the current timestep
+
+        Returns:
+            An array of arrays of booleans representing whether or not any two individuals are neighbours
+        """
         rij2 = self.getPositionDifferences(positions)
-
-        neighbours = (rij2 <= self.radius**2)
-        
-        #te = time.time()
-        #ServiceGeneral.logWithTime(f"duration getNeighbours(): {ServiceGeneral.formatTime(te-ts)}")
-        return neighbours
+        return (rij2 <= self.radius**2)
     
-    def pickAllNeighbours(self, positions, neighbours):
-        posDiff = self.getPositionDifferences(positions)
+    def __getPickedNeighboursFromMaskedArray(self, maskedArray, posDiff, isMin):
+        """
+        Determines which neighbours the individuals should considered based on a preexisting maskedArray, the neighbour selection mechanism and k.
 
-        fillValue = self.minReplacementValue
+        Params:
+            - positions (array of floats): the position of every individual at the current timestep
+            - neighbours (array of arrays of booleans): the identity of every neighbour of every individual
+            - isMin (boolean) [optional, default=True]: whether to take the nearest or farthest neighbours
 
-        # select the best candidates
-        maskedArray = np.ma.MaskedArray(posDiff, mask=neighbours==False, fill_value=fillValue)
+        Returns:
+            An array of arrays of booleans representing the selected neighbours
+        """
         sortedIndices = maskedArray.argsort(axis=1)
-        candidates = sortedIndices
+        if isMin == False:
+            sortedIndices = np.flip(sortedIndices, axis=1)
+        candidates = sortedIndices[:, :self.k]
 
         # exclude any individuals that are not neighbours
         pickedDistances = np.take_along_axis(posDiff, candidates, axis=1)
@@ -155,72 +183,42 @@ class VicsekWithNeighbourSelection:
         pickedValues = np.full((self.numberOfParticles, self.k), True)
         np.put_along_axis(ns, picked, pickedValues, axis=1)
         ns = ns[:, :-1] # remove extra dimension to catch indices that are not applicable
-
-        """
-        for i in range(self.numberOfParticles):
-            neigh = [idx for idx, val in enumerate(neighbours[i]) if val == True]
-            pickedTest = [idx for idx, val in enumerate(ns[i]) if val == True]
-            print(f"{i} - old ={self.getOldPick(i,orientations, neigh, self.k)} - new ={pickedTest}")
-        """
             
-        return ns
-
     def pickPositionNeighbours(self, positions, neighbours, isMin=True):
-        #ts = time.time()
+        """
+        Determines which neighbours the individuals should considered based on the neighbour selection mechanism and k.
+
+        Params:
+            - positions (array of floats): the position of every individual at the current timestep
+            - neighbours (array of arrays of booleans): the identity of every neighbour of every individual
+            - isMin (boolean) [optional, default=True]: whether to take the nearest or farthest neighbours
+
+        Returns:
+            An array of arrays of booleans representing the selected neighbours
+        """
         posDiff = self.getPositionDifferences(positions)
         if isMin == True:
-            #neighbourDiffs = np.where(neighbours == True, posDiff, maxSq)
             fillValue = self.maxReplacementValue
         else:
-            #neighbourDiffs = np.where(neighbours == True, posDiff, minSq)
             fillValue = self.minReplacementValue
 
-        #a = np.sort(posDiff, axis=1)
-        #mask = neighbours.nonzero()
-        #a = np.argsort(neighbourDiffs, axis=1)
-        
-        
-        minusOnes = np.full((self.numberOfParticles,self.k), -1)
-        #trues = np.full((n,n), True)
-        #falses = np.full((n,n), False)
-
+        # select the best candidates
         maskedArray = np.ma.MaskedArray(posDiff, mask=neighbours==False, fill_value=fillValue)
-        sortedIndices = maskedArray.argsort(axis=1)
-        if isMin == False:
-            sortedIndices = np.flip(sortedIndices, axis=1)
-        candidates = sortedIndices[:, :self.k]
-        """
-        pickedDistances = np.take_along_axis(posDiff, candidates, axis=1)
-        # filter on actual neighbours, e.g. by replacing indices that aren't neighbours by the diagonal index (the agent's own index)
-        #diagonalIndices = np.diag_indices(n)[0]
-        picked = np.where(((pickedDistances == 0) | (pickedDistances > self.radius**2)), minusOnes, candidates)
-        """
-        # TODO replace loop
-        
-        """
-        for i in range(self.numberOfParticles):
-            for j in range(self.numberOfParticles):
-                if j in candidates[i] and (posDiff[i][j] != 0 and posDiff[i][j]> self.radius**2):
-                    ns[i][j] = True
-        """
-        pickedDistances = np.take_along_axis(posDiff, candidates, axis=1)
-        picked = np.where(((pickedDistances == 0) | (pickedDistances > self.radius**2)), minusOnes, candidates)
-        
-        ns = np.full((self.numberOfParticles,self.numberOfParticles+1), False) # add extra dimension to catch indices that are not applicable
-        pickedValues = np.full((self.numberOfParticles, self.k), True)
-        #fillers = np.full((self.numberOfParticles, self.numberOfParticles-self.k), -1)
-        np.put_along_axis(ns, picked, pickedValues, axis=1)
-        ns = ns[:, :-1] # remove extra dimension to catch indices that are not applicable
-
-        #mask = np.zeros((n,n), dtype=np.bool_)
-        #mask[picked] = True
-        #mask[picked[:,0], picked[:,1]]=True
-        #mask = []
-        #te = time.time()
-        #ServiceGeneral.logWithTime(f"duration pickPositionNeighbours(): {ServiceGeneral.formatTime(te-ts)}")
-        return ns
+        return self.__getPickedNeighboursFromMaskedArray(maskedArray=maskedArray, posDiff=posDiff, isMin=isMin)
     
     def pickOrientationNeighbours(self, positions, orientations, neighbours, isMin=True):
+        """
+        Determines which neighbours the individuals should considered based on the neighbour selection mechanism and k.
+
+        Params:
+            - positions (array of floats): the position of every individual at the current timestep
+            - orientations (array of floats): the orientation of every individual at the current timestep
+            - neighbours (array of arrays of booleans): the identity of every neighbour of every individual
+            - isMin (boolean) [optional, default=True]: whether to take the least orientionally different or most orientationally different neighbours
+
+        Returns:
+            An array of arrays of booleans representing the selected neighbours
+        """
         posDiff = self.getPositionDifferences(positions)
         orientDiff = self.getOrientationDifferences(orientations)
 
@@ -231,40 +229,21 @@ class VicsekWithNeighbourSelection:
 
         # select the best candidates
         maskedArray = np.ma.MaskedArray(orientDiff, mask=neighbours==False, fill_value=fillValue)
-        sortedIndices = maskedArray.argsort(axis=1)
-        if isMin == False:
-            sortedIndices = np.flip(sortedIndices, axis=1)
-        candidates = sortedIndices[:, :self.k]
-
-        # exclude any individuals that are not neighbours
-        pickedDistances = np.take_along_axis(posDiff, candidates, axis=1)
-        minusOnes = np.full((self.numberOfParticles,self.k), -1)
-        picked = np.where(((pickedDistances == 0) | (pickedDistances > self.radius**2)), minusOnes, candidates)
-        
-        # create the boolean mask
-        ns = np.full((self.numberOfParticles,self.numberOfParticles+1), False) # add extra dimension to catch indices that are not applicable
-        pickedValues = np.full((self.numberOfParticles, self.k), True)
-        np.put_along_axis(ns, picked, pickedValues, axis=1)
-        ns = ns[:, :-1] # remove extra dimension to catch indices that are not applicable
-
-        """
-        for i in range(self.numberOfParticles):
-            neigh = [idx for idx, val in enumerate(neighbours[i]) if val == True]
-            pickedTest = [idx for idx, val in enumerate(ns[i]) if val == True]
-            print(f"{i} - old ={self.getOldPick(i,orientations, neigh, self.k)} - new ={pickedTest}")
-        """
-            
-        return ns
+        return self.__getPickedNeighboursFromMaskedArray(maskedArray=maskedArray, posDiff=posDiff, isMin=isMin)
 
     def computeNewOrientations(self, neighbours, positions, orientations, switchTypeValues):
-        #ts = time.time()
         """
-        match switchType:
-            case SwitchType.NEIGHBOUR_SELECTION_MODE:
-                switchTypeValuesDf = pd.DataFrame(switchTypeValues)
-                switchTypeValuesDf["val"] = switchTypeValuesDf["val"].case_when([(, switchTypeValuesB),
-                                    (((switchTypeValuesDf["localOrder"] <= threshold) & (switchTypeValuesDf["previousLocalOrder"] >= threshold)), switchTypeValuesA),
-                ])
+        Computes the new orientation of every individual based on the neighbour selection mechanism, k and Vicsek-like 
+        averaging.
+
+        Params:
+            - neighbours (array of arrays of booleans): the identity of every neighbour of every individual
+            - positions (array of floats): the position of every individual at the current timestep
+            - orientations (array of floats): the orientation of every individual at the current timestep
+            - switchTypeValues (array of ints): the chosen value for every individual at the current timestep
+
+        Returns:
+            An array of floats representing the orientations of all individuals after the current timestep
         """
         match self.neighbourSelectionMechanism:
             case NeighbourSelectionMechanism.NEAREST:
@@ -276,50 +255,62 @@ class VicsekWithNeighbourSelection:
             case NeighbourSelectionMechanism.HIGHEST_ORIENTATION_DIFFERENCE:
                 pickedNeighbours = self.pickOrientationNeighbours(positions, orientations, neighbours, isMin=False)
             case NeighbourSelectionMechanism.ALL:
-                pickedNeighbours = self.pickAllNeighbours(positions, neighbours)
-
+                pickedNeighbours = neighbours
 
         np.fill_diagonal(pickedNeighbours, True)
 
         orientations = self.calculateMeanOrientations(orientations, pickedNeighbours)
         orientations = ServiceOrientations.normalizeOrientations(orientations+self.generateNoise())
 
-        #te = time.time()
-        #ServiceGeneral.logWithTime(f"duration computeNewOrientations(): {ServiceGeneral.formatTime(te-ts)}")
         return orientations
-    
-    """
-    def getOldPick(self, currentIdx, orientations, neighbourIndices, k):
-        candidateDistances = {candidateIdx: math.dist(orientations[currentIdx], orientations[candidateIdx]) for candidateIdx in neighbourIndices}
-        pickedNeighbours = nlargest(k, candidateDistances, candidateDistances.get)
-        return pickedNeighbours
-    """
 
     def getLocalOrders(self, orientations, neighbours):
-        #ts = time.time()
+        """
+        Computes the local order for every individual.
+
+        Params: 
+            - orientations (array of floats): the orientation of every individual at the current timestep
+            - neighbours (array of arrays of booleans): the identity of every neighbour of every individual
+
+        Returns:
+            An array of floats representing the local order for every individual at the current time step (values between 0 and 1)
+        """
         sumOrientation = np.sum(neighbours[:,:,np.newaxis]*orientations[np.newaxis,:,:],axis=1)
         localOrders = np.divide(np.sqrt(np.sum(sumOrientation**2,axis=1)), np.count_nonzero(neighbours, axis=1))
-        #te = time.time()
-        #ServiceGeneral.logWithTime(f"duration getLocalOrders(): {ServiceGeneral.formatTime(te-ts)}")
         return localOrders
     
     def __getLowerAndUpperThreshold(self):
-        #ts = time.time()
+        """
+        Determines the lower and upper thresholds for hysteresis.
+
+        Params:
+            None
+
+        Returns:
+            Two floats representing the lower and upper threshold respectively
+        """
         if len(self.orderThresholds) == 1:
             switchDifferenceThresholdLower = self.orderThresholds[0]
             switchDifferenceThresholdUpper = 1 - self.orderThresholds[0]
         else:
             switchDifferenceThresholdLower = self.orderThresholds[0]
             switchDifferenceThresholdUpper = self.orderThresholds[1]
-        #te = time.time()
-        #ServiceGeneral.logWithTime(f"duration getLowerAndUpperThreshold(): {ServiceGeneral.formatTime(te-ts)}")
         return switchDifferenceThresholdLower, switchDifferenceThresholdUpper
         
     def getDecisions(self, t, localOrders, previousLocalOrders, switchTypeValues):
         """
-        Computes whether the individual chooses to use option A or option B as its value based on the local order, the average previous local order and a threshold.
+        Computes whether the individual chooses to use option A or option B as its value based on the local order, 
+        the average previous local order and a threshold.
+
+        Params:
+            - t (int): the current timestep
+            - localOrders (array of floats): the local order from the point of view of every individual
+            - previousLocalOrders (array of arrays of floats): the local order for every individual at every previous time step
+            - switchTypeValues (array of ints): the current switchTypeValue selection for every individual
+
+        Returns:
+            A pandas Dataframe containing the switchTypeValues for every individual
         """
-        #ts = time.time()
         switchDifferenceThresholdLower, switchDifferenceThresholdUpper = self.__getLowerAndUpperThreshold()
 
         prev = np.average(previousLocalOrders[max(t-self.numberPreviousStepsForThreshold, 0):t+1], axis=0)
@@ -329,13 +320,10 @@ class VicsekWithNeighbourSelection:
         switchTypeValuesDf["val"] = switchTypeValuesDf["val"].case_when([(((switchTypeValuesDf["localOrder"] >= switchDifferenceThresholdUpper) & (switchTypeValuesDf["previousLocalOrder"] <= switchDifferenceThresholdUpper)), self.orderSwitchValue),
                             (((switchTypeValuesDf["localOrder"] <= switchDifferenceThresholdLower) & (switchTypeValuesDf["previousLocalOrder"] >= switchDifferenceThresholdLower)), self.disorderSwitchValue),
         ])
-        a = pd.DataFrame(switchTypeValuesDf["val"])
-
-        #te = time.time()
-        #ServiceGeneral.logWithTime(f"duration getDecisions(): {ServiceGeneral.formatTime(te-ts)}")
-        return a
+        return pd.DataFrame(switchTypeValuesDf["val"])
     
     def computeOrder(self, orientations):
+        # TODO remove this method. This is only here to make debugging easier
         """
         Computes the order within the provided orientations. 
         Can also be called for a subsection of all particles by only providing their orientations.
@@ -351,9 +339,20 @@ class VicsekWithNeighbourSelection:
             sumOrientation += orientations[j]
         return np.sqrt(sumOrientation[0]**2 + sumOrientation[1]**2) / len(orientations)
 
-
     def simulate(self, initialState=(None, None, None), dt=None, tmax=None):
-        #ts = time.time()
+        """
+        Runs the simulation experiment.
+        First the parameters are computed if they are not passed. 
+        Then the positions, orientations and colours are computed for each particle at each time step.
+
+        Params:
+            - initialState (tuple of arrays) [optional]: A tuple containing the initial positions of all particles, their initial orientations and their initial switch type values
+            - dt (int) [optional]: time step
+            - tmax (int) [optional]: the total number of time steps of the experiment
+
+        Returns:
+            times, positionsHistory, orientationsHistory, coloursHistory, switchTypeValueHistory. All of them as ordered arrays so that they can be matched by index matching
+        """
         # Preparations and setting of parameters if they are not passed to the method
         positions, orientations, switchTypeValues = initialState
         
@@ -383,13 +382,6 @@ class VicsekWithNeighbourSelection:
         orientationsHistory[0,:,:]=orientations
         switchTypeValuesHistory[0]=switchTypeValues
 
-        """
-        print(f"t=prestart")
-        print("pos")
-        print(positions)
-        print("ori")
-        print(orientations)
-        """
         for t in range(numIntervals):
 
             if t % 1000 == 0:
@@ -414,19 +406,8 @@ class VicsekWithNeighbourSelection:
             positionsHistory[t,:,:]=positions
             orientationsHistory[t,:,:]=orientations
             switchTypeValuesHistory[t]=switchTypeValues
-            
-            """
-            print(f"t={t}")
-            print("pos")
-            print(positions)
-            print("ori")
-            print(orientations)
-            """
 
             if t % 1000 == 0:
                 print(f"t={t}, order={self.computeOrder(orientations)}")
             
-        #te = time.time()
-        #ServiceGeneral.logWithTime(f"duration simulate(): {ServiceGeneral.formatTime(te-ts)}")
-
         return (dt*np.arange(numIntervals), positionsHistory, orientationsHistory), switchTypeValuesHistory
