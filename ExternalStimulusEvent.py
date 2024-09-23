@@ -13,13 +13,12 @@ import ServicePreparation
 import ServiceVicsekHelper
 
 class ExternalStimulusOrientationChangeEvent:
-    # TODO refactor to allow all distributionTypes
     # TODO refactor to allow areas with a radius bigger than the radius of a particle, i.e. remove neighbourCells and determine all affected cells here
     """
     Representation of an event occurring at a specified time and place within the domain and affecting 
     a specified percentage of particles. After creation, the check()-method takes care of everything.
     """
-    def __init__(self, timestep, domainSize, eventEffect, distributionType, areas=None, angle=None, noisePercentage=None):
+    def __init__(self, timestep, domainSize, eventEffect, distributionType, areas=None, radius=None, angle=None, noisePercentage=None):
         """
         Creates an external stimulus event that affects part of the swarm at a given timestep.
 
@@ -45,6 +44,12 @@ class ExternalStimulusOrientationChangeEvent:
         self.noisePercentage = noisePercentage
         if self.noisePercentage != None:
             self.noise = ServicePreparation.getNoiseAmplitudeValueForPercentage(self.noisePercentage)
+
+        match self.distributionType:
+            case DistributionType.GLOBAL:
+                self.radius = radius
+            case DistributionType.LOCAL_SINGLE_SITE:
+                self.radius = self.areas[0][2]
 
         if self.distributionType != DistributionType.GLOBAL and self.areas == None:
             raise Exception("Local effects require the area to be specified")
@@ -114,9 +119,9 @@ class ExternalStimulusOrientationChangeEvent:
             The orientations, switchTypeValues of all particles after the event has been executed as well as a list containing the indices of all affected particles.
         """
         posWithCenter = np.copy(positions)
-        np.append(posWithCenter, [self.areas[0][0], self.areas[0][1]])
+        np.append(posWithCenter, self.getOriginPoint())
         rij2 = ServiceVicsekHelper.getDifferences(posWithCenter, self.domainSize)
-        affected = (rij2 <= self.areas[0][2]**2)[-1]
+        affected = (rij2 <= self.radius**2)[-1]
 
         print(orientations)
         match self.eventEffect:
