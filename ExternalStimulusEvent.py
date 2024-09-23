@@ -48,9 +48,12 @@ class ExternalStimulusOrientationChangeEvent:
 
         match self.distributionType:
             case DistributionType.GLOBAL:
-                self.radius = radius
+                self.radius = (domainSize[0] * domainSize[1]) /np.pi
             case DistributionType.LOCAL_SINGLE_SITE:
                 self.radius = self.areas[0][2]
+
+        if radius:
+            self.radius = radius
 
         if self.distributionType != DistributionType.GLOBAL and self.areas == None:
             raise Exception("Local effects require the area to be specified")
