@@ -134,6 +134,36 @@ class VicsekWithNeighbourSelection:
         #te = time.time()
         #ServiceGeneral.logWithTime(f"duration getNeighbours(): {ServiceGeneral.formatTime(te-ts)}")
         return neighbours
+    
+    def pickAllNeighbours(self, positions, neighbours):
+        posDiff = self.getPositionDifferences(positions)
+
+        fillValue = self.minReplacementValue
+
+        # select the best candidates
+        maskedArray = np.ma.MaskedArray(posDiff, mask=neighbours==False, fill_value=fillValue)
+        sortedIndices = maskedArray.argsort(axis=1)
+        candidates = sortedIndices
+
+        # exclude any individuals that are not neighbours
+        pickedDistances = np.take_along_axis(posDiff, candidates, axis=1)
+        minusOnes = np.full((self.numberOfParticles,self.k), -1)
+        picked = np.where(((pickedDistances == 0) | (pickedDistances > self.radius**2)), minusOnes, candidates)
+        
+        # create the boolean mask
+        ns = np.full((self.numberOfParticles,self.numberOfParticles+1), False) # add extra dimension to catch indices that are not applicable
+        pickedValues = np.full((self.numberOfParticles, self.k), True)
+        np.put_along_axis(ns, picked, pickedValues, axis=1)
+        ns = ns[:, :-1] # remove extra dimension to catch indices that are not applicable
+
+        """
+        for i in range(self.numberOfParticles):
+            neigh = [idx for idx, val in enumerate(neighbours[i]) if val == True]
+            pickedTest = [idx for idx, val in enumerate(ns[i]) if val == True]
+            print(f"{i} - old ={self.getOldPick(i,orientations, neigh, self.k)} - new ={pickedTest}")
+        """
+            
+        return ns
 
     def pickPositionNeighbours(self, positions, neighbours, isMin=True):
         #ts = time.time()
@@ -245,6 +275,8 @@ class VicsekWithNeighbourSelection:
                 pickedNeighbours = self.pickOrientationNeighbours(positions, orientations, neighbours, isMin=True)
             case NeighbourSelectionMechanism.HIGHEST_ORIENTATION_DIFFERENCE:
                 pickedNeighbours = self.pickOrientationNeighbours(positions, orientations, neighbours, isMin=False)
+            case NeighbourSelectionMechanism.ALL:
+                pickedNeighbours = self.pickAllNeighbours(positions, neighbours)
 
 
         np.fill_diagonal(pickedNeighbours, True)

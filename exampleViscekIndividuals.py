@@ -16,7 +16,7 @@ speed = 1
 
 radius = 50
 k = 1
-nsm = NeighbourSelectionMechanism.LEAST_ORIENTATION_DIFFERENCE
+nsm = NeighbourSelectionMechanism.ALL
 
 tmax = 10000
 
