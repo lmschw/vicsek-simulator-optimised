@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import random
 import time
+import math
+from heapq import nlargest
 
 from EnumNeighbourSelectionMechanism import NeighbourSelectionMechanism
 from EnumSwitchType import SwitchType
@@ -102,10 +104,12 @@ class VicsekWithNeighbourSelection:
         #ServiceGeneral.logWithTime(f"duration calculateMeanOrientations(): {ServiceGeneral.formatTime(te-ts)}")
         return a
 
-    """
-    def normalizeOrientations(self, orientations):
-        return orientations/(np.sqrt(np.sum(orientations**2,axis=1))[:,np.newaxis])
-    """
+    def getOrientationDifferences(self, orientations):
+        rij=orientations[:,np.newaxis,:]-orientations   
+        rij = rij - self.domainSize*np.rint(rij/self.domainSize) #minimum image convention
+        rij2 = np.sum(rij**2,axis=2)
+        return rij2
+    
     def getPositionDifferences(self, positions):
 
         #ts = time.time()
@@ -153,7 +157,7 @@ class VicsekWithNeighbourSelection:
         maskedArray = np.ma.MaskedArray(posDiff, mask=neighbours==False, fill_value=fillValue)
         sortedIndices = maskedArray.argsort(axis=1)
         if isMin == False:
-            sortedIndices = np.flip(sortedIndices)
+            sortedIndices = np.flip(sortedIndices, axis=1)
         candidates = sortedIndices[:, :self.k]
         """
         pickedDistances = np.take_along_axis(posDiff, candidates, axis=1)
@@ -185,6 +189,42 @@ class VicsekWithNeighbourSelection:
         #te = time.time()
         #ServiceGeneral.logWithTime(f"duration pickPositionNeighbours(): {ServiceGeneral.formatTime(te-ts)}")
         return ns
+    
+    def pickOrientationNeighbours(self, positions, orientations, neighbours, isMin=True):
+        posDiff = self.getPositionDifferences(positions)
+        orientDiff = self.getOrientationDifferences(orientations)
+
+        if isMin == True:
+            fillValue = self.maxReplacementValue
+        else:
+            fillValue = self.minReplacementValue
+
+        # select the best candidates
+        maskedArray = np.ma.MaskedArray(orientDiff, mask=neighbours==False, fill_value=fillValue)
+        sortedIndices = maskedArray.argsort(axis=1)
+        if isMin == False:
+            sortedIndices = np.flip(sortedIndices, axis=1)
+        candidates = sortedIndices[:, :self.k]
+
+        # exclude any individuals that are not neighbours
+        pickedDistances = np.take_along_axis(posDiff, candidates, axis=1)
+        minusOnes = np.full((self.numberOfParticles,self.k), -1)
+        picked = np.where(((pickedDistances == 0) | (pickedDistances > self.radius**2)), minusOnes, candidates)
+        
+        # create the boolean mask
+        ns = np.full((self.numberOfParticles,self.numberOfParticles+1), False) # add extra dimension to catch indices that are not applicable
+        pickedValues = np.full((self.numberOfParticles, self.k), True)
+        np.put_along_axis(ns, picked, pickedValues, axis=1)
+        ns = ns[:, :-1] # remove extra dimension to catch indices that are not applicable
+
+        """
+        for i in range(self.numberOfParticles):
+            neigh = [idx for idx, val in enumerate(neighbours[i]) if val == True]
+            pickedTest = [idx for idx, val in enumerate(ns[i]) if val == True]
+            print(f"{i} - old ={self.getOldPick(i,orientations, neigh, self.k)} - new ={pickedTest}")
+        """
+            
+        return ns
 
     def computeNewOrientations(self, neighbours, positions, orientations, switchTypeValues):
         #ts = time.time()
@@ -201,13 +241,27 @@ class VicsekWithNeighbourSelection:
                 pickedNeighbours = self.pickPositionNeighbours(positions, neighbours, isMin=True)
             case NeighbourSelectionMechanism.FARTHEST:
                 pickedNeighbours = self.pickPositionNeighbours(positions, neighbours, isMin=False)
+            case NeighbourSelectionMechanism.LEAST_ORIENTATION_DIFFERENCE:
+                pickedNeighbours = self.pickOrientationNeighbours(positions, orientations, neighbours, isMin=True)
+            case NeighbourSelectionMechanism.HIGHEST_ORIENTATION_DIFFERENCE:
+                pickedNeighbours = self.pickOrientationNeighbours(positions, orientations, neighbours, isMin=False)
+
 
         np.fill_diagonal(pickedNeighbours, True)
+
         orientations = self.calculateMeanOrientations(orientations, pickedNeighbours)
         orientations = ServiceOrientations.normalizeOrientations(orientations+self.generateNoise())
+
         #te = time.time()
         #ServiceGeneral.logWithTime(f"duration computeNewOrientations(): {ServiceGeneral.formatTime(te-ts)}")
         return orientations
+    
+    """
+    def getOldPick(self, currentIdx, orientations, neighbourIndices, k):
+        candidateDistances = {candidateIdx: math.dist(orientations[currentIdx], orientations[candidateIdx]) for candidateIdx in neighbourIndices}
+        pickedNeighbours = nlargest(k, candidateDistances, candidateDistances.get)
+        return pickedNeighbours
+    """
 
     def getLocalOrders(self, orientations, neighbours):
         #ts = time.time()
@@ -337,7 +391,8 @@ class VicsekWithNeighbourSelection:
             print(orientations)
             """
 
-            print(f"t={t}, order={self.computeOrder(orientations)}")
+            if t % 1000 == 0:
+                print(f"t={t}, order={self.computeOrder(orientations)}")
             
         #te = time.time()
         #ServiceGeneral.logWithTime(f"duration simulate(): {ServiceGeneral.formatTime(te-ts)}")

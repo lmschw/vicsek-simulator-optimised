@@ -16,7 +16,7 @@ speed = 1
 
 radius = 50
 k = 1
-nsm = NeighbourSelectionMechanism.NEAREST
+nsm = NeighbourSelectionMechanism.LEAST_ORIENTATION_DIFFERENCE
 
 tmax = 10000
 
@@ -38,6 +38,7 @@ simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
                                          numberPreviousStepsForThreshold=100,
                                          switchingActive=False)
 simulationData, switchTypeValues = simulator.simulate(initialState=initialState, tmax=tmax)
+#simulationData, switchTypeValues = simulator.simulate(tmax=tmax)
 
 ServiceSavedModel.saveModel(simulationData=simulationData, path="test.json", 
                             modelParams=simulator.getParameterSummary())
