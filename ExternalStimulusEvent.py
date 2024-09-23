@@ -118,14 +118,15 @@ class ExternalStimulusOrientationChangeEvent:
         rij2 = ServiceViscekHelper.getDifferences(posWithCenter, self.domainSize)
         affected = (rij2 <= self.areas[0][2]**2)[-1]
 
+        print(orientations)
         match self.eventEffect:
             case EventEffect.ALIGN_TO_FIXED_ANGLE:
                 orientations[affected] = ServiceOrientations.computeUvCoordinates(self.angle)
             case EventEffect.ALIGN_TO_FIXED_ANGLE_NOISE:
                 orientations[affected] = ServiceOrientations.computeUvCoordinates(self.angle)
                 orientations[affected] = self.__applyNoiseDistribution(orientations[affected])
-            #case EventEffect.AWAY_FROM_ORIGIN:
-                #orientations = self.computeAwayFromOrigin(positions)
+            case EventEffect.AWAY_FROM_ORIGIN:
+                orientations[affected] = self.computeAwayFromOrigin(positions[affected])
             #case EventEffect.RANDOM:
                 #orientations = self.__getRandomOrientation()
         orientations = ServiceOrientations.normalizeOrientations(orientations)
@@ -154,7 +155,7 @@ class ExternalStimulusOrientationChangeEvent:
         return orientations + np.random.normal(scale=self.noise, size=(len(orientations), len(self.domainSize)))
 
 
-    def computeAwayFromOrigin(self, position):
+    def computeAwayFromOrigin(self, positions):
         """
         Computes the (u,v)-coordinates for the orientation after turning away from the point of origin.
 
@@ -164,9 +165,9 @@ class ExternalStimulusOrientationChangeEvent:
         Returns:
             [U,V]-coordinates representing the new orientation of the current particle.
         """
-        angle = self.__computeAngleWithRegardToOrigin(position)
-        angle = ServiceOrientations.normaliseAngle(angle)
-        return ServiceOrientations.computeUvCoordinates(angle)
+        angles = self.__computeAngleWithRegardToOrigin(positions)
+        #angles = ServiceOrientations.normaliseAngles(angles)
+        return ServiceOrientations.computeUvCoordinatesForList(angles)
 
     def __computeTowardsOrigin(self, position):
         """
@@ -182,7 +183,7 @@ class ExternalStimulusOrientationChangeEvent:
         angle = ServiceOrientations.normaliseAngle(angle)
         return ServiceOrientations.computeUvCoordinates(angle)
 
-    def __computeAngleWithRegardToOrigin(self, position):
+    def __computeAngleWithRegardToOrigin(self, positions):
         """
         Computes the angle between the position of the current particle and the point of origin of the event.
 
@@ -192,9 +193,9 @@ class ExternalStimulusOrientationChangeEvent:
         Returns:
             The angle in radians between the two points.
         """
-        orientationFromOrigin = position - self.getOriginPoint()
-        angleRadian = ServiceOrientations.computeAngleForOrientation(orientationFromOrigin)
-        return angleRadian
+        orientationFromOrigin = positions - self.getOriginPoint()
+        anglesRadian = ServiceOrientations.computeAnglesForOrientations(orientationFromOrigin)
+        return anglesRadian
 
     def getOriginPoint(self):
         """

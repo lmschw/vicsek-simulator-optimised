@@ -31,3 +31,43 @@ def computeUvCoordinates(angle):
     V = np.sin(angle)
     
     return [U,V]
+
+def computeUvCoordinatesForList(angles):
+    """
+    Computes the (u,v)-coordinates based on the angle.
+
+    Params:
+        - angle (float): the angle in radians
+
+    Returns:
+        An array containing the [u, v]-coordinates corresponding to the angle.
+    """
+    # compute the uv-coordinates
+    U = np.cos(angles)
+    V = np.sin(angles)
+    
+    return np.column_stack((U,V))
+
+def computeAngleForOrientation(orientation):
+    """
+    Computes the angle in radians based on the (u,v)-coordinates of the current orientation.
+
+    Params:
+        - orientation (array of floats): the current orientation in (u,v)-coordinates
+
+    Returns:
+        A float representin the angle in radians.
+    """
+    return np.arctan2(orientation[1], orientation[0])
+
+def computeAnglesForOrientations(orientations):
+    """
+    Computes the angle in radians based on the (u,v)-coordinates of the current orientation.
+
+    Params:
+        - orientation (array of floats): the current orientation in (u,v)-coordinates
+
+    Returns:
+        A float representin the angle in radians.
+    """
+    return np.arctan2(orientations[:, 1], orientations[:, 0])

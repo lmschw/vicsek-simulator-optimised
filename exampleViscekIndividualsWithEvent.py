@@ -32,7 +32,7 @@ threshold = [0.1]
 
 event = ExternalStimulusOrientationChangeEvent(timestep=10, 
                                                domainSize=domainSize, 
-                                               eventEffect=EventEffect.ALIGN_TO_FIXED_ANGLE_NOISE, 
+                                               eventEffect=EventEffect.AWAY_FROM_ORIGIN, 
                                                distributionType=DistributionType.LOCAL_SINGLE_SITE, 
                                                areas=[[11, 11, radius]],
                                                angle=np.pi,
