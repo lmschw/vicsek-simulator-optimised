@@ -12,14 +12,14 @@ import ServiceSavedModel
 domainSize = (22.36, 22.36)
 noise = ServicePreparation.getNoiseAmplitudeValueForPercentage(1)
 #noise = 0
-n = 50
+n = 10
 speed = 1
 
 radius = 50
-k = 1
+k = 2
 nsm = NeighbourSelectionMechanism.NEAREST
-switchType = SwitchType.K
-switchValues = (5,1)
+switchType = SwitchType.NEIGHBOUR_SELECTION_MODE
+switchValues = (NeighbourSelectionMechanism.FARTHEST,NeighbourSelectionMechanism.NEAREST)
 
 tmax = 10000
 

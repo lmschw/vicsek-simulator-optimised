@@ -176,15 +176,18 @@ class VicsekWithNeighbourSelection:
         if isMin == False:
             sortedIndices = np.flip(sortedIndices, axis=1)
         
-        candidatesOrder = sortedIndices[:, :self.orderSwitchValue]
-        if self.orderSwitchValue < kMax:
-            candidatesOrder = np.concatenate((candidatesOrder, minusDiff), axis=1)
+        if self.switchingActive and self.switchType == SwitchType.K:
+            candidatesOrder = sortedIndices[:, :self.orderSwitchValue]
+            if self.orderSwitchValue < kMax:
+                candidatesOrder = np.concatenate((candidatesOrder, minusDiff), axis=1)
 
-        candidatesDisorder = sortedIndices[:, :self.disorderSwitchValue]
-        if self.disorderSwitchValue < kMax:
-            candidatesDisorder = np.concatenate((candidatesDisorder, minusDiff), axis=1)
+            candidatesDisorder = sortedIndices[:, :self.disorderSwitchValue]
+            if self.disorderSwitchValue < kMax:
+                candidatesDisorder = np.concatenate((candidatesDisorder, minusDiff), axis=1)
 
-        candidates = np.where(((ks == self.orderSwitchValue)), candidatesOrder, candidatesDisorder)
+            candidates = np.where(((ks == self.orderSwitchValue)), candidatesOrder, candidatesDisorder)
+        else:
+            candidates = sortedIndices[:, :self.k]
 
         # exclude any individuals that are not neighbours
         pickedDistances = np.take_along_axis(posDiff, candidates, axis=1)
@@ -246,6 +249,21 @@ class VicsekWithNeighbourSelection:
         # select the best candidates
         maskedArray = np.ma.MaskedArray(orientDiff, mask=neighbours==False, fill_value=fillValue)
         return self.__getPickedNeighboursFromMaskedArray(maskedArray=maskedArray, posDiff=posDiff, ks=ks, isMin=isMin)
+    
+
+    def getPickedNeighboursForNeighbourSelectionMechanism(self, neighbourSelectionMechanism, positions, orientations, neighbours, ks):
+        match neighbourSelectionMechanism:
+            case NeighbourSelectionMechanism.NEAREST:
+                pickedNeighbours = self.pickPositionNeighbours(positions, neighbours, ks, isMin=True)
+            case NeighbourSelectionMechanism.FARTHEST:
+                pickedNeighbours = self.pickPositionNeighbours(positions, neighbours, ks, isMin=False)
+            case NeighbourSelectionMechanism.LEAST_ORIENTATION_DIFFERENCE:
+                pickedNeighbours = self.pickOrientationNeighbours(positions, orientations, neighbours, ks, isMin=True)
+            case NeighbourSelectionMechanism.HIGHEST_ORIENTATION_DIFFERENCE:
+                pickedNeighbours = self.pickOrientationNeighbours(positions, orientations, neighbours, ks, isMin=False)
+            case NeighbourSelectionMechanism.ALL:
+                pickedNeighbours = neighbours
+        return pickedNeighbours
 
     def computeNewOrientations(self, neighbours, positions, orientations, switchTypeValues):
         """
@@ -262,26 +280,31 @@ class VicsekWithNeighbourSelection:
             An array of floats representing the orientations of all individuals after the current timestep
         """
 
-        ks = np.array(self.numberOfParticles * [self.k])
-        nsms = np.array(self.numberOfParticles * [self.neighbourSelectionMechanism])
-        if self.switchingActive:
-            match self.switchType:
-                case SwitchType.NEIGHBOUR_SELECTION_MODE:
-                    nsms = switchTypeValues
-                case SwitchType.K:
-                    ks = switchTypeValues
+        if self.switchingActive and self.switchType == SwitchType.K:
+            ks = switchTypeValues
+        else:
+            ks = np.array(self.numberOfParticles * [self.k])
 
-        match self.neighbourSelectionMechanism:
-            case NeighbourSelectionMechanism.NEAREST:
-                pickedNeighbours = self.pickPositionNeighbours(positions, neighbours, ks, isMin=True)
-            case NeighbourSelectionMechanism.FARTHEST:
-                pickedNeighbours = self.pickPositionNeighbours(positions, neighbours, ks, isMin=False)
-            case NeighbourSelectionMechanism.LEAST_ORIENTATION_DIFFERENCE:
-                pickedNeighbours = self.pickOrientationNeighbours(positions, orientations, neighbours, ks, isMin=True)
-            case NeighbourSelectionMechanism.HIGHEST_ORIENTATION_DIFFERENCE:
-                pickedNeighbours = self.pickOrientationNeighbours(positions, orientations, neighbours, ks, isMin=False)
-            case NeighbourSelectionMechanism.ALL:
-                pickedNeighbours = neighbours
+        if self.switchingActive and self.switchType == SwitchType.NEIGHBOUR_SELECTION_MODE:
+            neighboursOrder = self.getPickedNeighboursForNeighbourSelectionMechanism(neighbourSelectionMechanism=self.orderSwitchValue,
+                                                                                     positions=positions,
+                                                                                     orientations=orientations,
+                                                                                     neighbours=neighbours,
+                                                                                     ks=ks)
+            neighboursDisorder = self.getPickedNeighboursForNeighbourSelectionMechanism(neighbourSelectionMechanism=self.disorderSwitchValue,
+                                                                                    positions=positions,
+                                                                                    orientations=orientations,
+                                                                                    neighbours=neighbours,
+                                                                                    ks=ks)
+            pickedNeighbours = np.where(((switchTypeValues["val"] == self.orderSwitchValue)), neighboursDisorder, neighboursOrder)
+
+            
+        else:
+            pickedNeighbours = self.getPickedNeighboursForNeighbourSelectionMechanism(neighbourSelectionMechanism=self.neighbourSelectionMechanism,
+                                                                                      positions=positions, 
+                                                                                      orientations=orientations, 
+                                                                                      neighbours=neighbours,
+                                                                                      ks=ks)
 
         np.fill_diagonal(pickedNeighbours, True)
 
@@ -385,11 +408,7 @@ class VicsekWithNeighbourSelection:
         if any(ele is None for ele in initialState):
             positions, orientations, switchTypeValues = self.__initializeState()
 
-        switchTypeValues = pd.DataFrame(switchTypeValues, columns=["val"])
-        switchTypeValues["val"][0] = 1
-        switchTypeValues["val"][4] = 1
-        switchTypeValues["val"][-1] = 1
-            
+        switchTypeValues = pd.DataFrame(switchTypeValues, columns=["val"])            
         if dt is None and tmax is not None:
             dt = 1
         
