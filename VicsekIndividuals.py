@@ -16,7 +16,7 @@ class VicsekWithNeighbourSelection:
     def __init__(self, domainSize, radius, noise, numberOfParticles, k, neighbourSelectionMechanism,
                  speed=dv.DEFAULT_SPEED, switchType=None, switchValues=(None, None), 
                  orderThresholds=None, numberPreviousStepsForThreshold=10, switchingActive=True):
-        self.domainSize = domainSize
+        self.domainSize = np.asarray(domainSize)
         self.radius = radius
         self.noise = noise
         self.numberOfParticles = numberOfParticles
@@ -49,7 +49,7 @@ class VicsekWithNeighbourSelection:
                     "speed": self.speed,
                     "radius": self.radius,
                     "neighbourSelectionMechanism": self.neighbourSelectionMechanism.name,
-                    "domainSize": self.domainSize,
+                    "domainSize": self.domainSize.tolist(),
                     "tmax": self.tmax,
                     "dt": self.dt,
                     "thresholds": self.orderThresholds,
@@ -73,16 +73,16 @@ class VicsekWithNeighbourSelection:
         return summary
 
 
-    def __initializeState(self, domainSize, numberOfParticles):
-        positions = domainSize*np.random.rand(numberOfParticles,len(domainSize))
-        orientations = ServiceOrientations.normalizeOrientations(np.random.rand(numberOfParticles, len(domainSize))-0.5)
+    def __initializeState(self):
+        positions = self.domainSize*np.random.rand(self.numberOfParticles,len(self.domainSize))
+        orientations = ServiceOrientations.normalizeOrientations(np.random.rand(self.numberOfParticles, len(self.domainSize))-0.5)
         match self.switchType:
             case SwitchType.NEIGHBOUR_SELECTION_MODE:
-                switchTypeValues = numberOfParticles * [self.neighbourSelectionMode]
+                switchTypeValues = self.numberOfParticles * [self.neighbourSelectionMechanism]
             case SwitchType.K:
-                switchTypeValues = numberOfParticles * [self.k]
+                switchTypeValues = self.numberOfParticles * [self.k]
             case _:
-                switchTypeValues = numberOfParticles * [None]
+                switchTypeValues = self.numberOfParticles * [None]
         return positions, orientations, switchTypeValues
 
     def generateNoise(self):
@@ -126,7 +126,7 @@ class VicsekWithNeighbourSelection:
         rij2 = self.getPositionDifferences(positions)
 
         neighbours = (rij2 <= self.radius**2)
-        np.fill_diagonal(neighbours, False)
+        
         #te = time.time()
         #ServiceGeneral.logWithTime(f"duration getNeighbours(): {ServiceGeneral.formatTime(te-ts)}")
         return neighbours
@@ -196,11 +196,13 @@ class VicsekWithNeighbourSelection:
                                     (((switchTypeValuesDf["localOrder"] <= threshold) & (switchTypeValuesDf["previousLocalOrder"] >= threshold)), switchTypeValuesA),
                 ])
         """
+        neighboursNoSelf = np.copy(neighbours)
+        np.fill_diagonal(neighboursNoSelf, False)
         match self.neighbourSelectionMechanism:
             case NeighbourSelectionMechanism.NEAREST:
-                pickedNeighbours = self.pickPositionNeighbours(positions, neighbours, isMin=True)
+                pickedNeighbours = self.pickPositionNeighbours(positions, neighboursNoSelf, isMin=True)
             case NeighbourSelectionMechanism.FARTHEST:
-                pickedNeighbours = self.pickPositionNeighbours(positions, neighbours, isMin=False)
+                pickedNeighbours = self.pickPositionNeighbours(positions, neighboursNoSelf, isMin=False)
 
         np.fill_diagonal(pickedNeighbours, True)
         orientations = self.calculateMeanOrientations(orientations, pickedNeighbours)
@@ -248,6 +250,22 @@ class VicsekWithNeighbourSelection:
         #te = time.time()
         #ServiceGeneral.logWithTime(f"duration getDecisions(): {ServiceGeneral.formatTime(te-ts)}")
         return a
+    
+    def computeOrder(self, orientations):
+        """
+        Computes the order within the provided orientations. 
+        Can also be called for a subsection of all particles by only providing their orientations.
+
+        Params:
+            - orientations (array of (u,v)-coordinates): the orientation of all particles that should be included
+        
+        Returns:
+            A float representing the order in the given orientations
+        """
+        sumOrientation = [0,0]
+        for j in range(len(orientations)):
+            sumOrientation += orientations[j]
+        return np.sqrt(sumOrientation[0]**2 + sumOrientation[1]**2) / len(orientations)
 
 
     def simulate(self, initialState=(None, None, None), dt=None, tmax=None):
@@ -256,7 +274,7 @@ class VicsekWithNeighbourSelection:
         positions, orientations, switchTypeValues = initialState
         
         if any(ele is None for ele in initialState):
-            positions, orientations, vals = self.__initializeState(self.domainSize, self.numberOfParticles)
+            positions, orientations, switchTypeValues = self.__initializeState()
             
         if dt is None and tmax is not None:
             dt = 1
@@ -293,17 +311,21 @@ class VicsekWithNeighbourSelection:
             if t % 1000 == 0:
                 print(f"t={t}/{tmax}")
 
+            # all neighbours (including self)
             neighbours = self.getNeighbours(positions)
-                
+
+            """   
             localOrders = self.getLocalOrders(orientations, neighbours)
             localOrdersHistory.append(localOrders)
+            """
 
             #switchTypeValues = self.getDecisions(t, localOrders, localOrdersHistory, switchTypeValues)
 
-            positions += dt*(self.speed*orientations)
-            positions += (-self.domainSize[0], -self.domainSize[1])*np.floor(positions/self.domainSize)
-
             orientations = self.computeNewOrientations(neighbours, positions, orientations, switchTypeValues)
+
+            positions += dt*(self.speed*orientations)
+            positions += -self.domainSize*np.floor(positions/self.domainSize)
+
 
             positionsHistory[t,:,:]=positions
             orientationsHistory[t,:,:]=orientations
@@ -316,6 +338,8 @@ class VicsekWithNeighbourSelection:
             print("ori")
             print(orientations)
             """
+
+            print(f"t={t}, order={self.computeOrder(orientations)}")
             
         #te = time.time()
         #ServiceGeneral.logWithTime(f"duration simulate(): {ServiceGeneral.formatTime(te-ts)}")

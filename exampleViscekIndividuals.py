@@ -7,19 +7,11 @@ import ServicePreparation
 import ServiceGeneral
 import ServiceSavedModel
 
-#noise = 0.063
-noise = 0.063
-domainSize = (100, 100)
-n = 300
-speed = 1
 
-radius = 20
-k = 1
-nsm = NeighbourSelectionMechanism.NEAREST
-
-noise = 0.063
-domainSize = (100, 100)
-n = 100
+domainSize = (22.36, 22.36)
+#noise = ServicePreparation.getNoiseAmplitudeValueForPercentage(1)
+noise = 0
+n = 5
 speed = 1
 
 radius = 50
@@ -43,7 +35,7 @@ simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
                                          neighbourSelectionMechanism=nsm,
                                          speed=speed,
                                          orderThresholds=threshold,
-                                         numberPreviousStepsForThreshold=10,
+                                         numberPreviousStepsForThreshold=100,
                                          switchingActive=False)
 simulationData, switchTypeValues = simulator.simulate(initialState=initialState, tmax=tmax)
 
