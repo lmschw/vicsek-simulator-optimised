@@ -15,3 +15,19 @@ def normalizeOrientations(orientations):
         The normalised orientations of all particles as an array.
     """
     return orientations/(np.sqrt(np.sum(orientations**2,axis=1))[:,np.newaxis])
+
+def computeUvCoordinates(angle):
+    """
+    Computes the (u,v)-coordinates based on the angle.
+
+    Params:
+        - angle (float): the angle in radians
+
+    Returns:
+        An array containing the [u, v]-coordinates corresponding to the angle.
+    """
+    # compute the uv-coordinates
+    U = np.cos(angle)
+    V = np.sin(angle)
+    
+    return [U,V]

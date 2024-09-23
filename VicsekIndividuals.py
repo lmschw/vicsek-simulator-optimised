@@ -5,6 +5,7 @@ from EnumNeighbourSelectionMechanism import NeighbourSelectionMechanism
 from EnumSwitchType import SwitchType
 
 import ServiceOrientations
+import ServiceViscekHelper
 
 import DefaultValues as dv
 
@@ -117,31 +118,18 @@ class VicsekWithNeighbourSelection:
         summedOrientations = np.sum(neighbours[:,:,np.newaxis]*orientations[np.newaxis,:,:],axis=1)
         return ServiceOrientations.normalizeOrientations(summedOrientations)
     
-    def __getDifferences(self, array):
-        """
-        Computes the differences between all individuals for the values provided by the array.
-
-        Params:
-            - array (array of floats): the values to be compared
-
-        Returns:
-            An array of arrays of floats containing the difference between each pair of values.
-        """
-        rij=array[:,np.newaxis,:]-array   
-        rij = rij - self.domainSize*np.rint(rij/self.domainSize) #minimum image convention
-        return np.sum(rij**2,axis=2)
 
     def getOrientationDifferences(self, orientations):
         """
         Helper method to gloss over identical differences implementation for position and orientation. 
         """
-        return self.__getDifferences(orientations)
+        return ServiceViscekHelper.getDifferences(orientations)
     
     def getPositionDifferences(self, positions):
         """
         Helper method to gloss over identical differences implementation for position and orientation. 
         """
-        return self.__getDifferences(positions)
+        return ServiceViscekHelper.getDifferences(positions, self.domainSize)
 
     def getNeighbours(self, positions):
         """
@@ -388,7 +376,7 @@ class VicsekWithNeighbourSelection:
             sumOrientation += orientations[j]
         return np.sqrt(sumOrientation[0]**2 + sumOrientation[1]**2) / len(orientations)
 
-    def simulate(self, initialState=(None, None, None), dt=None, tmax=None):
+    def simulate(self, initialState=(None, None, None), dt=None, tmax=None, events=None):
         """
         Runs the simulation experiment.
         First the parameters are computed if they are not passed. 
@@ -436,6 +424,10 @@ class VicsekWithNeighbourSelection:
 
             if t % 1000 == 0:
                 print(f"t={t}/{tmax}")
+
+            if events != None:
+                for event in events:
+                    orientations = event.check(self.numberOfParticles, t, positions, orientations)
 
             # all neighbours (including self)
             neighbours = self.getNeighbours(positions)
