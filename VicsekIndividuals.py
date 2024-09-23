@@ -396,6 +396,9 @@ class VicsekWithNeighbourSelection:
         if any(ele is None for ele in initialState):
             positions, orientations, switchTypeValues = self.__initializeState()
 
+        print(f"t=pre, order={self.computeOrder(orientations)}")
+
+
         switchTypeValues = pd.DataFrame(switchTypeValues, columns=["val"])            
         if dt is None and tmax is not None:
             dt = 1
@@ -443,10 +446,10 @@ class VicsekWithNeighbourSelection:
             positions += dt*(self.speed*orientations)
             positions += -self.domainSize*np.floor(positions/self.domainSize)
 
-
             positionsHistory[t,:,:]=positions
             orientationsHistory[t,:,:]=orientations
             switchTypeValuesHistory[t]=switchTypeValues
+
 
             if t % 1000 == 0:
                 print(f"t={t}, order={self.computeOrder(orientations)}")
