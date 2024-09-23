@@ -5,7 +5,7 @@ from EnumNeighbourSelectionMechanism import NeighbourSelectionMechanism
 from EnumSwitchType import SwitchType
 
 import ServiceOrientations
-import ServiceViscekHelper
+import ServiceVicsekHelper
 
 import DefaultValues as dv
 
@@ -123,13 +123,13 @@ class VicsekWithNeighbourSelection:
         """
         Helper method to gloss over identical differences implementation for position and orientation. 
         """
-        return ServiceViscekHelper.getDifferences(orientations)
+        return ServiceVicsekHelper.getDifferences(orientations)
     
     def getPositionDifferences(self, positions):
         """
         Helper method to gloss over identical differences implementation for position and orientation. 
         """
-        return ServiceViscekHelper.getDifferences(positions, self.domainSize)
+        return ServiceVicsekHelper.getDifferences(positions, self.domainSize)
 
     def getNeighbours(self, positions):
         """

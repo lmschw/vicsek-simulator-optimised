@@ -10,7 +10,7 @@ from EnumEventEffect import EventEffect
 import DefaultValues as dv
 import ServiceOrientations
 import ServicePreparation
-import ServiceViscekHelper
+import ServiceVicsekHelper
 
 class ExternalStimulusOrientationChangeEvent:
     # TODO refactor to allow all distributionTypes
@@ -115,7 +115,7 @@ class ExternalStimulusOrientationChangeEvent:
         """
         posWithCenter = np.copy(positions)
         np.append(posWithCenter, [self.areas[0][0], self.areas[0][1]])
-        rij2 = ServiceViscekHelper.getDifferences(posWithCenter, self.domainSize)
+        rij2 = ServiceVicsekHelper.getDifferences(posWithCenter, self.domainSize)
         affected = (rij2 <= self.areas[0][2]**2)[-1]
 
         print(orientations)
@@ -127,29 +127,10 @@ class ExternalStimulusOrientationChangeEvent:
                 orientations[affected] = self.__applyNoiseDistribution(orientations[affected])
             case EventEffect.AWAY_FROM_ORIGIN:
                 orientations[affected] = self.computeAwayFromOrigin(positions[affected])
-            #case EventEffect.RANDOM:
-                #orientations = self.__getRandomOrientation()
+            case EventEffect.RANDOM:
+                orientations[affected] = self.__getRandomOrientations(np.count_nonzero(affected))
         orientations = ServiceOrientations.normalizeOrientations(orientations)
         return orientations
-
-
-    def __computeFixedAngleTurn(self, orientation):
-        """
-        Determines the new uv-coordinates after turning the particle by the specified angle.
-        The new angle is the equivalent of the old angle plus the angle specified by the event.
-
-        Params:
-            orientation ([U,V]): the current orientation of a single particle
-        
-        Returns:
-            The new uv-coordinates for the orientation of the particle.
-        """
-        previousAngle = ServiceOrientations.computeAngleForOrientation(orientation)
-
-        # add the event angle to the current angle
-        newAngle = (previousAngle + self.angle) % (2 *np.pi)
-
-        return ServiceOrientations.computeUvCoordinates(newAngle)
     
     def __applyNoiseDistribution(self, orientations):
         return orientations + np.random.normal(scale=self.noise, size=(len(orientations), len(self.domainSize)))
@@ -168,20 +149,6 @@ class ExternalStimulusOrientationChangeEvent:
         angles = self.__computeAngleWithRegardToOrigin(positions)
         #angles = ServiceOrientations.normaliseAngles(angles)
         return ServiceOrientations.computeUvCoordinatesForList(angles)
-
-    def __computeTowardsOrigin(self, position):
-        """
-        Computes the (u,v)-coordinates for the orientation after turning towards the point of origin.
-
-        Params:
-            - position ([X,Y]): the position of the current particle that should turn towards the point of origin
-
-        Returns:
-            [U,V]-coordinates representing the new orientation of the current particle.
-        """
-        angle = self.__computeAngleWithRegardToOrigin(position)
-        angle = ServiceOrientations.normaliseAngle(angle)
-        return ServiceOrientations.computeUvCoordinates(angle)
 
     def __computeAngleWithRegardToOrigin(self, positions):
         """
@@ -212,11 +179,11 @@ class ExternalStimulusOrientationChangeEvent:
         return origin
 
     
-    # def __getRandomOrientation(self):
-    #     """
-    #     Selects a random orientation.
+    def __getRandomOrientations(self, numAffectedParticles):
+        """
+        Selects a random orientation.
 
-    #     Returns:
-    #         A random orientation in [U,V]-coordinates.
-    #     """
-    #     return ServiceVicsekHelper.normalizeOrientations(np.random.rand(1, len(self.domainSize))-0.5)
+        Returns:
+            A random orientation in [U,V]-coordinates.
+        """
+        return ServiceOrientations.normalizeOrientations(np.random.rand(numAffectedParticles, len(self.domainSize))-0.5)
