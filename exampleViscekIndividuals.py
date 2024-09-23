@@ -2,6 +2,7 @@ import time
 
 from VicsekIndividuals import VicsekWithNeighbourSelection
 from EnumNeighbourSelectionMechanism import NeighbourSelectionMechanism
+from EnumSwitchType import SwitchType
 
 import ServicePreparation
 import ServiceGeneral
@@ -16,7 +17,9 @@ speed = 1
 
 radius = 50
 k = 1
-nsm = NeighbourSelectionMechanism.ALL
+nsm = NeighbourSelectionMechanism.NEAREST
+switchType = SwitchType.K
+switchValues = (5,1)
 
 tmax = 10000
 
@@ -26,7 +29,7 @@ tstart = time.time()
 
 ServiceGeneral.logWithTime("start")
 
-initialState = ServicePreparation.createOrderedInitialDistributionEquidistancedIndividual(None, domainSize, n, angleX=0.5, angleY=0.5)
+initialState = ServicePreparation.createOrderedInitialDistributionEquidistancedIndividual(switchValues[0], domainSize, n, angleX=0.5, angleY=0.5)
 simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
                                          radius=radius,
                                          noise=noise,
@@ -36,7 +39,9 @@ simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
                                          speed=speed,
                                          orderThresholds=threshold,
                                          numberPreviousStepsForThreshold=100,
-                                         switchingActive=False)
+                                         switchingActive=True,
+                                         switchType=switchType,
+                                         switchValues=switchValues)
 simulationData, switchTypeValues = simulator.simulate(initialState=initialState, tmax=tmax)
 #simulationData, switchTypeValues = simulator.simulate(tmax=tmax)
 
