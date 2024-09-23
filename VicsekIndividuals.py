@@ -196,13 +196,11 @@ class VicsekWithNeighbourSelection:
                                     (((switchTypeValuesDf["localOrder"] <= threshold) & (switchTypeValuesDf["previousLocalOrder"] >= threshold)), switchTypeValuesA),
                 ])
         """
-        neighboursNoSelf = np.copy(neighbours)
-        #np.fill_diagonal(neighboursNoSelf, False)
         match self.neighbourSelectionMechanism:
             case NeighbourSelectionMechanism.NEAREST:
-                pickedNeighbours = self.pickPositionNeighbours(positions, neighboursNoSelf, isMin=True)
+                pickedNeighbours = self.pickPositionNeighbours(positions, neighbours, isMin=True)
             case NeighbourSelectionMechanism.FARTHEST:
-                pickedNeighbours = self.pickPositionNeighbours(positions, neighboursNoSelf, isMin=False)
+                pickedNeighbours = self.pickPositionNeighbours(positions, neighbours, isMin=False)
 
         np.fill_diagonal(pickedNeighbours, True)
         orientations = self.calculateMeanOrientations(orientations, pickedNeighbours)
