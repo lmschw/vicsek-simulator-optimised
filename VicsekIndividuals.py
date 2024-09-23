@@ -197,7 +197,7 @@ class VicsekWithNeighbourSelection:
                 ])
         """
         neighboursNoSelf = np.copy(neighbours)
-        np.fill_diagonal(neighboursNoSelf, False)
+        #np.fill_diagonal(neighboursNoSelf, False)
         match self.neighbourSelectionMechanism:
             case NeighbourSelectionMechanism.NEAREST:
                 pickedNeighbours = self.pickPositionNeighbours(positions, neighboursNoSelf, isMin=True)

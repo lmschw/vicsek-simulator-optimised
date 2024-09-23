@@ -9,9 +9,9 @@ import ServiceSavedModel
 
 
 domainSize = (22.36, 22.36)
-#noise = ServicePreparation.getNoiseAmplitudeValueForPercentage(1)
-noise = 0
-n = 5
+noise = ServicePreparation.getNoiseAmplitudeValueForPercentage(1)
+#noise = 0
+n = 50
 speed = 1
 
 radius = 50
