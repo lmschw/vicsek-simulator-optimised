@@ -30,7 +30,8 @@ tmax = 10000
 
 threshold = [0.1]
 
-event = ExternalStimulusOrientationChangeEvent(timestep=10, 
+event = ExternalStimulusOrientationChangeEvent(startTimestep=10,
+                                               duration=10,  
                                                domainSize=domainSize, 
                                                eventEffect=EventEffect.RANDOM, 
                                                distributionType=DistributionType.LOCAL_SINGLE_SITE, 

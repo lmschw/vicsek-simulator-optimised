@@ -18,7 +18,7 @@ class ExternalStimulusOrientationChangeEvent:
     Representation of an event occurring at a specified time and place within the domain and affecting 
     a specified percentage of particles. After creation, the check()-method takes care of everything.
     """
-    def __init__(self, timestep, domainSize, eventEffect, distributionType, areas=None, radius=None, angle=None, noisePercentage=None):
+    def __init__(self, startTimestep, duration, domainSize, eventEffect, distributionType, areas=None, radius=None, angle=None, noisePercentage=None):
         """
         Creates an external stimulus event that affects part of the swarm at a given timestep.
 
@@ -35,7 +35,8 @@ class ExternalStimulusOrientationChangeEvent:
         Returns:
             No return.
         """
-        self.timestep = timestep
+        self.startTimestep = startTimestep
+        self.duration = duration
         self.angle = angle
         self.eventEffect = eventEffect
         self.distributionType = distributionType
@@ -100,7 +101,7 @@ class ExternalStimulusOrientationChangeEvent:
         Returns:
             A boolean representing whether or not the event should be triggered.
         """
-        return self.timestep == currentTimestep
+        return self.startTimestep <= currentTimestep and currentTimestep <= (self.startTimestep + self.duration)
     
     def executeEvent(self, totalNumberOfParticles, positions, orientations):
         """
@@ -123,7 +124,6 @@ class ExternalStimulusOrientationChangeEvent:
         rij2 = ServiceVicsekHelper.getDifferences(posWithCenter, self.domainSize)
         affected = (rij2 <= self.radius**2)[-1]
 
-        print(orientations)
         match self.eventEffect:
             case EventEffect.ALIGN_TO_FIXED_ANGLE:
                 orientations[affected] = ServiceOrientations.computeUvCoordinates(self.angle)
