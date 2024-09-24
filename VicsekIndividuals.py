@@ -12,7 +12,7 @@ import DefaultValues as dv
 class VicsekWithNeighbourSelection:
 
     def __init__(self, domainSize, radius, noise, numberOfParticles, k, neighbourSelectionMechanism,
-                 speed=dv.DEFAULT_SPEED, switchType=None, switchValues=(None, None), 
+                 speed=dv.DEFAULT_SPEED, speeds=None, switchType=None, switchValues=(None, None), 
                  orderThresholds=None, numberPreviousStepsForThreshold=10, switchingActive=True):
         self.domainSize = np.asarray(domainSize)
         self.radius = radius
@@ -20,7 +20,10 @@ class VicsekWithNeighbourSelection:
         self.numberOfParticles = numberOfParticles
         self.k = k
         self.neighbourSelectionMechanism = neighbourSelectionMechanism
-        self.speed = speed
+        self.speeds = speeds
+        if speed and speeds == None:
+            self.speeds = np.full(numberOfParticles, speed)
+
         self.switchType = switchType
         self.orderSwitchValue, self.disorderSwitchValue = switchValues
         self.orderThresholds = orderThresholds
@@ -44,7 +47,7 @@ class VicsekWithNeighbourSelection:
         summary = {"n": self.numberOfParticles,
                     "k": self.k,
                     "noise": self.noise,
-                    "speed": self.speed,
+                    "speeds": self.speeds.tolist(),
                     "radius": self.radius,
                     "neighbourSelectionMechanism": self.neighbourSelectionMechanism.name,
                     "domainSize": self.domainSize.tolist(),
@@ -84,7 +87,7 @@ class VicsekWithNeighbourSelection:
         positions = self.domainSize*np.random.rand(self.numberOfParticles,len(self.domainSize))
         orientations = ServiceOrientations.normalizeOrientations(np.random.rand(self.numberOfParticles, len(self.domainSize))-0.5)
         match self.switchType:
-            case SwitchType.NEIGHBOUR_SELECTION_MODE:
+            case SwitchType.NEIGHBOUR_SELECTION_MECHANISM:
                 switchTypeValues = self.numberOfParticles * [self.neighbourSelectionMechanism]
             case SwitchType.K:
                 switchTypeValues = self.numberOfParticles * [self.k]
@@ -158,6 +161,7 @@ class VicsekWithNeighbourSelection:
             An array of arrays of booleans representing the selected neighbours
         """
         
+        kMaxPresent = np.max(ks)
 
         sortedIndices = maskedArray.argsort(axis=1)
         if isMin == False:
@@ -168,11 +172,11 @@ class VicsekWithNeighbourSelection:
             kMax = np.max([self.orderSwitchValue, self.disorderSwitchValue])
             minusDiff = np.full((self.numberOfParticles,kMax-kMin), -1)
             candidatesOrder = sortedIndices[:, :self.orderSwitchValue]
-            if self.orderSwitchValue < kMax:
+            if self.orderSwitchValue < kMax and kMax == kMaxPresent:
                 candidatesOrder = np.concatenate((candidatesOrder, minusDiff), axis=1)
 
             candidatesDisorder = sortedIndices[:, :self.disorderSwitchValue]
-            if self.disorderSwitchValue < kMax:
+            if self.disorderSwitchValue < kMax and kMax == kMaxPresent:
                 candidatesDisorder = np.concatenate((candidatesDisorder, minusDiff), axis=1)
 
             candidates = np.where(((ks == self.orderSwitchValue)[:, None]), candidatesOrder, candidatesDisorder)
@@ -181,7 +185,7 @@ class VicsekWithNeighbourSelection:
 
         # exclude any individuals that are not neighbours
         pickedDistances = np.take_along_axis(posDiff, candidates, axis=1)
-        minusOnes = np.full((self.numberOfParticles,kMax), -1)
+        minusOnes = np.full((self.numberOfParticles,kMaxPresent), -1)
         picked = np.where(((candidates == -1) | (pickedDistances == 0) | (pickedDistances > self.radius**2)), minusOnes, candidates)
 
         # create the boolean mask
@@ -275,7 +279,7 @@ class VicsekWithNeighbourSelection:
         else:
             ks = np.array(self.numberOfParticles * [self.k])
 
-        if self.switchingActive and self.switchType == SwitchType.NEIGHBOUR_SELECTION_MODE:
+        if self.switchingActive and self.switchType == SwitchType.NEIGHBOUR_SELECTION_MECHANISM:
             neighboursOrder = self.getPickedNeighboursForNeighbourSelectionMechanism(neighbourSelectionMechanism=self.orderSwitchValue,
                                                                                      positions=positions,
                                                                                      orientations=orientations,
@@ -407,7 +411,7 @@ class VicsekWithNeighbourSelection:
         
         if tmax is None:
             tmax = (10**3)*dt
-            dt = 10**(-2)*(np.max(self.domainSize)/self.speed)
+            dt = np.average(10**(-2)*(np.max(self.domainSize)/self.speeds))
 
         self.tmax = tmax
         self.dt = dt
@@ -443,9 +447,12 @@ class VicsekWithNeighbourSelection:
             
                 switchTypeValues = self.getDecisions(t, localOrders, localOrdersHistory, switchTypeValues)
 
+                if self.switchType == SwitchType.SPEED:
+                    self.speeds = switchTypeValues
+
             orientations = self.computeNewOrientations(neighbours, positions, orientations, switchTypeValues)
 
-            positions += dt*(self.speed*orientations)
+            positions += dt*(orientations.T * self.speeds).T
             positions += -self.domainSize*np.floor(positions/self.domainSize)
 
             positionsHistory[t,:,:]=positions

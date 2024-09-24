@@ -13,12 +13,12 @@ import ServiceGeneral
 import ServiceSavedModel
 
 
-#domainSize = (22.36, 22.36)
-domainSize = (50, 50)
+domainSize = (22.36, 22.36)
+#domainSize = (50, 50)
 noisePercentage = 1
 noise = ServicePreparation.getNoiseAmplitudeValueForPercentage(noisePercentage)
 #noise = 0
-n = 225
+n = 100
 speed = 1
 
 # TODO: check why N-F always returns to order -> only with high radius
@@ -28,11 +28,15 @@ k = 1
 nsm = NeighbourSelectionMechanism.NEAREST
 
 """
-switchType = SwitchType.NEIGHBOUR_SELECTION_MODE
+switchType = SwitchType.NEIGHBOUR_SELECTION_MECHANISM
 switchValues = (NeighbourSelectionMechanism.FARTHEST,NeighbourSelectionMechanism.NEAREST)
+"""
 """
 switchType = SwitchType.K
 switchValues = (5,1)
+"""
+switchType = SwitchType.SPEED
+switchValues = (0.1, 1)
 
 tmax = 10000
 

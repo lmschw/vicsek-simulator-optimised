@@ -18,7 +18,7 @@ speed = 1
 radius = 50
 k = 2
 nsm = NeighbourSelectionMechanism.NEAREST
-switchType = SwitchType.NEIGHBOUR_SELECTION_MODE
+switchType = SwitchType.NEIGHBOUR_SELECTION_MECHANISM
 switchValues = (NeighbourSelectionMechanism.FARTHEST,NeighbourSelectionMechanism.NEAREST)
 
 tmax = 10000
