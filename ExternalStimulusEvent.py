@@ -90,7 +90,8 @@ class ExternalStimulusOrientationChangeEvent:
             The orientations of all particles - altered if the event has taken place, unaltered otherwise.
         """
         if self.checkTimestep(currentTimestep):
-            print(f"executing event at timestep {currentTimestep}")
+            if currentTimestep == self.startTimestep or currentTimestep == (self.startTimestep + self.duration):
+                print(f"executing event at timestep {currentTimestep}")
             orientations = self.executeEvent(totalNumberOfParticles, positions, orientations)
         return orientations
 
