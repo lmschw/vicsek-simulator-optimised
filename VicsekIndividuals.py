@@ -157,14 +157,16 @@ class VicsekWithNeighbourSelection:
         Returns:
             An array of arrays of booleans representing the selected neighbours
         """
-        kMax = np.max(ks)
-        minusDiff = np.full((self.numberOfParticles,kMax-np.min(ks)), -1)
+        
 
         sortedIndices = maskedArray.argsort(axis=1)
         if isMin == False:
             sortedIndices = np.flip(sortedIndices, axis=1)
         
         if self.switchingActive and self.switchType == SwitchType.K:
+            kMin = np.min([self.orderSwitchValue, self.disorderSwitchValue])
+            kMax = np.max([self.orderSwitchValue, self.disorderSwitchValue])
+            minusDiff = np.full((self.numberOfParticles,kMax-kMin), -1)
             candidatesOrder = sortedIndices[:, :self.orderSwitchValue]
             if self.orderSwitchValue < kMax:
                 candidatesOrder = np.concatenate((candidatesOrder, minusDiff), axis=1)
@@ -173,7 +175,7 @@ class VicsekWithNeighbourSelection:
             if self.disorderSwitchValue < kMax:
                 candidatesDisorder = np.concatenate((candidatesDisorder, minusDiff), axis=1)
 
-            candidates = np.where(((ks == self.orderSwitchValue)), candidatesOrder, candidatesDisorder)
+            candidates = np.where(((ks == self.orderSwitchValue)[:, None]), candidatesOrder, candidatesDisorder)
         else:
             candidates = sortedIndices[:, :self.k]
 
@@ -351,13 +353,13 @@ class VicsekWithNeighbourSelection:
         switchDifferenceThresholdLower, switchDifferenceThresholdUpper = self.__getLowerAndUpperThreshold()
 
         prev = np.average(previousLocalOrders[max(t-self.numberPreviousStepsForThreshold, 0):t+1], axis=0)
-        switchTypeValuesDf = pd.DataFrame(switchTypeValues)
+        switchTypeValuesDf = pd.DataFrame(switchTypeValues, columns=["val"])
         switchTypeValuesDf["localOrder"] = localOrders
         switchTypeValuesDf["previousLocalOrder"] = prev
         switchTypeValuesDf["val"] = switchTypeValuesDf["val"].case_when([(((switchTypeValuesDf["localOrder"] >= switchDifferenceThresholdUpper) & (switchTypeValuesDf["previousLocalOrder"] <= switchDifferenceThresholdUpper)), self.orderSwitchValue),
                             (((switchTypeValuesDf["localOrder"] <= switchDifferenceThresholdLower) & (switchTypeValuesDf["previousLocalOrder"] >= switchDifferenceThresholdLower)), self.disorderSwitchValue),
         ])
-        return pd.DataFrame(switchTypeValuesDf["val"])
+        return np.array(switchTypeValuesDf["val"])
     
     def computeOrder(self, orientations):
         # TODO remove this method. This is only here to make debugging easier
@@ -399,7 +401,7 @@ class VicsekWithNeighbourSelection:
         print(f"t=pre, order={self.computeOrder(orientations)}")
 
 
-        switchTypeValues = pd.DataFrame(switchTypeValues, columns=["val"])            
+        #switchTypeValues = pd.DataFrame(switchTypeValues, columns=["val"])            
         if dt is None and tmax is not None:
             dt = 1
         
@@ -417,7 +419,7 @@ class VicsekWithNeighbourSelection:
         localOrdersHistory = []  
         positionsHistory = np.zeros((numIntervals,self.numberOfParticles,len(self.domainSize)))
         orientationsHistory = np.zeros((numIntervals,self.numberOfParticles,len(self.domainSize)))  
-        switchTypeValuesHistory = numIntervals * [self.numberOfParticles * [None]]
+        switchTypeValuesHistory = np.zeros((numIntervals,self.numberOfParticles))
 
         positionsHistory[0,:,:]=positions
         orientationsHistory[0,:,:]=orientations
@@ -448,7 +450,7 @@ class VicsekWithNeighbourSelection:
 
             positionsHistory[t,:,:]=positions
             orientationsHistory[t,:,:]=orientations
-            switchTypeValuesHistory[t]=switchTypeValues
+            switchTypeValuesHistory[t,:]=switchTypeValues
 
 
             if t % 1000 == 0:
