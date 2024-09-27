@@ -6,6 +6,7 @@ from EnumSwitchType import SwitchType
 
 import ServiceOrientations
 import ServiceVicsekHelper
+import ServiceMetric
 
 import DefaultValues as dv
 
@@ -121,32 +122,6 @@ class VicsekWithNeighbourSelection:
         summedOrientations = np.sum(neighbours[:,:,np.newaxis]*orientations[np.newaxis,:,:],axis=1)
         return ServiceOrientations.normalizeOrientations(summedOrientations)
     
-
-    def getOrientationDifferences(self, orientations):
-        """
-        Helper method to gloss over identical differences implementation for position and orientation. 
-        """
-        return ServiceVicsekHelper.getDifferences(orientations)
-    
-    def getPositionDifferences(self, positions):
-        """
-        Helper method to gloss over identical differences implementation for position and orientation. 
-        """
-        return ServiceVicsekHelper.getDifferences(positions, self.domainSize)
-
-    def getNeighbours(self, positions):
-        """
-        Determines all the neighbours for each individual.
-
-        Params:
-            - positions (array of floats): the position of every individual at the current timestep
-
-        Returns:
-            An array of arrays of booleans representing whether or not any two individuals are neighbours
-        """
-        rij2 = self.getPositionDifferences(positions)
-        return (rij2 <= self.radius**2)
-    
     def __getPickedNeighboursFromMaskedArray(self, maskedArray, posDiff, ks, isMin):
         """
         Determines which neighbours the individuals should considered based on a preexisting maskedArray, the neighbour selection mechanism and k.
@@ -208,7 +183,7 @@ class VicsekWithNeighbourSelection:
         Returns:
             An array of arrays of booleans representing the selected neighbours
         """
-        posDiff = self.getPositionDifferences(positions)
+        posDiff = ServiceVicsekHelper.getPositionDifferences(positions, self.domainSize)
         if isMin == True:
             fillValue = self.maxReplacementValue
         else:
@@ -232,8 +207,8 @@ class VicsekWithNeighbourSelection:
         Returns:
             An array of arrays of booleans representing the selected neighbours
         """
-        posDiff = self.getPositionDifferences(positions)
-        orientDiff = self.getOrientationDifferences(orientations)
+        posDiff = ServiceVicsekHelper.getPositionDifferences(positions, self.domainSize)
+        orientDiff = ServiceVicsekHelper.getOrientationDifferences(orientations, self.domainSize)
 
         if isMin == True:
             fillValue = self.maxReplacementValue
@@ -306,21 +281,6 @@ class VicsekWithNeighbourSelection:
         orientations = ServiceOrientations.normalizeOrientations(orientations+self.generateNoise())
 
         return orientations
-
-    def getLocalOrders(self, orientations, neighbours):
-        """
-        Computes the local order for every individual.
-
-        Params: 
-            - orientations (array of floats): the orientation of every individual at the current timestep
-            - neighbours (array of arrays of booleans): the identity of every neighbour of every individual
-
-        Returns:
-            An array of floats representing the local order for every individual at the current time step (values between 0 and 1)
-        """
-        sumOrientation = np.sum(neighbours[:,:,np.newaxis]*orientations[np.newaxis,:,:],axis=1)
-        localOrders = np.divide(np.sqrt(np.sum(sumOrientation**2,axis=1)), np.count_nonzero(neighbours, axis=1))
-        return localOrders
     
     def __getLowerAndUpperThreshold(self):
         """
@@ -439,10 +399,10 @@ class VicsekWithNeighbourSelection:
                     orientations = event.check(self.numberOfParticles, t, positions, orientations)
 
             # all neighbours (including self)
-            neighbours = self.getNeighbours(positions)
+            neighbours = ServiceVicsekHelper.getNeighbours(positions, self.domainSize, self.radius)
 
             if self.switchingActive:
-                localOrders = self.getLocalOrders(orientations, neighbours)
+                localOrders = ServiceMetric.computeLocalOrders(orientations, neighbours)
                 localOrdersHistory.append(localOrders)
             
                 switchTypeValues = self.getDecisions(t, localOrders, localOrdersHistory, switchTypeValues)
