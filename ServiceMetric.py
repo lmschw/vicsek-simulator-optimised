@@ -76,9 +76,8 @@ def computeGlobalOrder(orientations):
         sumOrientation += orientations[j]
     return np.sqrt(sumOrientation[0]**2 + sumOrientation[1]**2) / len(orientations)
     """
-    sumOrientation = np.sum(orientations)
-    order =  np.divide(np.sqrt(np.sum(sumOrientation**2,axis=1)), len(orientations))
-    return order
+    sumOrientation = np.sum(orientations[np.newaxis,:,:],axis=1)
+    return np.divide(np.sqrt(np.sum(sumOrientation**2,axis=1)), len(orientations))[0]
 
 def computeLocalOrders(orientations, neighbours):
     """

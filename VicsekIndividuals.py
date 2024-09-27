@@ -324,23 +324,6 @@ class VicsekWithNeighbourSelection:
                             (((switchTypeValuesDf["localOrder"] <= switchDifferenceThresholdLower) & (switchTypeValuesDf["previousLocalOrder"] >= switchDifferenceThresholdLower)), self.disorderSwitchValue),
         ])
         return np.array(switchTypeValuesDf["val"])
-    
-    def computeOrder(self, orientations):
-        # TODO remove this method. This is only here to make debugging easier
-        """
-        Computes the order within the provided orientations. 
-        Can also be called for a subsection of all particles by only providing their orientations.
-
-        Params:
-            - orientations (array of (u,v)-coordinates): the orientation of all particles that should be included
-        
-        Returns:
-            A float representing the order in the given orientations
-        """
-        sumOrientation = [0,0]
-        for j in range(len(orientations)):
-            sumOrientation += orientations[j]
-        return np.sqrt(sumOrientation[0]**2 + sumOrientation[1]**2) / len(orientations)
 
     def simulate(self, initialState=(None, None, None), dt=None, tmax=None, events=None):
         """
@@ -362,7 +345,7 @@ class VicsekWithNeighbourSelection:
         if any(ele is None for ele in initialState):
             positions, orientations, switchTypeValues = self.__initializeState()
 
-        print(f"t=pre, order={self.computeOrder(orientations)}")
+        print(f"t=pre, order={ServiceMetric.computeGlobalOrder(orientations)}")
 
 
         #switchTypeValues = pd.DataFrame(switchTypeValues, columns=["val"])            
@@ -421,6 +404,6 @@ class VicsekWithNeighbourSelection:
 
 
             if t % 1000 == 0:
-                print(f"t={t}, order={self.computeOrder(orientations)}")
+                print(f"t={t}, order={ServiceMetric.computeGlobalOrder(orientations)}")
             
         return (dt*np.arange(numIntervals), positionsHistory, orientationsHistory), switchTypeValuesHistory
