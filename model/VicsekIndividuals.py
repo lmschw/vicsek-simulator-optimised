@@ -324,6 +324,45 @@ class VicsekWithNeighbourSelection:
                             (((switchTypeValuesDf["localOrder"] <= switchDifferenceThresholdLower) & (switchTypeValuesDf["previousLocalOrder"] >= switchDifferenceThresholdLower)), self.disorderSwitchValue),
         ])
         return np.array(switchTypeValuesDf["val"])
+    
+    def prepareSimulation(self, initialState, dt, tmax):
+         # Preparations and setting of parameters if they are not passed to the method
+        positions, orientations, switchTypeValues = initialState
+        
+        if any(ele is None for ele in initialState):
+            positions, orientations, switchTypeValues = self.__initializeState()
+
+        print(f"t=pre, order={ServiceMetric.computeGlobalOrder(orientations)}")
+
+        if dt is None and tmax is not None:
+            dt = 1
+        
+        if tmax is None:
+            tmax = (10**3)*dt
+            dt = np.average(10**(-2)*(np.max(self.domainSize)/self.speeds))
+
+        self.tmax = tmax
+        self.dt = dt
+
+        # Initialisations for the loop and the return variables
+        self.numIntervals=int(tmax/dt+1)
+
+        self.localOrdersHistory = []  
+        self.positionsHistory = np.zeros((self.numIntervals,self.numberOfParticles,len(self.domainSize)))
+        self.orientationsHistory = np.zeros((self.numIntervals,self.numberOfParticles,len(self.domainSize)))  
+        self.switchTypeValuesHistory = []
+
+        self.positionsHistory[0,:,:]=positions
+        self.orientationsHistory[0,:,:]=orientations
+        self.switchTypeValuesHistory.append(switchTypeValues)
+
+        return positions, orientations, switchTypeValues
+    
+    def handleEvents(self, t, positions, orientations, events):
+        if events != None:
+                for event in events:
+                    orientations = event.check(self.numberOfParticles, t, positions, orientations)
+        return orientations
 
     def simulate(self, initialState=(None, None, None), dt=None, tmax=None, events=None):
         """
@@ -339,70 +378,36 @@ class VicsekWithNeighbourSelection:
         Returns:
             times, positionsHistory, orientationsHistory, coloursHistory, switchTypeValueHistory. All of them as ordered arrays so that they can be matched by index matching
         """
-        # Preparations and setting of parameters if they are not passed to the method
-        positions, orientations, switchTypeValues = initialState
-        
-        if any(ele is None for ele in initialState):
-            positions, orientations, switchTypeValues = self.__initializeState()
-
-        print(f"t=pre, order={ServiceMetric.computeGlobalOrder(orientations)}")
-
-
-        #switchTypeValues = pd.DataFrame(switchTypeValues, columns=["val"])            
-        if dt is None and tmax is not None:
-            dt = 1
-        
-        if tmax is None:
-            tmax = (10**3)*dt
-            dt = np.average(10**(-2)*(np.max(self.domainSize)/self.speeds))
-
-        self.tmax = tmax
-        self.dt = dt
-
-        # Initialisations for the loop and the return variables
-        t=0
-        numIntervals=int(tmax/dt+1)
-
-        localOrdersHistory = []  
-        positionsHistory = np.zeros((numIntervals,self.numberOfParticles,len(self.domainSize)))
-        orientationsHistory = np.zeros((numIntervals,self.numberOfParticles,len(self.domainSize)))  
-        switchTypeValuesHistory = []
-
-        positionsHistory[0,:,:]=positions
-        orientationsHistory[0,:,:]=orientations
-        switchTypeValuesHistory.append(switchTypeValues)
-
-        for t in range(numIntervals):
-
+       
+        positions, orientations, switchTypeValues = self.prepareSimulation(initialState=initialState, dt=dt, tmax=tmax)
+        for t in range(self.numIntervals):
             if t % 1000 == 0:
-                print(f"t={t}/{tmax}")
+                print(f"t={t}/{self.tmax}")
 
-            if events != None:
-                for event in events:
-                    orientations = event.check(self.numberOfParticles, t, positions, orientations)
+            orientations = self.handleEvents(t, positions, orientations, events)
 
             # all neighbours (including self)
             neighbours = ServiceVicsekHelper.getNeighbours(positions, self.domainSize, self.radius)
 
             if self.switchingActive:
                 localOrders = ServiceMetric.computeLocalOrders(orientations, neighbours)
-                localOrdersHistory.append(localOrders)
+                self.localOrdersHistory.append(localOrders)
             
-                switchTypeValues = self.getDecisions(t, localOrders, localOrdersHistory, switchTypeValues)
+                switchTypeValues = self.getDecisions(t, localOrders, self.localOrdersHistory, switchTypeValues)
 
                 if self.switchType == SwitchType.SPEED:
                     self.speeds = switchTypeValues
 
             orientations = self.computeNewOrientations(neighbours, positions, orientations, switchTypeValues)
 
-            positions += dt*(orientations.T * self.speeds).T
+            positions += self.dt*(orientations.T * self.speeds).T
             positions += -self.domainSize*np.floor(positions/self.domainSize)
 
-            positionsHistory[t,:,:]=positions
-            orientationsHistory[t,:,:]=orientations
-            switchTypeValuesHistory.append(switchTypeValues)
+            self.positionsHistory[t,:,:]=positions
+            self.orientationsHistory[t,:,:]=orientations
+            self.switchTypeValuesHistory.append(switchTypeValues)
 
             if t % 1000 == 0:
                 print(f"t={t}, order={ServiceMetric.computeGlobalOrder(orientations)}")
             
-        return (dt*np.arange(numIntervals), positionsHistory, orientationsHistory), np.array(switchTypeValuesHistory)
+        return (self.dt*np.arange(self.numIntervals), self.positionsHistory, self.orientationsHistory), np.array(self.switchTypeValuesHistory)
