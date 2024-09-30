@@ -116,7 +116,7 @@ def findClusters(orientations, threshold):
 
     return nClusters, cluster.labels_
          
-def findClustersWithRadius(positions, orientations, domainSize, radius, threshold=0.99):
+def findClustersWithRadius(positions, orientations, domainSize, radius, threshold=0.01):
     """
     Finds clusters in the particle distribution. The clustering is performed according to the following constraints:
         - to belong to a cluster, a particle needs to be within the radius of at least one other member of the same cluster
@@ -130,59 +130,51 @@ def findClustersWithRadius(positions, orientations, domainSize, radius, threshol
     Returns:
         A tuple containing the number of clusters and the clusters.
     """
+    # TODO refactor
     if radius == None:
         print("ERROR: Radius needs to be provided for clustering.")
 
     n = len(positions)
-    clusters = np.zeros(n)
-    clusterMembers = np.zeros((n,n))
+    clusters = np.full(n, -1)
 
-
-    # TODO: finish refactoring
     neighbours = ServiceVicsekHelper.getNeighbours(positions=positions, domainSize=domainSize, radius=radius)
-    localOrders = computeLocalOrders(orientations=orientations, neighbours=neighbours)
 
+    clusterNumber, baseClusters = findClusters(orientations, threshold)
+    neighbourIndices = np.argwhere(neighbours)
+    neighbourIndicesRegrouped = {}
+    maxClusterId = clusterNumber -1
+    for indexPair in neighbourIndices:
+        if indexPair[0] in neighbourIndicesRegrouped.keys():
+            neighbourIndicesRegrouped[indexPair[0]].append(indexPair[1])
+        else:
+            neighbourIndicesRegrouped[indexPair[0]] = [indexPair[1]]
 
+    for c in range(clusterNumber):
+        members = np.where(baseClusters==c)
+        for member in members[0]:
+            maxClusterId = updateClusters(member, c, maxClusterId, clusters, members[0], neighbourIndicesRegrouped)
+        
 
-    for i in range(n):
-        neighbourIndices = []
-        #neighbourIndices = findNeighbours(i, positions, radius)
-        for neighbourIdx in neighbourIndices:
-            localOrder = computeGlobalOrder([orientations[i], orientations[neighbourIdx]])
-            if localOrder >= threshold:
-                clusterMembers[i][neighbourIdx] = 1
-    
-    clusterCounter = 1
-    for i in range(n):
-        if markClusters(i, clusterCounter, clusters, clusterMembers, n) == True:
-            clusterCounter += 1
+    return len(np.unique(clusters)), clusters
 
-    return clusterCounter, clusters
+def updateClusters(currentIdx, clusterId, maxClusterId, clusters, candidates, neighbourIndices):
+    # if the currentIdx is already assigned a value, we return
+    if clusters[currentIdx] != -1:
+        return maxClusterId
+    # the first member is always automatically ok
+    if currentIdx == candidates[0]:
+        clusters[currentIdx] = clusterId
+    else:
+        # if any of the neighbours are also members of the same cluster, we set the clusterId
+        for neighbour in neighbourIndices[currentIdx]:
+            if clusters[neighbour] != -1 and neighbour in candidates:
+                clusters[currentIdx] = clusters[neighbour]
+        # if not, we set a new clusterId
+        if clusters[currentIdx] == -1:
+            maxClusterId += 1
+            clusters[currentIdx] = maxClusterId
+    return maxClusterId
 
-def markClusters(currentIdx, clusterCounter, clusters, clusterMembers, n):
-    """
-    Recursive function that marks all neighbours with a similar orientation as belonging to the same cluster.
-
-    Parameters:
-        - currentIdx (int): index of the current particle within the clusters array
-        - clusterCounter (int): the current maximum of found clusters. Will not be updated in this function
-        - clusters (array): represents the cluster membership of all particles by the id of the cluster
-        - clusterMembers (array of arrays): represents which other particles are neighbours with a similar 
-            orientation to the current particle, i.e. the members of the same cluster as seen by the current particle
-        - n (int): the total number of particles in the domain
-
-    Returns:
-        If any particle's cluster id has been updated. If the particle's own id is not updated, neither are its children.
-        Therefore, the return values are not compared.
-    """
-    # TODO refactor
-    if clusters[currentIdx] != 0:
-        return False
-    clusters[currentIdx] = clusterCounter
-    for i in range(n):
-        if clusterMembers[currentIdx][i] == 1:
-            markClusters(i, clusterCounter, clusters, clusterMembers, n)
-    return True
 
 def computeClusterSizes(clusters):
     """
