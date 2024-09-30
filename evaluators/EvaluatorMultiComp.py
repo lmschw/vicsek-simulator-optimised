@@ -3,8 +3,8 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 
-import Evaluator
-import EnumMetrics
+import evaluators.Evaluator as Evaluator
+from enums.EnumMetrics import Metrics
 
 # matplotlib default colours with corresponding colours that are 65% lighter
 COLOURS = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
@@ -73,12 +73,12 @@ class EvaluatorMultiAvgComp(object):
             for d in results: 
                 for key, value in d.items():
                     ddi[key].append(value)
-            if self.metric == EnumMetrics.Metrics.DUAL_OVERLAY_ORDER_AND_PERCENTAGE:
+            if self.metric == Metrics.DUAL_OVERLAY_ORDER_AND_PERCENTAGE:
                 for m in range(len(ddi)):
                     idx = m * self.evaluationTimestepInterval
                     dd[idx].append(ddi[idx][0][0])
                     dd[idx].append(ddi[idx][0][1])
-            elif self.metric == EnumMetrics.Metrics.MIN_AVG_MAX_NUMBER_NEIGHBOURS:
+            elif self.metric == Metrics.MIN_AVG_MAX_NUMBER_NEIGHBOURS:
                 for m in range(len(ddi)):
                     idx = m * self.evaluationTimestepInterval
                     dd[idx].append(ddi[idx][0][0])
@@ -87,7 +87,7 @@ class EvaluatorMultiAvgComp(object):
             else:
                 for m in range(len(ddi)):
                     idx = m * self.evaluationTimestepInterval
-                    if self.metric == EnumMetrics.Metrics.CLUSTER_SIZE:
+                    if self.metric == Metrics.CLUSTER_SIZE:
                         for i in range(len(ddi[idx])):
                             ddi[idx][i] = np.max(ddi[idx][i])
                     dd[idx].append(np.average(ddi[idx]))
@@ -114,32 +114,32 @@ class EvaluatorMultiAvgComp(object):
         """
 
         match self.metric:
-            case EnumMetrics.Metrics.ORDER:
+            case Metrics.ORDER:
                 if ylim == None:
                     ylim = (0, 1.1)
                 self.__createStandardLineplot(data, labels, varianceData, xlim=xlim, ylim=ylim)
-            case EnumMetrics.Metrics.CLUSTER_NUMBER:
+            case Metrics.CLUSTER_NUMBER:
                 self.__createStandardLineplot(data, labels, varianceData, xlim=xlim, ylim=ylim)
-            case EnumMetrics.Metrics.CLUSTER_NUMBER_WITH_RADIUS:
+            case Metrics.CLUSTER_NUMBER_WITH_RADIUS:
                 self.__createStandardLineplot(data, labels, varianceData, xlim=xlim, ylim=ylim)
-            case EnumMetrics.Metrics.CLUSTER_SIZE:
+            case Metrics.CLUSTER_SIZE:
                 self.__createStandardLineplot(data, labels, varianceData, xlim=xlim, ylim=ylim)
-            case EnumMetrics.Metrics.ORDER_VALUE_PERCENTAGE:
+            case Metrics.ORDER_VALUE_PERCENTAGE:
                 if ylim == None:
                     ylim = (0, 100.1)
                 self.__createStandardLineplot(data, labels, varianceData, xlim=xlim, ylim=ylim)
-            case EnumMetrics.Metrics.DUAL_OVERLAY_ORDER_AND_PERCENTAGE:
+            case Metrics.DUAL_OVERLAY_ORDER_AND_PERCENTAGE:
                 if ylim == None:
                     ylim = (0, 1.1)
                 self.__createDualOrderPlot(data, labels=labels, varianceData=varianceData,
                                            xlim=xlim, ylim=ylim)
-            case EnumMetrics.Metrics.AVERAGE_NUMBER_NEIGHBOURS:
+            case Metrics.AVERAGE_NUMBER_NEIGHBOURS:
                 self.__createStandardLineplot(data, labels, varianceData, xlim=xlim, ylim=ylim)
-            case EnumMetrics.Metrics.MIN_AVG_MAX_NUMBER_NEIGHBOURS:
+            case Metrics.MIN_AVG_MAX_NUMBER_NEIGHBOURS:
                 self.__createMinAvgMaxLinePlot(data, labels, xlim=xlim, ylim=ylim)
-            case EnumMetrics.Metrics.AVG_DISTANCE_NEIGHBOURS:
+            case Metrics.AVG_DISTANCE_NEIGHBOURS:
                 self.__createStandardLineplot(data, labels, varianceData, xlim=xlim, ylim=ylim)
-            case EnumMetrics.Metrics.AVG_CENTROID_DISTANCE:
+            case Metrics.AVG_CENTROID_DISTANCE:
                 self.__createStandardLineplot(data, labels, varianceData, xlim=xlim, ylim=ylim)
 
         ax = plt.gca()
@@ -258,7 +258,7 @@ class EvaluatorMultiAvgComp(object):
             df.plot.line()
 
     def getMinAvgMaxNumberOfNeighboursOverWholeRun(self):
-        self.metric = EnumMetrics.Metrics.MIN_AVG_MAX_NUMBER_NEIGHBOURS
+        self.metric = Metrics.MIN_AVG_MAX_NUMBER_NEIGHBOURS
         dataDict = self.evaluate()
         mins = []
         avgs = []

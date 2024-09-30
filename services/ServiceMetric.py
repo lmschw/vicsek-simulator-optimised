@@ -4,9 +4,9 @@ import math
 from collections import defaultdict
 from sklearn.cluster import AgglomerativeClustering
 
-from EnumMetrics import Metrics
-import ServiceOrientations
-import ServiceVicsekHelper
+from enums.EnumMetrics import Metrics
+import services.ServiceOrientations as ServiceOrientations
+import services.ServiceVicsekHelper as ServiceVicsekHelper
 
 """
 Service containing static methods to handle metrics.

@@ -1,6 +1,6 @@
-import ServiceSavedModel
-import ServiceMetric
-import EnumMetrics
+import services.ServiceSavedModel as ServiceSavedModel
+import services.ServiceMetric as ServiceMetric
+from enums.EnumMetrics import Metrics
 
 import numpy as np
 
@@ -34,12 +34,12 @@ class Evaluator(object):
         self.switchTypeOptions = switchTypeOptions
         self.domainSize = np.array(modelParams["domainSize"])
 
-        if metric in [EnumMetrics.Metrics.CLUSTER_NUMBER, 
-                      EnumMetrics.Metrics.CLUSTER_SIZE, 
-                      EnumMetrics.Metrics.CLUSTER_NUMBER_WITH_RADIUS,
-                      EnumMetrics.Metrics.AVERAGE_NUMBER_NEIGHBOURS,
-                      EnumMetrics.Metrics.MIN_AVG_MAX_NUMBER_NEIGHBOURS,
-                      EnumMetrics.Metrics.AVG_DISTANCE_NEIGHBOURS]:
+        if metric in [Metrics.CLUSTER_NUMBER, 
+                      Metrics.CLUSTER_SIZE, 
+                      Metrics.CLUSTER_NUMBER_WITH_RADIUS,
+                      Metrics.AVERAGE_NUMBER_NEIGHBOURS,
+                      Metrics.MIN_AVG_MAX_NUMBER_NEIGHBOURS,
+                      Metrics.AVG_DISTANCE_NEIGHBOURS]:
             self.radius = modelParams["radius"]
         else:
             self.radius = None

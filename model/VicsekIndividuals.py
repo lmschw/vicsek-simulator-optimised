@@ -1,12 +1,12 @@
 import pandas as pd
 import numpy as np
 
-from EnumNeighbourSelectionMechanism import NeighbourSelectionMechanism
-from EnumSwitchType import SwitchType
+from enums.EnumNeighbourSelectionMechanism import NeighbourSelectionMechanism
+from enums.EnumSwitchType import SwitchType
 
-import ServiceOrientations
-import ServiceVicsekHelper
-import ServiceMetric
+import services.ServiceOrientations as ServiceOrientations
+import services.ServiceVicsekHelper as ServiceVicsekHelper
+import services.ServiceMetric as ServiceMetric
 
 import DefaultValues as dv
 

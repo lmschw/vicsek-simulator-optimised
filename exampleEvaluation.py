@@ -1,14 +1,14 @@
-import ServicePreparation
-import ServiceMetric
-import ServiceVicsekHelper
-import ServiceOrientations
-import ServiceSavedModel
-import ServiceGeneral
+import services.ServicePreparation as ServicePreparation
+import services.ServiceMetric as ServiceMetric
+import services.ServiceVicsekHelper as ServiceVicsekHelper
+import services.ServiceOrientations as ServiceOrientations
+import services.ServiceSavedModel as ServiceSavedModel
+import services.ServiceGeneral as ServiceGeneral
 
-import EvaluatorMultiComp
+import evaluators.EvaluatorMultiComp as EvaluatorMultiComp
 
-from EnumMetrics import Metrics
-from EnumNeighbourSelectionMechanism import NeighbourSelectionMechanism
+from enums.EnumMetrics import Metrics
+from enums.EnumNeighbourSelectionMechanism import NeighbourSelectionMechanism
 
 import numpy as np
 import time
@@ -63,7 +63,7 @@ startEval = time.time()
 modelParams = []
 simulationData = []
 switchTypeValues = []
-modelParamsDensity, simulationDataDensity, siwtchTypeValuesDensity = ServiceSavedModel.loadModels(["c:/Users/Lilly/dev/vicsek-simulator-optimised/vicsek-simulator-optimised/test.json"], loadSwitchValues=True)
+modelParamsDensity, simulationDataDensity, siwtchTypeValuesDensity = ServiceSavedModel.loadModels(["test.json"], loadSwitchValues=True)
 modelParams.append(modelParamsDensity)
 simulationData.append(simulationDataDensity)
 switchTypeValues.append(siwtchTypeValuesDensity)

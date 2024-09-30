@@ -1,16 +1,16 @@
 import time
 import numpy as np
 
-from VicsekIndividuals import VicsekWithNeighbourSelection
-from EnumNeighbourSelectionMechanism import NeighbourSelectionMechanism
-from EnumSwitchType import SwitchType
-from ExternalStimulusEvent import ExternalStimulusOrientationChangeEvent
-from EnumEventEffect import EventEffect
-from EnumDistributionType import DistributionType
+from model.VicsekIndividuals import VicsekWithNeighbourSelection
+from enums.EnumNeighbourSelectionMechanism import NeighbourSelectionMechanism
+from enums.EnumSwitchType import SwitchType
+from events.ExternalStimulusEvent import ExternalStimulusOrientationChangeEvent
+from enums.EnumEventEffect import EventEffect
+from enums.EnumDistributionType import DistributionType
 
-import ServicePreparation
-import ServiceGeneral
-import ServiceSavedModel
+import services.ServicePreparation as ServicePreparation
+import services.ServiceGeneral as ServiceGeneral
+import services.ServiceSavedModel as ServiceSavedModel
 
 
 domainSize = (22.36, 22.36)

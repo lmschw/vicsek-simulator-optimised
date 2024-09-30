@@ -4,13 +4,13 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 
 
-from EnumDistributionType import DistributionType
-from EnumEventEffect import EventEffect
+from enums.EnumDistributionType import DistributionType
+from enums.EnumEventEffect import EventEffect
 
 import DefaultValues as dv
-import ServiceOrientations
-import ServicePreparation
-import ServiceVicsekHelper
+import services.ServiceOrientations as ServiceOrientations
+import services.ServicePreparation as ServicePreparation
+import services.ServiceVicsekHelper as ServiceVicsekHelper
 
 class ExternalStimulusOrientationChangeEvent:
     # TODO refactor to allow areas with a radius bigger than the radius of a particle, i.e. remove neighbourCells and determine all affected cells here

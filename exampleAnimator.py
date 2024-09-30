@@ -1,6 +1,6 @@
-import AnimatorMatplotlib
-import ServiceSavedModel
-import Animator2D
+import animator.AnimatorMatplotlib as AnimatorMatplotlib
+import services.ServiceSavedModel as ServiceSavedModel
+import animator.Animator2D as Animator2D
 
 """
 --------------------------------------------------------------------------------

@@ -2,7 +2,7 @@ import numpy as np
 import random
 import math
 
-import ServiceOrientations
+import services.ServiceOrientations as ServiceOrientations
 
 """
 Service containing static methods to prepare simulations.
