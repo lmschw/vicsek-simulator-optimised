@@ -4,6 +4,11 @@ import ServiceVicsekHelper
 import ServiceOrientations
 import ServiceSavedModel
 
+import Evaluator
+
+from EnumMetrics import Metrics
+from EnumNeighbourSelectionMechanism import NeighbourSelectionMechanism
+
 import numpy as np
 
 
@@ -38,8 +43,13 @@ orientations = initialState[1]
 print(ServiceMetric.findClustersWithRadius(positions, orientations, domainSize, radius, threshold=0.01))
 """
 
-modelParams, simulationData = ServiceSavedModel.loadModel("test.json")
+modelParams, simulationData, switchTypeValues = ServiceSavedModel.loadModel("test.json", loadSwitchValues=True)
 time, positions, orientations = simulationData
 
+"""
 for t in [0, 1000, 2000, 3000]:
     print(ServiceMetric.findClustersWithRadius(positions[t], orientations[t], domainSize, radius, threshold=0.01))
+"""
+
+evaluator = Evaluator.Evaluator(modelParams, Metrics.AVG_CENTROID_DISTANCE, simulationData, switchTypeValues=switchTypeValues, switchTypeOptions=(NeighbourSelectionMechanism.FARTHEST,NeighbourSelectionMechanism.NEAREST), evaluationTimestepInterval=1000)
+print(evaluator.evaluate())

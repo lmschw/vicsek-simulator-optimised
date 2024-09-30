@@ -40,7 +40,7 @@ def evaluateSingleTimestep(positions, orientations, metric, domainSize=None, rad
         case Metrics.CLUSTER_SIZE:
             nClusters, clusters = findClusters(orientations, threshold)
             # TODO: make sure the change from array to dict is taken care of in the visualisation
-            clusterSizes = computeClusterSizes(nClusters, clusters)
+            clusterSizes = computeClusterSizes(clusters)
             return clusterSizes
         case Metrics.ORDER_VALUE_PERCENTAGE:
             orderCount, _ = getNumbersPerSwitchTypeValue(switchTypeValues, switchTypeOptions)
@@ -278,7 +278,7 @@ def getMinAvgMaxNumberOfNeighbours(positions, domainSize, radius):
 def getMinAvgMaxDistanceOfNeighbours(positions, domainSize, radius):
     neighbours = ServiceVicsekHelper.getNeighbours(positions=positions, domainSize=domainSize, radius=radius)
     np.fill_diagonal(neighbours, False)
-    posDiff = ServiceVicsekHelper.getPositionDifferences(positions=positions, domainSize=domainSize)
+    posDiff = np.sqrt(ServiceVicsekHelper.getPositionDifferences(positions=positions, domainSize=domainSize))
     maskedArray = np.ma.MaskedArray(posDiff, mask=neighbours==False, fill_value=0)
     return np.min(maskedArray), np.average(maskedArray), np.max(maskedArray)
 
