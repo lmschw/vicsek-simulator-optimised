@@ -6,7 +6,7 @@ import numpy as np
 Service contains static methods to save and load models to/from json files.
 """
 
-def saveModel(simulationData, path="sample.json", modelParams=None, saveInterval=1, switchValues=[None]):
+def saveModel(simulationData, path="sample.json", modelParams=None, saveInterval=1, switchValues=np.array([None])):
     """
     Saves a model trained by the Viscek simulator implementation.
 
