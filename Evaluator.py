@@ -8,7 +8,7 @@ class Evaluator(object):
     """
     Implementation of the evaluation mechanism for the Vicsek model for a single model.
     """
-    def __init__(self, modelParams, metric, simulationData=None, evaluationTimestepInterval=1, threshold=0.01, switchTypeValues=None, switchTypeOptions=(None, None)):
+    def __init__(self, modelParams, metric, simulationData=None, evaluationTimestepInterval=1, threshold=0.01, switchTypeValues=np.array([None]), switchTypeOptions=(None, None)):
         """
         Initialises the evaluator.
 

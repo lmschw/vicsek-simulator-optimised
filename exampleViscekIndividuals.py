@@ -16,12 +16,12 @@ n = 10
 speed = 1
 
 radius = 50
-k = 2
+k = 1
 nsm = NeighbourSelectionMechanism.NEAREST
 switchType = SwitchType.NEIGHBOUR_SELECTION_MECHANISM
 switchValues = (NeighbourSelectionMechanism.FARTHEST,NeighbourSelectionMechanism.NEAREST)
 
-tmax = 10000
+tmax = 1000
 
 threshold = [0.1]
 

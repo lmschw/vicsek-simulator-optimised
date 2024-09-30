@@ -3,13 +3,15 @@ import ServiceMetric
 import ServiceVicsekHelper
 import ServiceOrientations
 import ServiceSavedModel
+import ServiceGeneral
 
-import Evaluator
+import EvaluatorMultiComp
 
 from EnumMetrics import Metrics
 from EnumNeighbourSelectionMechanism import NeighbourSelectionMechanism
 
 import numpy as np
+import time
 
 
 
@@ -43,13 +45,31 @@ orientations = initialState[1]
 print(ServiceMetric.findClustersWithRadius(positions, orientations, domainSize, radius, threshold=0.01))
 """
 
-modelParams, simulationData, switchTypeValues = ServiceSavedModel.loadModel("test.json", loadSwitchValues=True)
-time, positions, orientations = simulationData
+#modelParams, simulationData, switchTypeValues = ServiceSavedModel.loadModel("test.json", loadSwitchValues=True)
+#time, positions, orientations = simulationData
+
+
 
 """
 for t in [0, 1000, 2000, 3000]:
     print(ServiceMetric.findClustersWithRadius(positions[t], orientations[t], domainSize, radius, threshold=0.01))
 """
 
-evaluator = Evaluator.Evaluator(modelParams, Metrics.AVG_CENTROID_DISTANCE, simulationData, switchTypeValues=switchTypeValues, switchTypeOptions=(NeighbourSelectionMechanism.FARTHEST,NeighbourSelectionMechanism.NEAREST), evaluationTimestepInterval=1000)
-print(evaluator.evaluate())
+metric = Metrics.AVG_DISTANCE_NEIGHBOURS
+labels = [""]
+xAxisLabel = "timesteps"
+yAxisLabel = metric.label
+startEval = time.time()
+modelParams = []
+simulationData = []
+switchTypeValues = []
+modelParamsDensity, simulationDataDensity, siwtchTypeValuesDensity = ServiceSavedModel.loadModels(["c:/Users/Lilly/dev/vicsek-simulator-optimised/vicsek-simulator-optimised/test.json"], loadSwitchValues=True)
+modelParams.append(modelParamsDensity)
+simulationData.append(simulationDataDensity)
+switchTypeValues.append(siwtchTypeValuesDensity)
+threshold = 0.01
+evaluator = EvaluatorMultiComp.EvaluatorMultiAvgComp(modelParams, metric, simulationData, evaluationTimestepInterval=1, threshold=threshold, switchTypeValues=switchTypeValues, switchTypeOptions=(NeighbourSelectionMechanism.FARTHEST, NeighbourSelectionMechanism.NEAREST))
+savePath = f"{metric.val}_test_new_implementation.jpeg"
+evaluator.evaluateAndVisualize(labels=labels, xLabel=xAxisLabel, yLabel=yAxisLabel, savePath=savePath)    
+endEval = time.time()
+print(f"Duration eval {ServiceGeneral.formatTime(endEval-startEval)}")

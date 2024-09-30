@@ -23,29 +23,31 @@ speed = 1
 
 # TODO: check why N-F always returns to order -> only with high radius
 
-radius = 20
+radius = 10
 k = 1
 nsm = NeighbourSelectionMechanism.NEAREST
 
-"""
+
 switchType = SwitchType.NEIGHBOUR_SELECTION_MECHANISM
 switchValues = (NeighbourSelectionMechanism.FARTHEST,NeighbourSelectionMechanism.NEAREST)
-"""
+
 """
 switchType = SwitchType.K
 switchValues = (5,1)
 """
+"""
 switchType = SwitchType.SPEED
 switchValues = (0.1, 1)
+"""
 
-tmax = 10000
+tmax = 3000
 
 threshold = [0.1]
 
 event = ExternalStimulusOrientationChangeEvent(startTimestep=1000,
                                                duration=1000,  
                                                domainSize=domainSize, 
-                                               eventEffect=EventEffect.AWAY_FROM_ORIGIN, 
+                                               eventEffect=EventEffect.ALIGN_TO_FIXED_ANGLE, 
                                                distributionType=DistributionType.LOCAL_SINGLE_SITE, 
                                                areas=[[domainSize[0]/2, domainSize[1]/2, radius]],
                                                angle=np.pi,
