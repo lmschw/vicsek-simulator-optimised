@@ -59,11 +59,11 @@ class ExternalStimulusOrientationChangeEvent:
             raise Exception("Local effects require the area to be specified")
         
     def getShortPrintVersion(self):
-        return f"t{self.timestep}e{self.eventEffect.val}p{self.percentage}a{self.angle}dt{self.distributionType.value}a{self.areas}"
+        return f"t{self.startTimestep}d{self.duration}e{self.eventEffect.val}a{self.angle}dt{self.distributionType.value}a{self.areas}"
 
     def getParameterSummary(self):
-        summary = {"timestep": self.timestep,
-            "percentage": self.percentage,
+        summary = {"startTimestep": self.startTimestep,
+            "duration": self.duration,
             "angle": self.angle,
             "eventEffect": self.eventEffect.name,
             "distributionType": self.distributionType.name,

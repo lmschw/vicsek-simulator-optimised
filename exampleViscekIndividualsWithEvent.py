@@ -70,8 +70,9 @@ simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
                                          numberPreviousStepsForThreshold=100,
                                          switchingActive=True,
                                          switchType=switchType,
-                                         switchValues=switchValues)
-simulationData, switchTypeValues = simulator.simulate(initialState=initialState, tmax=tmax, events=[event])
+                                         switchValues=switchValues,
+                                         events=[event])
+simulationData, switchTypeValues = simulator.simulate(initialState=initialState, tmax=tmax)
 #simulationData, switchTypeValues = simulator.simulate(tmax=tmax, events=[event])
 
 ServiceSavedModel.saveModel(simulationData=simulationData, path="test.json", 

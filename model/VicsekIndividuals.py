@@ -14,7 +14,8 @@ class VicsekWithNeighbourSelection:
 
     def __init__(self, domainSize, radius, noise, numberOfParticles, k, neighbourSelectionMechanism,
                  speed=dv.DEFAULT_SPEED, speeds=None, switchType=None, switchValues=(None, None), 
-                 orderThresholds=None, numberPreviousStepsForThreshold=10, switchingActive=True):
+                 orderThresholds=None, numberPreviousStepsForThreshold=10, switchingActive=True,
+                 events=None):
         self.domainSize = np.asarray(domainSize)
         self.radius = radius
         self.noise = noise
@@ -33,7 +34,7 @@ class VicsekWithNeighbourSelection:
 
         self.minReplacementValue = -1
         self.maxReplacementValue = domainSize[0] * domainSize[1] + 1
-        self.events = None
+        self.events = events
 
     def getParameterSummary(self, asString=False):
         """
@@ -358,13 +359,13 @@ class VicsekWithNeighbourSelection:
 
         return positions, orientations, switchTypeValues
     
-    def handleEvents(self, t, positions, orientations, events):
-        if events != None:
-                for event in events:
+    def handleEvents(self, t, positions, orientations):
+        if self.events != None:
+                for event in self.events:
                     orientations = event.check(self.numberOfParticles, t, positions, orientations)
         return orientations
 
-    def simulate(self, initialState=(None, None, None), dt=None, tmax=None, events=None):
+    def simulate(self, initialState=(None, None, None), dt=None, tmax=None):
         """
         Runs the simulation experiment.
         First the parameters are computed if they are not passed. 
@@ -384,7 +385,7 @@ class VicsekWithNeighbourSelection:
             if t % 1000 == 0:
                 print(f"t={t}/{self.tmax}")
 
-            orientations = self.handleEvents(t, positions, orientations, events)
+            orientations = self.handleEvents(t, positions, orientations)
 
             # all neighbours (including self)
             neighbours = ServiceVicsekHelper.getNeighbours(positions, self.domainSize, self.radius)
