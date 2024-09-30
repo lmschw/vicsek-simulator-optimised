@@ -265,7 +265,7 @@ class VicsekWithNeighbourSelection:
                                                                                     orientations=orientations,
                                                                                     neighbours=neighbours,
                                                                                     ks=ks)
-            pickedNeighbours = np.where(((switchTypeValues["val"] == self.orderSwitchValue)), neighboursDisorder, neighboursOrder)
+            pickedNeighbours = np.where(((switchTypeValues == self.orderSwitchValue)), neighboursDisorder, neighboursOrder)
 
             
         else:
@@ -366,11 +366,11 @@ class VicsekWithNeighbourSelection:
         localOrdersHistory = []  
         positionsHistory = np.zeros((numIntervals,self.numberOfParticles,len(self.domainSize)))
         orientationsHistory = np.zeros((numIntervals,self.numberOfParticles,len(self.domainSize)))  
-        switchTypeValuesHistory = np.zeros((numIntervals,self.numberOfParticles))
+        switchTypeValuesHistory = []
 
         positionsHistory[0,:,:]=positions
         orientationsHistory[0,:,:]=orientations
-        switchTypeValuesHistory[0]=switchTypeValues
+        switchTypeValuesHistory.append(switchTypeValues)
 
         for t in range(numIntervals):
 
@@ -400,10 +400,9 @@ class VicsekWithNeighbourSelection:
 
             positionsHistory[t,:,:]=positions
             orientationsHistory[t,:,:]=orientations
-            switchTypeValuesHistory[t,:]=switchTypeValues
-
+            switchTypeValuesHistory.append(switchTypeValues)
 
             if t % 1000 == 0:
                 print(f"t={t}, order={ServiceMetric.computeGlobalOrder(orientations)}")
             
-        return (dt*np.arange(numIntervals), positionsHistory, orientationsHistory), switchTypeValuesHistory
+        return (dt*np.arange(numIntervals), positionsHistory, orientationsHistory), np.array(switchTypeValuesHistory)
