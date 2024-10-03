@@ -317,13 +317,19 @@ class VicsekWithNeighbourSelection:
         """
         switchDifferenceThresholdLower, switchDifferenceThresholdUpper = self.__getLowerAndUpperThreshold()
 
+        disorderPlaceholder = 0
+        orderPlaceholder = 1
+        
         prev = np.average(previousLocalOrders[max(t-self.numberPreviousStepsForThreshold, 0):t+1], axis=0)
         switchTypeValuesDf = pd.DataFrame(switchTypeValues, columns=["val"])
         switchTypeValuesDf["localOrder"] = localOrders
         switchTypeValuesDf["previousLocalOrder"] = prev
-        switchTypeValuesDf["val"] = switchTypeValuesDf["val"].case_when([(((switchTypeValuesDf["localOrder"] >= switchDifferenceThresholdUpper) & (switchTypeValuesDf["previousLocalOrder"] <= switchDifferenceThresholdUpper)), self.orderSwitchValue),
-                            (((switchTypeValuesDf["localOrder"] <= switchDifferenceThresholdLower) & (switchTypeValuesDf["previousLocalOrder"] >= switchDifferenceThresholdLower)), self.disorderSwitchValue),
+        switchTypeValuesDf["val"] = switchTypeValuesDf["val"].case_when([(((switchTypeValuesDf["localOrder"] >= switchDifferenceThresholdUpper) & (switchTypeValuesDf["previousLocalOrder"] <= switchDifferenceThresholdUpper)), orderPlaceholder),
+                            (((switchTypeValuesDf["localOrder"] <= switchDifferenceThresholdLower) & (switchTypeValuesDf["previousLocalOrder"] >= switchDifferenceThresholdLower)), disorderPlaceholder),
         ])
+        switchTypeValuesDf["val"] = switchTypeValuesDf["val"].replace(orderPlaceholder, self.orderSwitchValue)
+        switchTypeValuesDf["val"] = switchTypeValuesDf["val"].replace(disorderPlaceholder, self.disorderSwitchValue)
+
         return np.array(switchTypeValuesDf["val"])
     
     def prepareSimulation(self, initialState, dt, tmax):
@@ -396,6 +402,7 @@ class VicsekWithNeighbourSelection:
             
                 switchTypeValues = self.getDecisions(t, localOrders, self.localOrdersHistory, switchTypeValues)
 
+                order = ServiceMetric.computeGlobalOrder(orientations)
                 if self.switchType == SwitchType.SPEED:
                     self.speeds = switchTypeValues
 

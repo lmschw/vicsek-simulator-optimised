@@ -8,7 +8,7 @@ class SwitchSummary(object):
         self.actives = self.__determineActives()
 
     def getParameterSummary(self):
-        return [switch.getParameterSummary() for switch in self.switches].join("_")
+        return "_".join([switch.getParameterSummary() for switch in self.rawSwitches])
     
     def isActive(self, switchType):
         return self.actives[switchType]

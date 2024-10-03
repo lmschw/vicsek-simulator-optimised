@@ -31,10 +31,10 @@ numberOfPreviousSteps = 100
 
 radius = 10
 k = 1
-nsm = NeighbourSelectionMechanism.NEAREST
+nsm = NeighbourSelectionMechanism.FARTHEST
 
 infoNsm = SwitchInformation(switchType=SwitchType.NEIGHBOUR_SELECTION_MECHANISM, 
-                            values=(NeighbourSelectionMechanism.FARTHEST, NeighbourSelectionMechanism.FARTHEST),
+                            values=(NeighbourSelectionMechanism.FARTHEST, NeighbourSelectionMechanism.NEAREST),
                             thresholds=[threshold],
                             numberPreviousStepsForThreshold=numberOfPreviousSteps
                             )
@@ -51,7 +51,7 @@ infoSpeed = SwitchInformation(switchType=SwitchType.SPEED,
                         numberPreviousStepsForThreshold=numberOfPreviousSteps
                         )
 
-switchSummary = SwitchSummary([infoNsm, infoK, infoSpeed])
+switchSummary = SwitchSummary([])
 
 
 """
@@ -86,7 +86,7 @@ tstart = time.time()
 
 ServiceGeneral.logWithTime("start")
 
-initialState = ServicePreparation.createOrderedInitialDistributionEquidistancedIndividual(None, domainSize, n, angleX=0.5, angleY=0.5)
+#initialState = ServicePreparation.createOrderedInitialDistributionEquidistancedIndividual(None, domainSize, n, angleX=0.5, angleY=0.5)
 simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
                                          radius=radius,
                                          noise=noise,
@@ -95,12 +95,12 @@ simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
                                          neighbourSelectionMechanism=nsm,
                                          speed=speed,
                                          switchSummary=switchSummary,
-                                         events=[event])
-simulationData, switchTypeValues = simulator.simulate(initialState=initialState, tmax=tmax)
-#simulationData, switchTypeValues = simulator.simulate(tmax=tmax, events=[event])
+                                         events=[])
+#simulationData, switchTypeValues = simulator.simulate(initialState=initialState, tmax=tmax)
+simulationData, switchTypeValues = simulator.simulate(tmax=tmax)
 
 ServiceSavedModel.saveModel(simulationData=simulationData, path="test.json", 
-                            modelParams=simulator.getParameterSummary(), switchValues=switchTypeValues)
+                            modelParams=simulator.getParameterSummary())
 
 tend = time.time()
 ServiceGeneral.logWithTime(f"duration: {ServiceGeneral.formatTime(tend-tstart)}")

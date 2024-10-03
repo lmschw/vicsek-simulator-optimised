@@ -19,7 +19,7 @@ import time
 #print(ServicePreparation.getDensity((100, 100), 100))
 #print(ServicePreparation.getDomainSizeForConstantDensity(0.01, 5))
 
-switchValues = [5,1]
+switchValues = [NeighbourSelectionMechanism.FARTHEST,NeighbourSelectionMechanism.NEAREST]
 domainSize = (100, 100)
 n = 10
 radius = 20
@@ -55,7 +55,7 @@ for t in [0, 1000, 2000, 3000]:
     print(ServiceMetric.findClustersWithRadius(positions[t], orientations[t], domainSize, radius, threshold=0.01))
 """
 
-metric = Metrics.AVG_DISTANCE_NEIGHBOURS
+metric = Metrics.ORDER
 labels = [""]
 xAxisLabel = "timesteps"
 yAxisLabel = metric.label
@@ -63,10 +63,10 @@ startEval = time.time()
 modelParams = []
 simulationData = []
 switchTypeValues = []
-modelParamsDensity, simulationDataDensity, siwtchTypeValuesDensity = ServiceSavedModel.loadModels(["test.json"], loadSwitchValues=True)
+modelParamsDensity, simulationDataDensity = ServiceSavedModel.loadModels(["test.json"], loadSwitchValues=False)
 modelParams.append(modelParamsDensity)
 simulationData.append(simulationDataDensity)
-switchTypeValues.append(siwtchTypeValuesDensity)
+#switchTypeValues.append(siwtchTypeValuesDensity)
 threshold = 0.01
 evaluator = EvaluatorMultiComp.EvaluatorMultiAvgComp(modelParams, metric, simulationData, evaluationTimestepInterval=1, threshold=threshold, switchTypeValues=switchTypeValues, switchTypeOptions=(NeighbourSelectionMechanism.FARTHEST, NeighbourSelectionMechanism.NEAREST))
 savePath = f"{metric.val}_test_new_implementation.jpeg"

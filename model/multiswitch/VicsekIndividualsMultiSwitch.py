@@ -49,7 +49,7 @@ class VicsekWithNeighbourSelection:
                     "tmax": self.tmax,
                     "dt": self.dt,
                     }
-        if self.switches != None:
+        if self.switchSummary != None:
             summary["switchSummary"] = self.switchSummary.getParameterSummary()
 
         if self.events:
@@ -300,14 +300,19 @@ class VicsekWithNeighbourSelection:
         switchInfo = self.switchSummary.getBySwitchType(switchType)
         switchDifferenceThresholdLower = switchInfo.lowerThreshold
         switchDifferenceThresholdUpper = switchInfo.upperThreshold
+        disorderPlaceholder = -1
+        orderPlaceholder = -2
 
         prev = np.average(previousLocalOrders[max(t-switchInfo.numberPreviousStepsForThreshold, 0):t+1], axis=0)
         switchTypeValuesDf = pd.DataFrame(switchTypeValues, columns=["val"])
         switchTypeValuesDf["localOrder"] = localOrders
         switchTypeValuesDf["previousLocalOrder"] = prev
-        switchTypeValuesDf["val"] = switchTypeValuesDf["val"].case_when([(((switchTypeValuesDf["localOrder"] >= switchDifferenceThresholdUpper) & (switchTypeValuesDf["previousLocalOrder"] <= switchDifferenceThresholdUpper)), switchInfo.orderSwitchValue),
-                            (((switchTypeValuesDf["localOrder"] <= switchDifferenceThresholdLower) & (switchTypeValuesDf["previousLocalOrder"] >= switchDifferenceThresholdLower)), switchInfo.disorderSwitchValue),
+        switchTypeValuesDf["val"] = switchTypeValuesDf["val"].case_when([(((switchTypeValuesDf["localOrder"] >= switchDifferenceThresholdUpper) & (switchTypeValuesDf["previousLocalOrder"] <= switchDifferenceThresholdUpper)), orderPlaceholder),
+                            (((switchTypeValuesDf["localOrder"] <= switchDifferenceThresholdLower) & (switchTypeValuesDf["previousLocalOrder"] >= switchDifferenceThresholdLower)), disorderPlaceholder),
         ])
+        switchTypeValuesDf["val"] = switchTypeValuesDf["val"].replace(orderPlaceholder, switchInfo.orderSwitchValue)
+        switchTypeValuesDf["val"] = switchTypeValuesDf["val"].replace(disorderPlaceholder, switchInfo.disorderSwitchValue)
+
         return np.array(switchTypeValuesDf["val"])
     
     def appendSwitchValues(self, nsms, ks, speeds):
@@ -322,10 +327,11 @@ class VicsekWithNeighbourSelection:
     
     def prepareSimulation(self, initialState, dt, tmax):
          # Preparations and setting of parameters if they are not passed to the method
-        positions, orientations = initialState
         
         if any(ele is None for ele in initialState):
             positions, orientations = self.__initializeState()
+        else:
+            positions, orientations = initialState
 
         nsms, ks, speeds = self.initialiseSwitchingValues()
 
