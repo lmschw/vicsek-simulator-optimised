@@ -144,7 +144,7 @@ class VicsekWithNeighbourSelection:
         """
         
         kMaxPresent = np.max(ks)
-        
+
         sortedIndices = candidates.argsort(axis=1)
         if isMin == False:
             sortedIndices = np.flip(sortedIndices, axis=1)
@@ -197,9 +197,7 @@ class VicsekWithNeighbourSelection:
         else:
             fillValue = self.minReplacementValue
 
-        kMaxPresent = np.max(ks)
-
-        fillVals = np.full((self.numberOfParticles,kMaxPresent), fillValue)
+        fillVals = np.full((self.numberOfParticles,self.numberOfParticles), fillValue)
         candidates = np.where((neighbours), posDiff, fillVals)
 
         # select the best candidates
@@ -227,9 +225,7 @@ class VicsekWithNeighbourSelection:
         else:
             fillValue = self.minReplacementValue
 
-        kMaxPresent = np.max(ks)
-
-        fillVals = np.full((self.numberOfParticles,kMaxPresent), fillValue)
+        fillVals = np.full((self.numberOfParticles,self.numberOfParticles), fillValue)
         candidates = np.where((neighbours), orientDiff, fillVals)
 
         # select the best candidates
