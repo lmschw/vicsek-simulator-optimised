@@ -89,8 +89,10 @@ def createOrderedInitialDistributionEquidistancedIndividual(startSwitchTypeValue
         Positions and orientations for all particles within the domain. Can be used as the initial state of a Vicsek simulation.
     """
     positions, orientations = createOrderedInitialDistributionEquidistanced(domainSize, numberOfParticles, angleX, angleY)
-    switchTypeValues = numberOfParticles * [startSwitchTypeValue]
-    return positions, orientations, switchTypeValues
+    if startSwitchTypeValue != None:
+        switchTypeValues = numberOfParticles * [startSwitchTypeValue]
+        return positions, orientations, switchTypeValues
+    return positions, orientations
 
 def createOrderedInitialDistributionEquidistanced(domainSize, numberOfParticles, angleX=None, angleY=None):
     """
