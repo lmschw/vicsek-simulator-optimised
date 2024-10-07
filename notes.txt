@@ -1,0 +1,4 @@
+TODO 07.10.:
+- add group-induced events
+- fix remaining vision-methods
+- add time delays
