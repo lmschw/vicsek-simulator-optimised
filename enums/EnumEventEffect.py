@@ -12,3 +12,7 @@ class EventEffect(Enum):
     def __init__(self, val, label):
         self.val = val
         self.label = label
+
+class InternalEventEffect(Enum):
+    ALIGN_TO_FIXED_ANGLE = "align_fixed", "DISTANT"
+    REINFORCE_RANDOM_ANGLE = "reinforce_random", "REINFORCE RANDOM"
