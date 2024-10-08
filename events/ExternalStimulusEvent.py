@@ -7,12 +7,14 @@ from scipy.spatial.transform import Rotation as R
 from enums.EnumDistributionType import DistributionType
 from enums.EnumEventEffect import EventEffect
 
+import events.BaseEvent as BaseEvent
+
 import DefaultValues as dv
 import services.ServiceOrientations as ServiceOrientations
 import services.ServicePreparation as ServicePreparation
 import services.ServiceVicsekHelper as ServiceVicsekHelper
 
-class ExternalStimulusOrientationChangeEvent:
+class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
     # TODO refactor to allow areas with a radius bigger than the radius of a particle, i.e. remove neighbourCells and determine all affected cells here
     """
     Representation of an event occurring at a specified time and place within the domain and affecting 
@@ -35,16 +37,11 @@ class ExternalStimulusOrientationChangeEvent:
         Returns:
             No return.
         """
-        self.startTimestep = startTimestep
-        self.duration = duration
+        super().__init__(startTimestep=startTimestep, duration=duration, domainSize=domainSize, eventEffect=eventEffect, noisePercentage=noisePercentage)
         self.angle = angle
-        self.eventEffect = eventEffect
         self.distributionType = distributionType
         self.areas = areas
-        self.domainSize = np.asarray(domainSize)
-        self.noisePercentage = noisePercentage
-        if self.noisePercentage != None:
-            self.noise = ServicePreparation.getNoiseAmplitudeValueForPercentage(self.noisePercentage)
+        
 
         match self.distributionType:
             case DistributionType.GLOBAL:
@@ -71,41 +68,6 @@ class ExternalStimulusOrientationChangeEvent:
             "domainSize": self.domainSize.tolist(),
             }
         return summary
-
-    def check(self, totalNumberOfParticles, currentTimestep, positions, orientations):
-        """
-        Checks if the event is triggered at the current timestep and executes it if relevant.
-
-        Params:
-            - totalNumberOfParticles (int): the total number of particles within the domain. Used to compute the number of affected particles
-            - currentTimestep (int): the timestep within the experiment run to see if the event should be triggered
-            - positions (array of tuples (x,y)): the position of every particle in the domain at the current timestep
-            - orientations (array of tuples (u,v)): the orientation of every particle in the domain at the current timestep
-            - switchValues (array of switchTypeValues): the switch type value of every particle in the domain at the current timestep
-            - cells (array: [(minX, minY), (maxX, maxY)]): the cells within the cellbased domain
-            - cellDims (tuple of floats): the dimensions of a cell (the same for all cells)
-            - cellToParticleDistribution (dictionary {cellIdx: array of indices of all particles within the cell}): A dictionary containing the indices of all particles within each cell
-
-        Returns:
-            The orientations of all particles - altered if the event has taken place, unaltered otherwise.
-        """
-        if self.checkTimestep(currentTimestep):
-            if currentTimestep == self.startTimestep or currentTimestep == (self.startTimestep + self.duration):
-                print(f"executing event at timestep {currentTimestep}")
-            orientations = self.executeEvent(totalNumberOfParticles, positions, orientations)
-        return orientations
-
-    def checkTimestep(self, currentTimestep):
-        """
-        Checks if the event should be triggered.
-
-        Params:
-            - currentTimestep (int): the timestep within the experiment run to see if the event should be triggered
-
-        Returns:
-            A boolean representing whether or not the event should be triggered.
-        """
-        return self.startTimestep <= currentTimestep and currentTimestep <= (self.startTimestep + self.duration)
     
     def executeEvent(self, totalNumberOfParticles, positions, orientations):
         """
