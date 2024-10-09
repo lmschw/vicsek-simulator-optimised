@@ -1,15 +1,15 @@
 import time
 import numpy as np
 
-from model.multiswitch.VicsekIndividualsMultiSwitch import VicsekWithNeighbourSelection
+from model.VicsekIndividualsMultiSwitch import VicsekWithNeighbourSelection
 from enums.EnumNeighbourSelectionMechanism import NeighbourSelectionMechanism
 from enums.EnumSwitchType import SwitchType
 from events.ExternalStimulusEvent import ExternalStimulusOrientationChangeEvent
 from enums.EnumEventEffect import EventEffect
 from enums.EnumDistributionType import DistributionType
 
-from model.multiswitch.SwitchInformation import SwitchInformation
-from model.multiswitch.SwitchSummary import SwitchSummary
+from model.SwitchInformation import SwitchInformation
+from model.SwitchSummary import SwitchSummary
 
 import services.ServicePreparation as ServicePreparation
 import services.ServiceGeneral as ServiceGeneral
@@ -17,11 +17,12 @@ import services.ServiceSavedModel as ServiceSavedModel
 
 
 domainSize = (22.36, 22.36)
+domainSize = (25, 25)
 #domainSize = (50, 50)
 noisePercentage = 1
 noise = ServicePreparation.getNoiseAmplitudeValueForPercentage(noisePercentage)
 #noise = 0
-n = 100
+n = 10
 speed = 1
 
 threshold = 0.1
@@ -31,7 +32,7 @@ numberOfPreviousSteps = 100
 
 radius = 10
 k = 1
-nsm = NeighbourSelectionMechanism.FARTHEST
+nsm = NeighbourSelectionMechanism.NEAREST
 
 infoNsm = SwitchInformation(switchType=SwitchType.NEIGHBOUR_SELECTION_MECHANISM, 
                             values=(NeighbourSelectionMechanism.FARTHEST, NeighbourSelectionMechanism.NEAREST),
@@ -52,7 +53,7 @@ infoSpeed = SwitchInformation(switchType=SwitchType.SPEED,
                         )
 
 switchSummary = SwitchSummary([])
-
+switchSummary = None
 
 """
 switchType = SwitchType.NEIGHBOUR_SELECTION_MECHANISM
@@ -68,7 +69,7 @@ switchType = SwitchType.SPEED
 switchValues = (0.1, 1)
 """
 
-tmax = 3000
+tmax = 100
 
 threshold = [0.1]
 
@@ -86,7 +87,7 @@ tstart = time.time()
 
 ServiceGeneral.logWithTime("start")
 
-#initialState = ServicePreparation.createOrderedInitialDistributionEquidistancedIndividual(None, domainSize, n, angleX=0.5, angleY=0.5)
+initialState = ServicePreparation.createOrderedInitialDistributionEquidistancedIndividual(None, domainSize, n, angleX=0.5, angleY=0.5)
 simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
                                          radius=radius,
                                          noise=noise,
@@ -96,8 +97,8 @@ simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
                                          speed=speed,
                                          switchSummary=switchSummary,
                                          events=[])
-#simulationData, switchTypeValues = simulator.simulate(initialState=initialState, tmax=tmax)
-simulationData, switchTypeValues = simulator.simulate(tmax=tmax)
+simulationData, switchTypeValues = simulator.simulate(initialState=initialState, tmax=tmax)
+#simulationData, switchTypeValues = simulator.simulate(tmax=tmax)
 
 ServiceSavedModel.saveModel(simulationData=simulationData, path="test.json", 
                             modelParams=simulator.getParameterSummary())

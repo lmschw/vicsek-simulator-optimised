@@ -41,7 +41,6 @@ class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
         self.angle = angle
         self.distributionType = distributionType
         self.areas = areas
-        
 
         match self.distributionType:
             case DistributionType.GLOBAL:
