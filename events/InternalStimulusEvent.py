@@ -77,6 +77,7 @@ class InternalStimulusOrientationChangeEvent(BaseEvent):
 
         if len(self.affectedParticles) == 0:
             self.affectedParticles = self.selectParticles(totalNumberOfParticles)
+            print(self.affectedParticles)
 
         match self.eventEffect:
             case InternalEventEffect.ALIGN_TO_FIXED_ANGLE:
