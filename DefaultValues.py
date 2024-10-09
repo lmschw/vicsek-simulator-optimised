@@ -1,4 +1,8 @@
 
+import numpy as np
+
 DEFAULT_SPEED = 1
+DEFAULT_DEGREES_OF_VISION = 2*np.pi
+
 
 MIN_REPLACEMENT_VAL = -1
