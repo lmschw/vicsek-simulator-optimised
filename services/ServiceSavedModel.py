@@ -24,7 +24,7 @@ def saveModel(simulationData, path="sample.json", modelParams=None, saveInterval
     dict = {"time": __getSpecifiedIntervals(saveInterval, time.tolist()), 
             "positions": __getSpecifiedIntervals(saveInterval, positions.tolist()), 
             "orientations": __getSpecifiedIntervals(saveInterval, orientations.tolist())}
-    if switchValues.any(None):
+    if None in switchValues:
         dict["switchValues"] = __getSpecifiedIntervals(saveInterval, switchValues.tolist())
     __saveDict(path, dict, modelParams)
 
