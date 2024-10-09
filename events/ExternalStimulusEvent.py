@@ -6,6 +6,7 @@ from scipy.spatial.transform import Rotation as R
 
 from enums.EnumDistributionType import DistributionType
 from enums.EnumEventEffect import EventEffect
+from enums.EnumEventSelectionType import EventSelectionType
 
 import events.BaseEvent as BaseEvent
 
@@ -20,7 +21,7 @@ class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
     Representation of an event occurring at a specified time and place within the domain and affecting 
     a specified percentage of particles. After creation, the check()-method takes care of everything.
     """
-    def __init__(self, startTimestep, duration, domainSize, eventEffect, distributionType, areas=None, radius=None, angle=None, noisePercentage=None, blockValues=False):
+    def __init__(self, startTimestep, duration, domainSize, eventEffect, distributionType, areas=None, radius=None, numberOfAffected=None, eventSelectionType=None, angle=None, noisePercentage=None, blockValues=False):
         """
         Creates an external stimulus event that affects part of the swarm at a given timestep.
 
@@ -41,6 +42,8 @@ class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
         self.angle = angle
         self.distributionType = distributionType
         self.areas = areas
+        self.numberOfAffected = numberOfAffected
+        self.eventSelectionType = eventSelectionType
 
         match self.distributionType:
             case DistributionType.GLOBAL:
@@ -54,6 +57,9 @@ class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
         if self.distributionType != DistributionType.GLOBAL and self.areas == None:
             raise Exception("Local effects require the area to be specified")
         
+        if self.numberOfAffected and self.radius:
+            print("Radius is set. The full number of affected particles may not be reached.")
+        
     def getShortPrintVersion(self):
         return f"t{self.startTimestep}d{self.duration}e{self.eventEffect.val}a{self.angle}dt{self.distributionType.value}a{self.areas}"
 
@@ -63,6 +69,8 @@ class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
         summary["distributionType"] = self.distributionType.name
         summary["areas"] = self.areas
         summary["radius"] = self.radius
+        summary["numberOfAffected"] = self.numberOfAffected
+        summary["eventSelectionType"] = self.eventSelectionType.value
         return summary
     
     def executeEvent(self, totalNumberOfParticles, positions, orientations, nsms, ks, speeds):
@@ -81,17 +89,20 @@ class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
         Returns:
             The orientations, switchTypeValues of all particles after the event has been executed as well as a list containing the indices of all affected particles.
         """
-        posWithCenter = np.copy(positions)
-        np.append(posWithCenter, self.getOriginPoint())
+        posWithCenter = np.zeros((totalNumberOfParticles+1, 2))
+        posWithCenter[:-1] = positions
+        posWithCenter[-1] = self.getOriginPoint()
         rij2 = ServiceVicsekHelper.getDifferences(posWithCenter, self.domainSize)
-        affected = (rij2 <= self.radius**2)[-1]
+        relevantDistances = rij2[-1][:-1] # only the comps to the origin and without the origin point
+        candidates = (relevantDistances <= self.radius**2)
+        affected = self.selectAffected(candidates, relevantDistances)
 
         match self.eventEffect:
             case EventEffect.ALIGN_TO_FIXED_ANGLE:
                 orientations[affected] = ServiceOrientations.computeUvCoordinates(self.angle)
             case EventEffect.ALIGN_TO_FIXED_ANGLE_NOISE:
                 orientations[affected] = ServiceOrientations.computeUvCoordinates(self.angle)
-                orientations[affected] = self.__applyNoiseDistribution(orientations[affected])
+                orientations[affected] = self.applyNoiseDistribution(orientations[affected])
             case EventEffect.AWAY_FROM_ORIGIN:
                 orientations[affected] = self.computeAwayFromOrigin(positions[affected])
             case EventEffect.RANDOM:
@@ -99,9 +110,19 @@ class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
         orientations = ServiceOrientations.normalizeOrientations(orientations)
         return orientations, nsms, ks, speeds, affected # external events do not directly impact the values
     
-    def __applyNoiseDistribution(self, orientations):
-        return orientations + np.random.normal(scale=self.noise, size=(len(orientations), len(self.domainSize)))
 
+    def selectAffected(self, candidates, rij2):
+        match self.eventSelectionType:
+            case EventSelectionType.NEAREST_DISTANCE:
+                indices = np.argsort(rij2)[:self.numberOfAffected]
+                preselection = np.full(len(candidates), False)
+                preselection[indices] = True
+            case EventSelectionType.RANDOM:
+                indices = np.argwhere(candidates).flatten()
+                selectedIndices = np.random.choice(indices, self.numberOfAffected, replace=False)
+                preselection = np.full(len(candidates), False)
+                preselection[selectedIndices] = True
+        return candidates & preselection
 
     def computeAwayFromOrigin(self, positions):
         """

@@ -7,6 +7,7 @@ from enums.EnumSwitchType import SwitchType
 from events.ExternalStimulusEvent import ExternalStimulusOrientationChangeEvent
 from enums.EnumEventEffect import EventEffect
 from enums.EnumDistributionType import DistributionType
+from enums.EnumEventSelectionType import EventSelectionType
 
 from model.SwitchInformation import SwitchInformation
 from model.SwitchSummary import SwitchSummary
@@ -81,6 +82,9 @@ event = ExternalStimulusOrientationChangeEvent(startTimestep=1000,
                                                areas=[[domainSize[0]/2, domainSize[1]/2, radius]],
                                                angle=np.pi,
                                                noisePercentage=1,
+                                               radius=radius,
+                                               numberOfAffected=1,
+                                               eventSelectionType=EventSelectionType.RANDOM
                                                )
 
 tstart = time.time()
@@ -96,8 +100,8 @@ simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
                                          neighbourSelectionMechanism=nsm,
                                          speed=speed,
                                          switchSummary=switchSummary,
-                                         degreesOfVision=np.pi,
-                                         events=[])
+                                         degreesOfVision=np.pi*2,
+                                         events=[event])
 simulationData, switchTypeValues = simulator.simulate(initialState=initialState, tmax=tmax)
 #simulationData, switchTypeValues = simulator.simulate(tmax=tmax)
 
