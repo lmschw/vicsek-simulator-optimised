@@ -20,7 +20,7 @@ class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
     Representation of an event occurring at a specified time and place within the domain and affecting 
     a specified percentage of particles. After creation, the check()-method takes care of everything.
     """
-    def __init__(self, startTimestep, duration, domainSize, eventEffect, distributionType, areas=None, radius=None, angle=None, noisePercentage=None):
+    def __init__(self, startTimestep, duration, domainSize, eventEffect, distributionType, areas=None, radius=None, angle=None, noisePercentage=None, blockValues=False):
         """
         Creates an external stimulus event that affects part of the swarm at a given timestep.
 
@@ -37,7 +37,7 @@ class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
         Returns:
             No return.
         """
-        super().__init__(startTimestep=startTimestep, duration=duration, domainSize=domainSize, eventEffect=eventEffect, noisePercentage=noisePercentage)
+        super().__init__(startTimestep=startTimestep, duration=duration, domainSize=domainSize, eventEffect=eventEffect, noisePercentage=noisePercentage, blockValues=blockValues)
         self.angle = angle
         self.distributionType = distributionType
         self.areas = areas
@@ -58,17 +58,14 @@ class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
         return f"t{self.startTimestep}d{self.duration}e{self.eventEffect.val}a{self.angle}dt{self.distributionType.value}a{self.areas}"
 
     def getParameterSummary(self):
-        summary = {"startTimestep": self.startTimestep,
-            "duration": self.duration,
-            "angle": self.angle,
-            "eventEffect": self.eventEffect.name,
-            "distributionType": self.distributionType.name,
-            "areas": self.areas,
-            "domainSize": self.domainSize.tolist(),
-            }
+        summary = super().getParameterSummary()
+        summary["angle"] = self.angle
+        summary["distributionType"] = self.distributionType.name
+        summary["areas"] = self.areas
+        summary["radius"] = self.radius
         return summary
     
-    def executeEvent(self, totalNumberOfParticles, positions, orientations):
+    def executeEvent(self, totalNumberOfParticles, positions, orientations, nsms, ks, speeds):
         """
         Executes the event.
 
@@ -100,7 +97,7 @@ class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
             case EventEffect.RANDOM:
                 orientations[affected] = self.__getRandomOrientations(np.count_nonzero(affected))
         orientations = ServiceOrientations.normalizeOrientations(orientations)
-        return orientations
+        return orientations, nsms, ks, speeds, affected # external events do not directly impact the values
     
     def __applyNoiseDistribution(self, orientations):
         return orientations + np.random.normal(scale=self.noise, size=(len(orientations), len(self.domainSize)))

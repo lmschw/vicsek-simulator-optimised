@@ -9,7 +9,8 @@ class BaseEvent:
     Representation of an event occurring at a specified time and place within the domain and affecting 
     a specified percentage of particles. After creation, the check()-method takes care of everything.
     """
-    def __init__(self, startTimestep, duration, domainSize, eventEffect, noisePercentage=None):
+    def __init__(self, startTimestep, duration, domainSize, eventEffect, noisePercentage=None, blockValues=False, alterValues=False, 
+                 switchSummary=None):
         """
         Creates an external stimulus event that affects part of the swarm at a given timestep.
 
@@ -31,6 +32,9 @@ class BaseEvent:
         self.eventEffect = eventEffect
         self.domainSize = np.asarray(domainSize)
         self.noisePercentage = noisePercentage
+        self.blockValues = blockValues
+        self.alterValues = alterValues
+        self.switchSummary = switchSummary
         if self.noisePercentage != None:
             self.noise = ServicePreparation.getNoiseAmplitudeValueForPercentage(self.noisePercentage)
 
@@ -42,10 +46,17 @@ class BaseEvent:
             "duration": self.duration,
             "eventEffect": self.eventEffect.val,
             "domainSize": self.domainSize.tolist(),
+            "noisePercentage": self.noisePercentage,
+            "blockValues": self.blockValues,
+            "alterValues": self.alterValues
             }
+        if self.switchSummary:
+            summary["switchSummary"] = self.switchSummary.getParameterSummary()
+        else:
+            summary["switchSummary"] = None
         return summary
 
-    def check(self, totalNumberOfParticles, currentTimestep, positions, orientations):
+    def check(self, totalNumberOfParticles, currentTimestep, positions, orientations, nsms, ks, speeds):
         """
         Checks if the event is triggered at the current timestep and executes it if relevant.
 
@@ -62,11 +73,19 @@ class BaseEvent:
         Returns:
             The orientations of all particles - altered if the event has taken place, unaltered otherwise.
         """
+        blocked = np.full(totalNumberOfParticles, False)
         if self.checkTimestep(currentTimestep):
             if currentTimestep == self.startTimestep or currentTimestep == (self.startTimestep + self.duration):
                 print(f"executing event at timestep {currentTimestep}")
-            orientations = self.executeEvent(totalNumberOfParticles, positions, orientations)
-        return orientations
+            orientations, alteredNsms, alteredKs, alteredSpeeds, blockedUpdate = self.executeEvent(totalNumberOfParticles, positions, orientations, nsms, ks, speeds)
+
+            if self.blockValues:
+                blocked = blockedUpdate
+            if self.alterValues:
+                nsms = alteredNsms
+                ks = alteredKs
+                speeds = alteredSpeeds
+        return orientations, nsms, ks, speeds, blocked
 
     def checkTimestep(self, currentTimestep):
         """
@@ -83,7 +102,7 @@ class BaseEvent:
     def applyNoiseDistribution(self, orientations):
         return orientations + np.random.normal(scale=self.noise, size=(len(orientations), len(self.domainSize)))
     
-    def executeEvent(self, totalNumberOfParticles, positions, orientations):
+    def executeEvent(self, totalNumberOfParticles, positions, orientations, nsms, ks, speeds):
         """
         Executes the event.
 
@@ -100,4 +119,4 @@ class BaseEvent:
             The orientations, switchTypeValues of all particles after the event has been executed as well as a list containing the indices of all affected particles.
         """
         # base event does not do anything here
-        return orientations
+        return orientations, nsms, ks, speeds, np.full(totalNumberOfParticles, False)

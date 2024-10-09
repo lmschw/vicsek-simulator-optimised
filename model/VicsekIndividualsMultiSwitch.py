@@ -297,7 +297,7 @@ class VicsekWithNeighbourSelection:
 
         return orientations
      
-    def getDecisions(self, t, localOrders, previousLocalOrders, switchType, switchTypeValues):
+    def getDecisions(self, t, localOrders, previousLocalOrders, switchType, switchTypeValues, blocked):
         """
         Computes whether the individual chooses to use option A or option B as its value based on the local order, 
         the average previous local order and a threshold.
@@ -319,8 +319,8 @@ class VicsekWithNeighbourSelection:
         switchTypeValuesDf = pd.DataFrame(switchTypeValues, columns=["val"])
         switchTypeValuesDf["localOrder"] = localOrders
         switchTypeValuesDf["previousLocalOrder"] = prev
-        switchTypeValuesDf["val"] = switchTypeValuesDf["val"].case_when([(((switchTypeValuesDf["localOrder"] >= switchDifferenceThresholdUpper) & (switchTypeValuesDf["previousLocalOrder"] <= switchDifferenceThresholdUpper)), self.orderPlaceholder),
-                            (((switchTypeValuesDf["localOrder"] <= switchDifferenceThresholdLower) & (switchTypeValuesDf["previousLocalOrder"] >= switchDifferenceThresholdLower)), self.disorderPlaceholder),
+        switchTypeValuesDf["val"] = switchTypeValuesDf["val"].case_when([(((switchTypeValuesDf["localOrder"] >= switchDifferenceThresholdUpper) & (switchTypeValuesDf["previousLocalOrder"] <= switchDifferenceThresholdUpper) & (blocked != True)), self.orderPlaceholder),
+                            (((switchTypeValuesDf["localOrder"] <= switchDifferenceThresholdLower) & (switchTypeValuesDf["previousLocalOrder"] >= switchDifferenceThresholdLower) & (blocked != True)), self.disorderPlaceholder),
         ])
         switchTypeValuesDf["val"] = switchTypeValuesDf["val"].replace(self.orderPlaceholder, switchInfo.orderSwitchValue)
         switchTypeValuesDf["val"] = switchTypeValuesDf["val"].replace(self.disorderPlaceholder, switchInfo.disorderSwitchValue)
@@ -373,11 +373,11 @@ class VicsekWithNeighbourSelection:
 
         return positions, orientations, nsms, ks, speeds
     
-    def handleEvents(self, t, positions, orientations):
+    def handleEvents(self, t, positions, orientations, nsms, ks, speeds):
         if self.events != None:
                 for event in self.events:
-                    orientations = event.check(self.numberOfParticles, t, positions, orientations)
-        return orientations
+                    orientations, nsms, ks, speeds, blocked = event.check(self.numberOfParticles, t, positions, orientations, nsms, ks, speeds)
+        return orientations, nsms, ks, speeds, blocked
 
     def simulate(self, initialState=(None, None, None), dt=None, tmax=None):
         """
@@ -399,7 +399,7 @@ class VicsekWithNeighbourSelection:
             if t % 1000 == 0:
                 print(f"t={t}/{self.tmax}")
 
-            orientations = self.handleEvents(t, positions, orientations)
+            orientations, nsms, ks, speeds, blocked = self.handleEvents(t, positions, orientations, nsms, ks, speeds)
 
             # all neighbours (including self)
             neighbours = ServiceVicsekHelper.getNeighbours(positions, self.domainSize, self.radius)
@@ -409,11 +409,11 @@ class VicsekWithNeighbourSelection:
                 self.localOrdersHistory.append(localOrders)
             
                 if SwitchType.NEIGHBOUR_SELECTION_MECHANISM in self.switchSummary.switches.keys():
-                    nsms = self.getDecisions(t, localOrders, self.localOrdersHistory, SwitchType.NEIGHBOUR_SELECTION_MECHANISM, nsms)
+                    nsms = self.getDecisions(t, localOrders, self.localOrdersHistory, SwitchType.NEIGHBOUR_SELECTION_MECHANISM, nsms, blocked)
                 if SwitchType.K in self.switchSummary.switches.keys():
-                    ks = self.getDecisions(t, localOrders, self.localOrdersHistory, SwitchType.K, ks)
+                    ks = self.getDecisions(t, localOrders, self.localOrdersHistory, SwitchType.K, ks, blocked)
                 if SwitchType.SPEED in self.switchSummary.switches.keys():
-                    speeds = self.getDecisions(t, localOrders, self.localOrdersHistory, SwitchType.SPEED, speeds)
+                    speeds = self.getDecisions(t, localOrders, self.localOrdersHistory, SwitchType.SPEED, speeds, blocked)
 
             orientations = self.computeNewOrientations(neighbours, positions, orientations, nsms, ks)
 
@@ -426,5 +426,6 @@ class VicsekWithNeighbourSelection:
 
             if t % 500 == 0:
                 print(f"t={t}, order={ServiceMetric.computeGlobalOrder(orientations)}")
+                print(nsms)
             
         return (self.dt*np.arange(self.numIntervals), self.positionsHistory, self.orientationsHistory), np.array(self.switchTypeValuesHistory)

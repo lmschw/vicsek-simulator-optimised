@@ -6,6 +6,7 @@ from scipy.spatial.transform import Rotation as R
 
 from enums.EnumDistributionType import DistributionType
 from enums.EnumEventEffect import InternalEventEffect
+from enums.EnumSwitchType import SwitchType
 
 import DefaultValues as dv
 import services.ServiceOrientations as ServiceOrientations
@@ -20,7 +21,8 @@ class InternalStimulusOrientationChangeEvent(BaseEvent):
     Representation of an event occurring at a specified time and place within the domain and affecting 
     a specified percentage of particles. After creation, the check()-method takes care of everything.
     """
-    def __init__(self, startTimestep, duration, domainSize, eventEffect, numberOfAffectedParticles=None, percentage=None, angle=None, noisePercentage=None):
+    def __init__(self, startTimestep, duration, domainSize, eventEffect, numberOfAffectedParticles=None, percentage=None, angle=None, 
+                 noisePercentage=None, blockValues=False, alterValues=False, switchSummary=None):
         """
         Creates an external stimulus event that affects part of the swarm at a given timestep.
 
@@ -37,7 +39,9 @@ class InternalStimulusOrientationChangeEvent(BaseEvent):
         Returns:
             No return.
         """
-        super().__init__(startTimestep=startTimestep, duration=duration, domainSize=domainSize, eventEffect=eventEffect, noisePercentage=noisePercentage)
+        super().__init__(startTimestep=startTimestep, duration=duration, domainSize=domainSize, eventEffect=eventEffect, 
+                         noisePercentage=noisePercentage, blockValues=blockValues, alterValues=alterValues,
+                         switchSummary=switchSummary)
         self.angle = angle
         self.percentage = percentage
         self.numberOfAffectedParticles = numberOfAffectedParticles
@@ -48,19 +52,13 @@ class InternalStimulusOrientationChangeEvent(BaseEvent):
         return f"t{self.startTimestep}d{self.duration}e{self.eventEffect.val}a{self.angle}dt{self.distributionType.value}a{self.areas}"
 
     def getParameterSummary(self):
-        summary = {"startTimestep": self.startTimestep,
-            "duration": self.duration,
-            "angle": self.angle,
-            "eventEffect": self.eventEffect.name,
-            "noisePercentage": self.noisePercentage,
-            "angle": self.angle,
-            "percentage": self.percentage,
-            "numberOfAffectedParticles": self.numberOfAffectedParticles,
-            "domainSize": self.domainSize.tolist()
-            }
+        summary = super().getParameterSummary()
+        summary["angle"] = self.angle
+        summary["percentage"] = self.percentage
+        summary["numberOfAffectedParticles"] = self.numberOfAffectedParticles
         return summary
     
-    def executeEvent(self, totalNumberOfParticles, positions, orientations):
+    def executeEvent(self, totalNumberOfParticles, positions, orientations,nsms, ks, speeds):
         """
         Executes the event.
 
@@ -80,16 +78,31 @@ class InternalStimulusOrientationChangeEvent(BaseEvent):
         if len(self.affectedParticles) == 0:
             self.affectedParticles = self.selectParticles(totalNumberOfParticles)
 
-
         match self.eventEffect:
             case InternalEventEffect.ALIGN_TO_FIXED_ANGLE:
                 orientations[self.affectedParticles] = ServiceOrientations.computeUvCoordinates(self.angle)
+                if self.switchSummary:
+                    if self.switchSummary.isActive(SwitchType.NEIGHBOUR_SELECTION_MECHANISM):
+                        nsms[self.affectedParticles] = self.switchSummary.getBySwitchType(SwitchType.NEIGHBOUR_SELECTION_MECHANISM).orderSwitchValue
+                    if self.switchSummary.isActive(SwitchType.K):
+                        ks[self.affectedParticles] = self.switchSummary.getBySwitchType(SwitchType.K).orderSwitchValue      
+                    if self.switchSummary.isActive(SwitchType.SPEED):
+                        speeds[self.affectedParticles] = self.switchSummary.getBySwitchType(SwitchType.SPEED).orderSwitchValue    
             case InternalEventEffect.REINFORCE_RANDOM_ANGLE:
                 if len(self.angles) == 0:
                     self.angles = self.getRandomOrientations(len(self.affectedParticles))
                 orientations[self.affectedParticles] = self.angles
+                if self.switchSummary:
+                    if self.switchSummary.isActive(SwitchType.NEIGHBOUR_SELECTION_MECHANISM):
+                        nsms[self.affectedParticles] = self.switchSummary.getBySwitchType(SwitchType.NEIGHBOUR_SELECTION_MECHANISM).disorderSwitchValue
+                    if self.switchSummary.isActive(SwitchType.K):
+                        ks[self.affectedParticles] = self.switchSummary.getBySwitchType(SwitchType.K).disorderSwitchValue      
+                    if self.switchSummary.isActive(SwitchType.SPEED):
+                        speeds[self.affectedParticles] = self.switchSummary.getBySwitchType(SwitchType.SPEED).disorderSwitchValue  
         orientations = ServiceOrientations.normalizeOrientations(orientations)
-        return orientations
+        blocked = np.full(totalNumberOfParticles, False)
+        blocked[self.affectedParticles] = True
+        return orientations, nsms, ks, speeds, blocked
     
     def selectParticles(self, totalNumberOfParticles):
         if self.numberOfAffectedParticles == None:
