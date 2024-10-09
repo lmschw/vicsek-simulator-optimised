@@ -428,6 +428,5 @@ class VicsekWithNeighbourSelection:
 
             if t % 500 == 0:
                 print(f"t={t}, order={ServiceMetric.computeGlobalOrder(orientations)}")
-                print(neighbours)
             
         return (self.dt*np.arange(self.numIntervals), self.positionsHistory, self.orientationsHistory), np.array(self.switchTypeValuesHistory)
