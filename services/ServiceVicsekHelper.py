@@ -1,5 +1,7 @@
 import numpy as np
 
+import services.ServiceVision as ServiceVision
+
 def getDifferences(array, domainSize):
     """
     Computes the differences between all individuals for the values provided by the array.
@@ -38,3 +40,10 @@ def getNeighbours(positions, domainSize, radius):
     """
     rij2 = getPositionDifferences(positions, domainSize)
     return (rij2 <= radius**2)
+
+def getNeighboursWithLimitedVision(positions, orientations, domainSize, radius, degreesOfVision):
+    candidates = getNeighbours(positions=positions, domainSize=domainSize, radius=radius)
+    minAngles, maxAngles = ServiceVision.determineMinMaxAngleOfVision(orientations=orientations, degreesOfVision=degreesOfVision)
+    inFieldOfVision = ServiceVision.isInFieldOfVision(positions=positions, minAngles=minAngles, maxAngles=maxAngles)
+
+    return candidates & inFieldOfVision

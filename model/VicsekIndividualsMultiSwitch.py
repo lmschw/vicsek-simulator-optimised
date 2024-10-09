@@ -374,6 +374,7 @@ class VicsekWithNeighbourSelection:
         return positions, orientations, nsms, ks, speeds
     
     def handleEvents(self, t, positions, orientations, nsms, ks, speeds):
+        blocked = np.full(self.numberOfParticles, False)
         if self.events != None:
                 for event in self.events:
                     orientations, nsms, ks, speeds, blocked = event.check(self.numberOfParticles, t, positions, orientations, nsms, ks, speeds)
@@ -402,7 +403,8 @@ class VicsekWithNeighbourSelection:
             orientations, nsms, ks, speeds, blocked = self.handleEvents(t, positions, orientations, nsms, ks, speeds)
 
             # all neighbours (including self)
-            neighbours = ServiceVicsekHelper.getNeighbours(positions, self.domainSize, self.radius)
+            neighbours = ServiceVicsekHelper.getNeighboursWithLimitedVision(positions=positions, orientations=orientations, domainSize=self.domainSize,
+                                                                            radius=self.radius, degreesOfVision=self.degreesOfVision)
 
             if self.switchSummary != None:
                 localOrders = ServiceMetric.computeLocalOrders(orientations, neighbours)
@@ -426,6 +428,6 @@ class VicsekWithNeighbourSelection:
 
             if t % 500 == 0:
                 print(f"t={t}, order={ServiceMetric.computeGlobalOrder(orientations)}")
-                print(nsms)
+                print(neighbours)
             
         return (self.dt*np.arange(self.numIntervals), self.positionsHistory, self.orientationsHistory), np.array(self.switchTypeValuesHistory)

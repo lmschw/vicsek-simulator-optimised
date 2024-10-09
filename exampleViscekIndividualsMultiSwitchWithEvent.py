@@ -30,7 +30,7 @@ numberOfPreviousSteps = 100
 
 # TODO: check why N-F always returns to order -> only with high radius
 
-radius = 10
+radius = 100
 k = 1
 nsm = NeighbourSelectionMechanism.NEAREST
 
@@ -69,7 +69,7 @@ switchType = SwitchType.SPEED
 switchValues = (0.1, 1)
 """
 
-tmax = 100
+tmax = 5000
 
 threshold = [0.1]
 
@@ -96,6 +96,7 @@ simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
                                          neighbourSelectionMechanism=nsm,
                                          speed=speed,
                                          switchSummary=switchSummary,
+                                         degreesOfVision=np.pi,
                                          events=[])
 simulationData, switchTypeValues = simulator.simulate(initialState=initialState, tmax=tmax)
 #simulationData, switchTypeValues = simulator.simulate(tmax=tmax)
