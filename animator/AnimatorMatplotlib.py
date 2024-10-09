@@ -5,7 +5,7 @@ class MatplotlibAnimator:
     The animator instance driven by Matplotlib.
     """
     
-    def __init__(self, simulationData, domainSize, colours=None):
+    def __init__(self, simulationData, domainSize, colours=None, redIndices=[]):
         """
         Constructor.
 
@@ -16,6 +16,7 @@ class MatplotlibAnimator:
         self._simulationData = simulationData
         self._domainSize = domainSize
         self._colours = colours
+        self._redIndices = redIndices
 
         self._initialize()
 
@@ -31,7 +32,7 @@ class MatplotlibAnimator:
         """
         preparedAnimator =  animator.prepareAnimation(self._figure, frames, frameInterval)
 
-        return preparedAnimator.setSimulationData(self._simulationData, self._domainSize, self._colours)
+        return preparedAnimator.setSimulationData(self._simulationData, self._domainSize, self._colours, self._redIndices)
 
     def _initialize(self):
         """

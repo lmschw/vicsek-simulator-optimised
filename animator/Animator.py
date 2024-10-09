@@ -1,5 +1,6 @@
 from matplotlib.animation import FuncAnimation
 import matplotlib.pyplot as plt
+import numpy as np
 
 import DefaultValues as dv
 
@@ -26,7 +27,7 @@ class Animator(object):
 
         return self
 
-    def setSimulationData(self, simulationData, domainSize, colours=None):
+    def setSimulationData(self, simulationData, domainSize, colours=None, redIndices=[]):
         """
         Sets
         keyword arguments:
@@ -40,7 +41,10 @@ class Animator(object):
         self._domainSize = domainSize
 
         if colours is None:
-            self._colours = len(self._time) * [len(self._positions[0]) * ['k']]
+            a = np.array(len(self._positions[0]) * ['k'])
+            if len(redIndices) > 0:
+                a[redIndices] = 'r'
+            self._colours = len(self._time) * [a.tolist()]
         else:
             self._colours = colours
 
