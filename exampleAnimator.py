@@ -11,10 +11,10 @@ Loads a saved model and creates a video.
 
 datafileLocation = ""
 filename = "test"
-modelParams, simulationData, switchValues = ServiceSavedModel.loadModel(f"{datafileLocation}{filename}.json", loadSwitchValues=True)
+modelParams, simulationData = ServiceSavedModel.loadModel(f"{datafileLocation}{filename}.json", loadSwitchValues=False)
 
 # Initalise the animator
-animator = AnimatorMatplotlib.MatplotlibAnimator(simulationData, (22.36, 22.36, 100))
+animator = AnimatorMatplotlib.MatplotlibAnimator(simulationData, (25, 25, 100))
 
 # prepare the animator
 preparedAnimator = animator.prepare(Animator2D.Animator2D(modelParams), frames=modelParams["tmax"])
