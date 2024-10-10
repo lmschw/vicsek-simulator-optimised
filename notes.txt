@@ -2,3 +2,8 @@ TODO 07.10.:
 - add group-induced events
 - fix remaining vision-methods
 - add time delays
+
+
+TODO 10.10.:
+- further test WallBehaviour
+- fix up run config for neighbour_selection
