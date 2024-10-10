@@ -56,7 +56,7 @@ class BaseEvent:
             summary["switchSummary"] = None
         return summary
 
-    def check(self, totalNumberOfParticles, currentTimestep, positions, orientations, nsms, ks, speeds):
+    def check(self, totalNumberOfParticles, currentTimestep, positions, orientations, nsms, ks, speeds, dt=None):
         """
         Checks if the event is triggered at the current timestep and executes it if relevant.
 
@@ -77,7 +77,7 @@ class BaseEvent:
         if self.checkTimestep(currentTimestep):
             if currentTimestep == self.startTimestep or currentTimestep == (self.startTimestep + self.duration):
                 print(f"executing event at timestep {currentTimestep}")
-            orientations, alteredNsms, alteredKs, alteredSpeeds, blockedUpdate = self.executeEvent(totalNumberOfParticles, positions, orientations, nsms, ks, speeds)
+            orientations, alteredNsms, alteredKs, alteredSpeeds, blockedUpdate = self.executeEvent(totalNumberOfParticles=totalNumberOfParticles, positions=positions, orientations=orientations, nsms=nsms, ks=ks, speeds=speeds, dt=dt)
 
             if self.blockValues:
                 blocked = blockedUpdate
@@ -102,7 +102,7 @@ class BaseEvent:
     def applyNoiseDistribution(self, orientations):
         return orientations + np.random.normal(scale=self.noise, size=(len(orientations), len(self.domainSize)))
     
-    def executeEvent(self, totalNumberOfParticles, positions, orientations, nsms, ks, speeds):
+    def executeEvent(self, totalNumberOfParticles, positions, orientations, nsms, ks, speeds, dt):
         """
         Executes the event.
 

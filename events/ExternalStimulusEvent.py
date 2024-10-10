@@ -73,7 +73,7 @@ class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
         summary["eventSelectionType"] = self.eventSelectionType.value
         return summary
     
-    def executeEvent(self, totalNumberOfParticles, positions, orientations, nsms, ks, speeds):
+    def executeEvent(self, totalNumberOfParticles, positions, orientations, nsms, ks, speeds, dt=None):
         """
         Executes the event.
 

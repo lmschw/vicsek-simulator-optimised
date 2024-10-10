@@ -71,3 +71,6 @@ def computeAnglesForOrientations(orientations):
         A float representin the angle in radians.
     """
     return np.arctan2(orientations[:, 1], orientations[:, 0])
+
+def computeAnglesWithRespectToFocusPoint(positions, focusPoint):
+    return np.arctan2(positions[:, 1]-focusPoint[1], positions[:, 0]-focusPoint[0])

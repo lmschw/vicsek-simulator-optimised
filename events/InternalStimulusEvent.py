@@ -58,7 +58,7 @@ class InternalStimulusOrientationChangeEvent(BaseEvent):
         summary["numberOfAffectedParticles"] = self.numberOfAffectedParticles
         return summary
     
-    def executeEvent(self, totalNumberOfParticles, positions, orientations,nsms, ks, speeds):
+    def executeEvent(self, totalNumberOfParticles, positions, orientations,nsms, ks, speeds, dt=None):
         """
         Executes the event.
 

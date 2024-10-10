@@ -377,7 +377,7 @@ class VicsekWithNeighbourSelection:
         blocked = np.full(self.numberOfParticles, False)
         if self.events != None:
                 for event in self.events:
-                    orientations, nsms, ks, speeds, blocked = event.check(self.numberOfParticles, t, positions, orientations, nsms, ks, speeds)
+                    orientations, nsms, ks, speeds, blocked = event.check(self.numberOfParticles, t, positions, orientations, nsms, ks, speeds, self.dt)
         return orientations, nsms, ks, speeds, blocked
 
     def simulate(self, initialState=(None, None, None), dt=None, tmax=None):
