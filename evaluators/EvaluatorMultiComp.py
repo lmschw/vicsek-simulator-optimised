@@ -117,30 +117,30 @@ class EvaluatorMultiAvgComp(object):
             case Metrics.ORDER:
                 if ylim == None:
                     ylim = (0, 1.1)
-                self.__createStandardLineplot(data, labels, varianceData, xlim=xlim, ylim=ylim)
+                self.__createStandardLineplot(data, labels, xlim=xlim, ylim=ylim)
             case Metrics.CLUSTER_NUMBER:
-                self.__createStandardLineplot(data, labels, varianceData, xlim=xlim, ylim=ylim)
+                self.__createStandardLineplot(data, labels, xlim=xlim, ylim=ylim)
             case Metrics.CLUSTER_NUMBER_WITH_RADIUS:
-                self.__createStandardLineplot(data, labels, varianceData, xlim=xlim, ylim=ylim)
+                self.__createStandardLineplot(data, labels, xlim=xlim, ylim=ylim)
             case Metrics.CLUSTER_SIZE:
-                self.__createStandardLineplot(data, labels, varianceData, xlim=xlim, ylim=ylim)
+                self.__createStandardLineplot(data, labels, xlim=xlim, ylim=ylim)
             case Metrics.ORDER_VALUE_PERCENTAGE:
                 if ylim == None:
                     ylim = (0, 100.1)
-                self.__createStandardLineplot(data, labels, varianceData, xlim=xlim, ylim=ylim)
+                self.__createStandardLineplot(data, labels, xlim=xlim, ylim=ylim)
             case Metrics.DUAL_OVERLAY_ORDER_AND_PERCENTAGE:
                 if ylim == None:
                     ylim = (0, 1.1)
-                self.__createDualOrderPlot(data, labels=labels, varianceData=varianceData,
+                self.__createDualOrderPlot(data, labels=labels,
                                            xlim=xlim, ylim=ylim)
             case Metrics.AVERAGE_NUMBER_NEIGHBOURS:
-                self.__createStandardLineplot(data, labels, varianceData, xlim=xlim, ylim=ylim)
+                self.__createStandardLineplot(data, labels, xlim=xlim, ylim=ylim)
             case Metrics.MIN_AVG_MAX_NUMBER_NEIGHBOURS:
                 self.__createMinAvgMaxLinePlot(data, labels, xlim=xlim, ylim=ylim)
             case Metrics.AVG_DISTANCE_NEIGHBOURS:
-                self.__createStandardLineplot(data, labels, varianceData, xlim=xlim, ylim=ylim)
+                self.__createStandardLineplot(data, labels, xlim=xlim, ylim=ylim)
             case Metrics.AVG_CENTROID_DISTANCE:
-                self.__createStandardLineplot(data, labels, varianceData, xlim=xlim, ylim=ylim)
+                self.__createStandardLineplot(data, labels, xlim=xlim, ylim=ylim)
 
         ax = plt.gca()
         # reset axis to start at (0.0)
@@ -211,7 +211,7 @@ class EvaluatorMultiAvgComp(object):
         else:
             df.plot.line()
 
-    def __createDualOrderPlot(self, data, labels=None, varianceData=None, xlim=None, ylim=None):
+    def __createDualOrderPlot(self, data, labels=None, xlim=None, ylim=None):
         """
         Creates a line plot overlaying the percentage of particles choosing the order switch type value and the order value. 
 
@@ -236,7 +236,7 @@ class EvaluatorMultiAvgComp(object):
         else:
             df.plot.line()
 
-    def __createMinAvgMaxLinePlot(self, data, varianceData=None, xlim=None, ylim=None):
+    def __createMinAvgMaxLinePlot(self, data, xlim=None, ylim=None):
         """
         Creates a line plot overlaying minimum, average and maximum number of neighbours.
 
