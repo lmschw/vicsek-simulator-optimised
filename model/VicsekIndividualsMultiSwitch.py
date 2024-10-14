@@ -135,8 +135,7 @@ class VicsekWithNeighbourSelection:
     def __getPickedNeighbourIndices(self, sortedIndices, kMaxPresent, ks):
         if self.switchSummary != None and self.switchSummary.isActive(SwitchType.K):
             kSwitch = self.switchSummary.getBySwitchType(SwitchType.K)
-            kMin = np.min([kSwitch.orderSwitchValue, kSwitch.disorderSwitchValue])
-            kMax = np.max([kSwitch.orderSwitchValue, kSwitch.disorderSwitchValue])
+            kMin, kMax = self.switchSummary.getMinMaxValuesForKSwitchIfPresent()
             
             candidatesOrder = sortedIndices[:, :kSwitch.orderSwitchValue]
             if kSwitch.orderSwitchValue < kMax and kMax == kMaxPresent:
@@ -257,9 +256,7 @@ class VicsekWithNeighbourSelection:
         originalSortedIndices = np.take_along_axis(indices, sortedIndices, axis=1)
         candidateIndices = np.where((sortedIndices == -1), sortedIndices, originalSortedIndices)
         if self.switchSummary != None and self.switchSummary.isActive(SwitchType.K):
-            kSwitch = self.switchSummary.getBySwitchType(SwitchType.K)
-            kMin = np.min([kSwitch.orderSwitchValue, kSwitch.disorderSwitchValue])
-            kMax = np.max([kSwitch.orderSwitchValue, kSwitch.disorderSwitchValue])
+            kMin, kMax = self.switchSummary.getMinMaxValuesForKSwitchIfPresent()
             if len(candidateIndices[0]) < kMax:
                 candidateIndices = ServiceVicsekHelper.padArray(candidateIndices, self.numberOfParticles, kMin, kMax)
         elif kMaxPresent < self.k:

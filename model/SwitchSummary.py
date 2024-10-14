@@ -1,3 +1,5 @@
+import numpy as np
+
 from enums.EnumSwitchType import SwitchType
 
 class SwitchSummary(object):
@@ -17,6 +19,14 @@ class SwitchSummary(object):
         if self.isActive(switchType):
             return self.switches[switchType]
         return None
+    
+    def getMinMaxValuesForKSwitchIfPresent(self):
+        if self.isActive(SwitchType.K):
+            kSwitch = self.getBySwitchType(SwitchType.K)
+            kMin = np.min([kSwitch.orderSwitchValue, kSwitch.disorderSwitchValue])
+            kMax = np.max([kSwitch.orderSwitchValue, kSwitch.disorderSwitchValue]) 
+            return kMin, kMax
+        return None, None
     
     def __transformSwitches(self, switches):
         return {switch.switchType: switch for switch in switches}
