@@ -188,7 +188,7 @@ class EvaluatorMultiAvgComp(object):
             varianceData = None
         self.visualize(data, labels, xLabel=xLabel, yLabel=yLabel, subtitle=subtitle, colourBackgroundForTimesteps=colourBackgroundForTimesteps, varianceData=varianceData, xlim=xlim, ylim=ylim, savePath=savePath)
         
-    def __createStandardLineplot(self, data, labels, varianceData=None, xlim=None, ylim=None):
+    def __createStandardLineplot(self, data, labels, xlim=None, ylim=None):
         """
         Creates a bar plot for the number of clusters in the system for every model at every timestep
 
