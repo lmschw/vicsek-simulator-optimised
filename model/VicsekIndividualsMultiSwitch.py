@@ -132,7 +132,41 @@ class VicsekWithNeighbourSelection:
         summedOrientations = np.sum(neighbours[:,:,np.newaxis]*orientations[np.newaxis,:,:],axis=1)
         return ServiceOrientations.normalizeOrientations(summedOrientations)
     
-    def __getPickedNeighboursFromMaskedArray(self, posDiff, candidates, ks, isMin):
+    def __getPickedNeighbourIndices(self, sortedIndices, kMaxPresent, ks):
+        if self.switchSummary != None and self.switchSummary.isActive(SwitchType.K):
+            kSwitch = self.switchSummary.getBySwitchType(SwitchType.K)
+            kMin = np.min([kSwitch.orderSwitchValue, kSwitch.disorderSwitchValue])
+            kMax = np.max([kSwitch.orderSwitchValue, kSwitch.disorderSwitchValue])
+            
+            candidatesOrder = sortedIndices[:, :kSwitch.orderSwitchValue]
+            if kSwitch.orderSwitchValue < kMax and kMax == kMaxPresent:
+                candidatesOrder = ServiceVicsekHelper.padArray(candidatesOrder, self.numberOfParticles, kMin=kMin, kMax=kMax)
+
+            candidatesDisorder = sortedIndices[:, :kSwitch.disorderSwitchValue]
+            if kSwitch.disorderSwitchValue < kMax and kMax == kMaxPresent:
+                candidatesDisorder = ServiceVicsekHelper.padArray(candidatesDisorder, self.numberOfParticles, kMin=kMin, kMax=kMax)
+
+            candidates = np.where(((ks == kSwitch.orderSwitchValue)[:, None]), candidatesOrder, candidatesDisorder)
+        else:
+            candidates = sortedIndices[:, :self.k]
+        return candidates
+    
+    def __checkPickedForNeighbourhood(self, posDiff, candidates, kMaxPresent):
+        # exclude any individuals that are not neighbours
+        pickedDistances = np.take_along_axis(posDiff, candidates, axis=1)
+        minusOnes = np.full((self.numberOfParticles,kMaxPresent), -1)
+        picked = np.where(((candidates == -1) | (pickedDistances == 0) | (pickedDistances > self.radius**2)), minusOnes, candidates)
+        return picked
+    
+    def __createBooleanMaskFromPickedNeighbourIndices(self, picked):
+        # create the boolean mask
+        ns = np.full((self.numberOfParticles,self.numberOfParticles+1), False) # add extra dimension to catch indices that are not applicable
+        pickedValues = np.full((self.numberOfParticles, self.k), True)
+        np.put_along_axis(ns, picked, pickedValues, axis=1)
+        ns = ns[:, :-1] # remove extra dimension to catch indices that are not applicable
+        return ns
+    
+    def __getPickedNeighbours(self, posDiff, candidates, ks, isMin):
         """
         Determines which neighbours the individuals should considered based on a preexisting maskedArray, the neighbour selection mechanism and k.
 
@@ -152,34 +186,10 @@ class VicsekWithNeighbourSelection:
         if isMin == False:
             sortedIndices = np.flip(sortedIndices, axis=1)
         
-        if self.switchSummary != None and self.switchSummary.isActive(SwitchType.K):
-            kSwitch = self.switchSummary.getBySwitchType(SwitchType.K)
-            kMin = np.min([kSwitch.orderSwitchValue, kSwitch.disorderSwitchValue])
-            kMax = np.max([kSwitch.orderSwitchValue, kSwitch.disorderSwitchValue])
-            minusDiff = np.full((self.numberOfParticles,kMax-kMin), -1)
-            candidatesOrder = sortedIndices[:, :kSwitch.orderSwitchValue]
-            if kSwitch.orderSwitchValue < kMax and kMax == kMaxPresent:
-                candidatesOrder = np.concatenate((candidatesOrder, minusDiff), axis=1)
-
-            candidatesDisorder = sortedIndices[:, :kSwitch.disorderSwitchValue]
-            if kSwitch.disorderSwitchValue < kMax and kMax == kMaxPresent:
-                candidatesDisorder = np.concatenate((candidatesDisorder, minusDiff), axis=1)
-
-            candidates = np.where(((ks == kSwitch.orderSwitchValue)[:, None]), candidatesOrder, candidatesDisorder)
-        else:
-            candidates = sortedIndices[:, :self.k]
-
-        # exclude any individuals that are not neighbours
-        pickedDistances = np.take_along_axis(posDiff, candidates, axis=1)
-        minusOnes = np.full((self.numberOfParticles,kMaxPresent), -1)
-        picked = np.where(((candidates == -1) | (pickedDistances == 0) | (pickedDistances > self.radius**2)), minusOnes, candidates)
-
-        # create the boolean mask
-        ns = np.full((self.numberOfParticles,self.numberOfParticles+1), False) # add extra dimension to catch indices that are not applicable
-        pickedValues = np.full((self.numberOfParticles, self.k), True)
-        np.put_along_axis(ns, picked, pickedValues, axis=1)
-        ns = ns[:, :-1] # remove extra dimension to catch indices that are not applicable
-        return ns        
+        picked = self.__getPickedNeighbourIndices(sortedIndices=sortedIndices, kMaxPresent=kMaxPresent, ks=ks)
+        picked = self.__checkPickedForNeighbourhood(posDiff=posDiff, candidates=picked, kMaxPresent=kMaxPresent)
+        mask = self.__createBooleanMaskFromPickedNeighbourIndices(picked)
+        return mask        
             
     def pickPositionNeighbours(self, positions, neighbours, ks, isMin=True):
         """
@@ -204,7 +214,7 @@ class VicsekWithNeighbourSelection:
         candidates = np.where((neighbours), posDiff, fillVals)
 
         # select the best candidates
-        return self.__getPickedNeighboursFromMaskedArray(posDiff=posDiff, candidates=candidates, ks=ks, isMin=isMin)
+        return self.__getPickedNeighbours(posDiff=posDiff, candidates=candidates, ks=ks, isMin=isMin)
     
     def pickOrientationNeighbours(self, positions, orientations, neighbours, ks, isMin=True):
         """
@@ -232,8 +242,33 @@ class VicsekWithNeighbourSelection:
         candidates = np.where((neighbours), orientDiff, fillVals)
 
         # select the best candidates
-        return self.__getPickedNeighboursFromMaskedArray(posDiff=posDiff, candidates=candidates, ks=ks, isMin=isMin)
+        return self.__getPickedNeighbours(posDiff=posDiff, candidates=candidates, ks=ks, isMin=isMin)
     
+    def pickRandomNeighbours(self, positions, neighbours, ks):
+        np.fill_diagonal(neighbours, False)
+        posDiff = ServiceVicsekHelper.getPositionDifferences(positions, self.domainSize)
+        kMaxPresent = np.max(ks)
+        
+        indices = ServiceVicsekHelper.getIndicesForTrueValues(neighbours)
+        rng = np.random.default_rng()
+        rng.shuffle(indices, axis=1)
+        indicesOrdered = [np.arange(len(indices[0]))] * len(indices)
+        sortedIndices = np.flip(np.sort(np.where((indices == -1), indices, indicesOrdered)))
+        originalSortedIndices = np.take_along_axis(indices, sortedIndices, axis=1)
+        candidateIndices = np.where((sortedIndices == -1), sortedIndices, originalSortedIndices)
+        if self.switchSummary != None and self.switchSummary.isActive(SwitchType.K):
+            kSwitch = self.switchSummary.getBySwitchType(SwitchType.K)
+            kMin = np.min([kSwitch.orderSwitchValue, kSwitch.disorderSwitchValue])
+            kMax = np.max([kSwitch.orderSwitchValue, kSwitch.disorderSwitchValue])
+            if len(candidateIndices[0]) < kMax:
+                candidateIndices = ServiceVicsekHelper.padArray(candidateIndices, self.numberOfParticles, kMin, kMax)
+        elif kMaxPresent < self.k:
+            candidateIndices = ServiceVicsekHelper.padArray(candidateIndices, self.numberOfParticles, kMaxPresent, self.k)
+        picked = self.__getPickedNeighbourIndices(sortedIndices=candidateIndices, kMaxPresent=kMaxPresent, ks=ks)
+        picked = self.__checkPickedForNeighbourhood(posDiff=posDiff, candidates=picked, kMaxPresent=kMaxPresent)
+        selection = self.__createBooleanMaskFromPickedNeighbourIndices(picked)
+        np.fill_diagonal(selection, True)
+        return selection
 
     def getPickedNeighboursForNeighbourSelectionMechanism(self, neighbourSelectionMechanism, positions, orientations, neighbours, ks):
         match neighbourSelectionMechanism:
@@ -245,6 +280,8 @@ class VicsekWithNeighbourSelection:
                 pickedNeighbours = self.pickOrientationNeighbours(positions, orientations, neighbours, ks, isMin=True)
             case NeighbourSelectionMechanism.HIGHEST_ORIENTATION_DIFFERENCE:
                 pickedNeighbours = self.pickOrientationNeighbours(positions, orientations, neighbours, ks, isMin=False)
+            case NeighbourSelectionMechanism.RANDOM:
+                pickedNeighbours = self.pickRandomNeighbours(positions, neighbours, ks)
             case NeighbourSelectionMechanism.ALL:
                 pickedNeighbours = neighbours
         return pickedNeighbours

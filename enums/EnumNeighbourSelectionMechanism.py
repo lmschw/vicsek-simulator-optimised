@@ -8,4 +8,5 @@ class NeighbourSelectionMechanism(str, Enum):
     FARTHEST = "F",
     LEAST_ORIENTATION_DIFFERENCE = "LOD",
     HIGHEST_ORIENTATION_DIFFERENCE = "HOD",
-    ALL = "A"
+    ALL = "A",
+    RANDOM = "R"
