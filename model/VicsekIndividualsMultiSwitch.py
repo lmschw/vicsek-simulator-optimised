@@ -151,6 +151,8 @@ class VicsekWithNeighbourSelection:
         return candidates
     
     def __checkPickedForNeighbourhood(self, posDiff, candidates, kMaxPresent):
+        if len(candidates) == 0 or len(candidates[0]) == 0:
+            return candidates
         # exclude any individuals that are not neighbours
         pickedDistances = np.take_along_axis(posDiff, candidates, axis=1)
         minusOnes = np.full((self.numberOfParticles,kMaxPresent), -1)
@@ -158,6 +160,8 @@ class VicsekWithNeighbourSelection:
         return picked
     
     def __createBooleanMaskFromPickedNeighbourIndices(self, picked):
+        if len(picked) == 0 or len(picked[0]) == 0:
+            return np.full((self.numberOfParticles, self.numberOfParticles), False)
         # create the boolean mask
         ns = np.full((self.numberOfParticles,self.numberOfParticles+1), False) # add extra dimension to catch indices that are not applicable
         pickedValues = np.full((self.numberOfParticles, self.k), True)
@@ -248,7 +252,7 @@ class VicsekWithNeighbourSelection:
         posDiff = ServiceVicsekHelper.getPositionDifferences(positions, self.domainSize)
         kMaxPresent = np.max(ks)
         
-        indices = ServiceVicsekHelper.getIndicesForTrueValues(neighbours)
+        indices = ServiceVicsekHelper.getIndicesForTrueValuesWithPadding(neighbours, self.numberOfParticles, np.min(ks), kMaxPresent)
         rng = np.random.default_rng()
         rng.shuffle(indices, axis=1)
         indicesOrdered = [np.arange(len(indices[0]))] * len(indices)
@@ -381,7 +385,7 @@ class VicsekWithNeighbourSelection:
 
         nsms, ks, speeds = self.initialiseSwitchingValues()
 
-        print(f"t=pre, order={ServiceMetric.computeGlobalOrder(orientations)}")
+        #print(f"t=pre, order={ServiceMetric.computeGlobalOrder(orientations)}")
 
         if dt is None and tmax is not None:
             dt = 1
@@ -431,7 +435,7 @@ class VicsekWithNeighbourSelection:
        
         positions, orientations, nsms, ks, speeds = self.prepareSimulation(initialState=initialState, dt=dt, tmax=tmax)
         for t in range(self.numIntervals):
-            if t % 1000 == 0:
+            if t % 5000 == 0:
                 print(f"t={t}/{self.tmax}")
 
             orientations, nsms, ks, speeds, blocked = self.handleEvents(t, positions, orientations, nsms, ks, speeds)
@@ -460,7 +464,7 @@ class VicsekWithNeighbourSelection:
             self.orientationsHistory[t,:,:]=orientations
             self.appendSwitchValues(nsms, ks, speeds)
 
-            if t % 500 == 0:
-                print(f"t={t}, order={ServiceMetric.computeGlobalOrder(orientations)}")
+            # if t % 500 == 0:
+            #     print(f"t={t}, order={ServiceMetric.computeGlobalOrder(orientations)}")
             
         return (self.dt*np.arange(self.numIntervals), self.positionsHistory, self.orientationsHistory), np.array(self.switchTypeValuesHistory)

@@ -75,3 +75,9 @@ def getIndicesForTrueValues(a):
             result.append(np.pad(pr, ((0, maxLength-pr.shape[0])), 'constant', constant_values=-1))
     
     return np.array(result)
+
+def getIndicesForTrueValuesWithPadding(a, n, kMin, kMax):
+    withoutPadding = getIndicesForTrueValues(a)
+    if len(withoutPadding) == 0 or len(withoutPadding[0]) == 0:
+        return np.full((len(a), kMax), -1)
+    return padArray(withoutPadding, n, np.max(np.min(withoutPadding), 0), kMax)
