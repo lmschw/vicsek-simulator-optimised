@@ -190,25 +190,19 @@ def createOrderedInitialDistributionEquidistancedForLowNumbers(domainSize, numbe
 
 
 def createInitialStateInCircle(domainSize, center, radius, numberOfParticles, isOrdered, startSwitchTypeValue=None):
-    positions = []
-    for pos in range(numberOfParticles):
-        """
-        a = random.randint(center[0], center[1]) * 2 * math.pi
-        r = 1 * math.sqrt(random.randint(center[0],center[1]))
-        x = r * math.cos(a) + center[0]
-        y = r * math.sin(a) + center[1]
-        """
-        r_squared, theta = [random.randint(0,radius**2), 2*math.pi*random.random()]
-        x = center[0] + math.sqrt(r_squared)*math.cos(theta) 
-        y = center[1] + math.sqrt(r_squared)*math.sin(theta)
-        positions.append(np.array([x,y]))
-    positions = np.array(positions)
+    t = np.random.uniform(0, 1, size=numberOfParticles)
+    u = np.random.uniform(0, 1, size=numberOfParticles)
+
+    x = center[0] + (radius*np.sqrt(t) * np.cos(2*np.pi*u))
+    y = center[1] + (radius*np.sqrt(t) * np.sin(2*np.pi*u))
+
+    positions = np.column_stack((x, y))
+
     if isOrdered:
         baseOrientation = np.random.rand(1, len(domainSize))-0.5
         orientations = numberOfParticles * baseOrientation
     else:
         orientations = np.random.rand(numberOfParticles, len(domainSize))-0.5
     orientations = ServiceOrientations.normalizeOrientations(orientations)
-    switchTypeValues = numberOfParticles * [startSwitchTypeValue]
 
-    return positions, orientations, switchTypeValues
+    return positions, orientations
