@@ -319,7 +319,7 @@ for density in densities:
                             else:
                                 simulationData, switchTypeValues = simulator.simulate(tmax=tmax)
 
-                            savePath = f"{baseDataLocation}local_nsmsw_1ev_{startingCondition}_st={startValue.value}_d={density}_n={n}_r={radius}_nsmCombo={nsmCombo[0].value}-{nsmCombo[1]}_k={k}_{i}.json"
+                            savePath = f"{baseDataLocation}local_nsmsw_1ev_{startingCondition}_st={startValue.value}_d={density}_n={n}_r={radius}_nsmCombo={nsmCombo[0].value}-{nsmCombo[1]}_k={k}_ee={eventEffect.val}_{i}.json"
                             ServiceSavedModel.saveModel(simulationData=simulationData, path=savePath, 
                                                         modelParams=simulator.getParameterSummary())
                             iEnd = time.time()
