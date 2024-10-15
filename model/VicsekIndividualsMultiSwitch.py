@@ -156,7 +156,7 @@ class VicsekWithNeighbourSelection:
         # exclude any individuals that are not neighbours
         pickedDistances = np.take_along_axis(posDiff, candidates, axis=1)
         minusOnes = np.full((self.numberOfParticles,kMaxPresent), -1)
-        picked = np.where(((candidates == -1) | (pickedDistances == 0) | (pickedDistances > self.radius**2)), minusOnes, candidates)
+        picked = np.where(((candidates == -1) | (pickedDistances > self.radius**2)), minusOnes, candidates)
         return picked
     
     def __createBooleanMaskFromPickedNeighbourIndices(self, picked):

@@ -46,7 +46,9 @@ def getNeighboursWithLimitedVision(positions, orientations, domainSize, radius, 
     minAngles, maxAngles = ServiceVision.determineMinMaxAngleOfVision(orientations=orientations, degreesOfVision=degreesOfVision)
     inFieldOfVision = ServiceVision.isInFieldOfVision(positions=positions, minAngles=minAngles, maxAngles=maxAngles)
 
-    return candidates & inFieldOfVision
+    combined = candidates & inFieldOfVision
+    np.fill_diagonal(combined, True)
+    return combined
 
 def padArray(a, n, kMin, kMax):
     if kMax > len(a[0]):
