@@ -7,3 +7,13 @@ TODO 07.10.:
 TODO 10.10.:
 - further test WallBehaviour
 - fix up run config for neighbour_selection
+
+TODO 15.10.:
+- try to optimise the decision rules (threshold, prevsteps, selection rules) fitting the expected behaviour to an event
+- try LinReg/NN to fit real world data and compare to our simulation data
+- create plots for the appendix (k variation, noise variation, min event duration, turn success etc.479532)
+- create plots for comparisons (d vs. r, number of visible neighbours vs. order etc.)
+- burst-and-coast behaviour
+- create plots for fov, burst-and-coast, walls, speed variation, group-induced events
+- add obstacles
+- adjust active-elastic model
