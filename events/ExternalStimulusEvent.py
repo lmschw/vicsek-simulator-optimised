@@ -70,7 +70,8 @@ class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
         summary["areas"] = self.areas
         summary["radius"] = self.radius
         summary["numberOfAffected"] = self.numberOfAffected
-        summary["eventSelectionType"] = self.eventSelectionType.value
+        if self.eventSelectionType:
+            summary["eventSelectionType"] = self.eventSelectionType.value
         return summary
     
     def executeEvent(self, totalNumberOfParticles, positions, orientations, nsms, ks, speeds, dt=None):
@@ -112,6 +113,7 @@ class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
     
 
     def selectAffected(self, candidates, rij2):
+        preselection = candidates # default case, we take all the candidates
         match self.eventSelectionType:
             case EventSelectionType.NEAREST_DISTANCE:
                 indices = np.argsort(rij2)[:self.numberOfAffected]
