@@ -34,8 +34,8 @@ eventStartTimestep = 5000
 eventDuration = 1000
 distributionType = DistributionType.LOCAL_SINGLE_SITE
 
-densities = [0.01, 0.05, 0.09]
-radii = [5, 10, 20]
+densities = [0.05]
+radii = [20]
 ks = [1, 5]
 eventEffects = [EventEffect.ALIGN_TO_FIXED_ANGLE,
                 EventEffect.AWAY_FROM_ORIGIN,
