@@ -17,3 +17,9 @@ TODO 15.10.:
 - create plots for fov, burst-and-coast, walls, speed variation, group-induced events
 - add obstacles
 - adjust active-elastic model
+
+TODO 22.10.:
+- try to optimise the thresholds/number of previous steps via random search. always run weights multiple times
+    - try maximising speed by looking at all timesteps after the event
+    - try looking at the last x timesteps for the success
+- add weights to the local order of each previous step (same weights for all individuals) and then apply evolutionary algorithms to find the best weights
