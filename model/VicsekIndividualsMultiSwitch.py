@@ -370,16 +370,10 @@ class VicsekWithNeighbourSelection:
         switchDifferenceThresholdUpper = switchInfo.upperThreshold
 
         prev = np.average(previousLocalOrders[max(t-switchInfo.numberPreviousStepsForThreshold, 0):t+1], axis=0)
-        switchTypeValuesDf = pd.DataFrame(switchTypeValues, columns=["val"])
-        switchTypeValuesDf["localOrder"] = localOrders
-        switchTypeValuesDf["previousLocalOrder"] = prev
-        switchTypeValuesDf["val"] = switchTypeValuesDf["val"].case_when([(((switchTypeValuesDf["localOrder"] >= switchDifferenceThresholdUpper) & (switchTypeValuesDf["previousLocalOrder"] <= switchDifferenceThresholdUpper) & (blocked != True)), self.orderPlaceholder),
-                            (((switchTypeValuesDf["localOrder"] <= switchDifferenceThresholdLower) & (switchTypeValuesDf["previousLocalOrder"] >= switchDifferenceThresholdLower) & (blocked != True)), self.disorderPlaceholder),
-        ])
-        switchTypeValuesDf["val"] = switchTypeValuesDf["val"].replace(self.orderPlaceholder, switchInfo.orderSwitchValue)
-        switchTypeValuesDf["val"] = switchTypeValuesDf["val"].replace(self.disorderPlaceholder, switchInfo.disorderSwitchValue)
 
-        return np.array(switchTypeValuesDf["val"])
+        oldWithNewOrderValues = np.where(((localOrders >= switchDifferenceThresholdUpper) & (prev <= switchDifferenceThresholdUpper) & (blocked != True)), np.full(len(switchTypeValues), switchInfo.orderSwitchValue), switchTypeValues)
+        updatedSwitchValues = np.where(((localOrders <= switchDifferenceThresholdLower) & (prev >= switchDifferenceThresholdLower) & (blocked != True)), np.full(len(switchTypeValues), switchInfo.disorderSwitchValue), oldWithNewOrderValues)
+        return updatedSwitchValues
     
     def appendSwitchValues(self, nsms, ks, speeds, activationTimeDelays):
         if self.switchSummary == None:
