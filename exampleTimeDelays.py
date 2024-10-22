@@ -73,7 +73,7 @@ switchValues = (0.1, 1)
 #timeDelays = [1, 2, 3, 1, 2, 3, 1, 2, 3, 2]
 timeDelays = np.ones(n)
 
-tmax = 300
+tmax = 5000
 
 threshold = [0.1]
 
