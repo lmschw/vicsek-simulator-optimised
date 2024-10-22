@@ -8,7 +8,7 @@ class Evaluator(object):
     """
     Implementation of the evaluation mechanism for the Vicsek model for a single model.
     """
-    def __init__(self, modelParams, metric, simulationData=None, evaluationTimestepInterval=1, threshold=0.01, switchTypeValues=np.array([None]), switchTypeOptions=(None, None)):
+    def __init__(self, modelParams, metric, simulationData=None, evaluationTimestepInterval=1, threshold=0.01, switchTypeValues=np.array([None]), switchType=None, switchTypeOptions=(None, None)):
         """
         Initialises the evaluator.
 
@@ -31,6 +31,7 @@ class Evaluator(object):
         self.evaluationTimestepInterval = evaluationTimestepInterval
         self.threshold = threshold
         self.switchTypeValues = switchTypeValues
+        self.switchType = switchType
         self.switchTypeOptions = switchTypeOptions
         self.domainSize = np.array(modelParams["domainSize"])
 
@@ -43,7 +44,9 @@ class Evaluator(object):
             self.radius = modelParams["radius"]
         else:
             self.radius = None
-            
+
+        if self.switchType == None and self.metric in [Metrics.DUAL_OVERLAY_ORDER_AND_PERCENTAGE, Metrics.ORDER_VALUE_PERCENTAGE]:
+            raise Exception("To see the order value percentage, please provide a SwitchType.")   
 
     def evaluate(self, startTimestep=0, endTimestep=None, saveTimestepsResultsPath=None):
         """
@@ -65,7 +68,8 @@ class Evaluator(object):
                 if any(ele is None for ele in self.switchTypeValues):
                     valuesPerTimeStep[self.time[i]] = ServiceMetric.evaluateSingleTimestep(positions=self.positions[i], orientations=self.orientations[i], metric=self.metric, domainSize=self.domainSize, radius=self.radius, threshold=self.threshold)
                 else:
-                    valuesPerTimeStep[self.time[i]] = ServiceMetric.evaluateSingleTimestep(positions=self.positions[i], orientations=self.orientations[i], metric=self.metric, domainSize=self.domainSize, radius=self.radius, threshold=self.threshold, switchTypeValues=self.switchTypeValues[i], switchTypeOptions=self.switchTypeOptions)
+                    switchVals = {k: v[i] for k,v in self.switchTypeValues.items()}
+                    valuesPerTimeStep[self.time[i]] = ServiceMetric.evaluateSingleTimestep(positions=self.positions[i], orientations=self.orientations[i], metric=self.metric, domainSize=self.domainSize, radius=self.radius, threshold=self.threshold, switchTypeValues=switchVals, switchType=self.switchType, switchTypeOptions=self.switchTypeOptions)
 
         #print("Evaluation completed.")
         if saveTimestepsResultsPath != None:

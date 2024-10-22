@@ -9,6 +9,7 @@ import evaluators.EvaluatorMultiComp as EvaluatorMultiComp
 
 from enums.EnumMetrics import Metrics
 from enums.EnumNeighbourSelectionMechanism import NeighbourSelectionMechanism
+from enums.EnumSwitchType import SwitchType
 
 import numpy as np
 import time
@@ -55,20 +56,24 @@ for t in [0, 1000, 2000, 3000]:
     print(ServiceMetric.findClustersWithRadius(positions[t], orientations[t], domainSize, radius, threshold=0.01))
 """
 
-metric = Metrics.ORDER
-labels = [""]
+metric = Metrics.DUAL_OVERLAY_ORDER_AND_PERCENTAGE
+
+if metric == Metrics.DUAL_OVERLAY_ORDER_AND_PERCENTAGE:
+    labels = ["order", "order value percentage"]
+else:
+    labels = [""]
 xAxisLabel = "timesteps"
 yAxisLabel = metric.label
 startEval = time.time()
 modelParams = []
 simulationData = []
 switchTypeValues = []
-modelParamsDensity, simulationDataDensity = ServiceSavedModel.loadModels(["test.json"], loadSwitchValues=False)
+modelParamsDensity, simulationDataDensity, switchTypeValuesDensity = ServiceSavedModel.loadModels(["test.json"], loadSwitchValues=True)
 modelParams.append(modelParamsDensity)
 simulationData.append(simulationDataDensity)
-#switchTypeValues.append(siwtchTypeValuesDensity)
+switchTypeValues.append(switchTypeValuesDensity)
 threshold = 0.01
-evaluator = EvaluatorMultiComp.EvaluatorMultiAvgComp(modelParams, metric, simulationData, evaluationTimestepInterval=1, threshold=threshold, switchTypeValues=switchTypeValues, switchTypeOptions=(NeighbourSelectionMechanism.FARTHEST, NeighbourSelectionMechanism.NEAREST))
+evaluator = EvaluatorMultiComp.EvaluatorMultiAvgComp(modelParams, metric, simulationData, evaluationTimestepInterval=1, threshold=threshold, switchTypeValues=switchTypeValues, switchType=SwitchType.ACTIVATION_TIME_DELAY, switchTypeOptions=(1, 5))
 savePath = f"{metric.val}_test_new_implementation.jpeg"
 evaluator.evaluateAndVisualize(labels=labels, xLabel=xAxisLabel, yLabel=yAxisLabel, savePath=savePath)    
 endEval = time.time()

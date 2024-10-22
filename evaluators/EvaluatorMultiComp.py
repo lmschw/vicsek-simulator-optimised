@@ -23,7 +23,7 @@ class EvaluatorMultiAvgComp(object):
     
 
     def __init__(self, modelParams, metric, simulationData=None, evaluationTimestepInterval=1, threshold=0.01, switchTypeValues=None, 
-                 switchTypeOptions=None):
+                 switchType=None, switchTypeOptions=None):
         """
         Initialises the evaluator.
 
@@ -45,6 +45,7 @@ class EvaluatorMultiAvgComp(object):
         self.evaluationTimestepInterval = evaluationTimestepInterval
         self.threshold = threshold
         self.switchTypeValues = switchTypeValues
+        self.switchType = switchType
         self.switchTypeOptions = switchTypeOptions
 
     def evaluate(self):
@@ -65,7 +66,7 @@ class EvaluatorMultiAvgComp(object):
                 if self.switchTypeValues == None or self.switchTypeValues == []:
                     evaluator = Evaluator.Evaluator(self.modelParams[model][individualRun], self.metric, self.simulationData[model][individualRun], self.evaluationTimestepInterval, self.threshold)
                 else:    
-                    evaluator = Evaluator.Evaluator(self.modelParams[model][individualRun], self.metric, self.simulationData[model][individualRun], self.evaluationTimestepInterval, self.threshold, self.switchTypeValues[model][individualRun], self.switchTypeOptions)
+                    evaluator = Evaluator.Evaluator(self.modelParams[model][individualRun], self.metric, self.simulationData[model][individualRun], self.evaluationTimestepInterval, self.threshold, self.switchTypeValues[model][individualRun], self.switchType, self.switchTypeOptions)
                 result = evaluator.evaluate()
                 results.append(result)
             

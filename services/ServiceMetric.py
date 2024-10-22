@@ -12,7 +12,7 @@ import services.ServiceVicsekHelper as ServiceVicsekHelper
 Service containing static methods to handle metrics.
 """
 
-def evaluateSingleTimestep(positions, orientations, metric, domainSize=None, radius=None, threshold=0.99, switchTypeValues=None, switchTypeOptions=None):
+def evaluateSingleTimestep(positions, orientations, metric, domainSize=None, radius=None, threshold=0.99, switchTypeValues=None, switchType=None, switchTypeOptions=None):
      """
         Evaluates the simulation data for a single timestep according to the selected metric.
 
@@ -43,11 +43,11 @@ def evaluateSingleTimestep(positions, orientations, metric, domainSize=None, rad
             clusterSizes = computeClusterSizes(clusters)
             return clusterSizes
         case Metrics.ORDER_VALUE_PERCENTAGE:
-            orderCount, _ = getNumbersPerSwitchTypeValue(switchTypeValues, switchTypeOptions)
+            orderCount, _ = getNumbersPerSwitchTypeValue(switchTypeValues, switchType, switchTypeOptions)
             return orderCount
         case Metrics.DUAL_OVERLAY_ORDER_AND_PERCENTAGE: # not a single metric but rather overlaying two metrics in the same graph
             order = computeGlobalOrder(orientations)
-            orderCount, _ = getNumbersPerSwitchTypeValue(switchTypeValues, switchTypeOptions)
+            orderCount, _ = getNumbersPerSwitchTypeValue(switchTypeValues, switchType, switchTypeOptions)
             return order, orderCount/100 # normalise to fit with order
         case Metrics.AVERAGE_NUMBER_NEIGHBOURS:
             _, avg, _ =  getMinAvgMaxNumberOfNeighbours(positions, domainSize, radius)
@@ -190,7 +190,7 @@ def computeClusterSizes(clusters):
     unique, counts = np.unique(clusters, return_counts=True)
     return dict(zip(unique, counts))
 
-def getNumbersPerSwitchTypeValue(switchTypeValues, switchTypeOptions):
+def getNumbersPerSwitchTypeValue(switchTypeValues, switchType, switchTypeOptions):
     """
     Counts the occurrences for all switch type values.
 
@@ -200,7 +200,7 @@ def getNumbersPerSwitchTypeValue(switchTypeValues, switchTypeOptions):
     Returns:
         Two integer representing the counts of the orderValue and disorderValue respectively
     """
-    unique, counts = np.unique(switchTypeValues, return_counts=True)
+    unique, counts = np.unique(switchTypeValues[switchType.switchTypeValueKey], return_counts=True)
     d = dict(zip(unique, counts))
     n = sum(list(d.values()))
     if d.get(switchTypeOptions[0]) != None:
