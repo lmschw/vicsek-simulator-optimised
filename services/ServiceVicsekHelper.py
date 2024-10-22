@@ -83,3 +83,7 @@ def getIndicesForTrueValuesWithPadding(a, n, kMin, kMax):
     if len(withoutPadding) == 0 or len(withoutPadding[0]) == 0:
         return np.full((len(a), kMax), -1)
     return padArray(withoutPadding, n, np.max(np.min(withoutPadding), 0), kMax)
+
+def revertTimeDelayedChanges(t, oldValues, newValues, activationTimeDelays):
+    vals = np.where((np.array([t % activationTimeDelays == 0, t % activationTimeDelays == 0]).T), newValues, oldValues)
+    return vals

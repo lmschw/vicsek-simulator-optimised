@@ -2,6 +2,7 @@
 import numpy as np
 
 import services.ServicePreparation as ServicePreparation
+import services.ServiceVicsekHelper as ServiceVicsekHelper
 
 class BaseEvent:
     # TODO refactor to allow areas with a radius bigger than the radius of a particle, i.e. remove neighbourCells and determine all affected cells here
@@ -56,7 +57,7 @@ class BaseEvent:
             summary["switchSummary"] = None
         return summary
 
-    def check(self, totalNumberOfParticles, currentTimestep, positions, orientations, nsms, ks, speeds, dt=None):
+    def check(self, totalNumberOfParticles, currentTimestep, positions, orientations, nsms, ks, speeds, dt=None, activationTimeDelays=None, isActivationTimeDelayRelevantForEvent=False):
         """
         Checks if the event is triggered at the current timestep and executes it if relevant.
 
@@ -77,14 +78,18 @@ class BaseEvent:
         if self.checkTimestep(currentTimestep):
             if currentTimestep == self.startTimestep or currentTimestep == (self.startTimestep + self.duration):
                 print(f"executing event at timestep {currentTimestep}")
-            orientations, alteredNsms, alteredKs, alteredSpeeds, blockedUpdate = self.executeEvent(totalNumberOfParticles=totalNumberOfParticles, positions=positions, orientations=orientations, nsms=nsms, ks=ks, speeds=speeds, dt=dt)
+            alteredOrientations, alteredNsms, alteredKs, alteredSpeeds, blockedUpdate = self.executeEvent(totalNumberOfParticles=totalNumberOfParticles, positions=positions, orientations=orientations, nsms=nsms, ks=ks, speeds=speeds, dt=dt)
 
-            if self.blockValues:
-                blocked = blockedUpdate
-            if self.alterValues:
-                nsms = alteredNsms
-                ks = alteredKs
-                speeds = alteredSpeeds
+            if isActivationTimeDelayRelevantForEvent:
+                orientations = ServiceVicsekHelper.revertTimeDelayedChanges(currentTimestep, orientations, alteredOrientations, activationTimeDelays)
+            else:
+                orientations = alteredOrientations
+                if self.blockValues:
+                    blocked = blockedUpdate
+                if self.alterValues:
+                    nsms = alteredNsms
+                    ks = alteredKs
+                    speeds = alteredSpeeds
         return orientations, nsms, ks, speeds, blocked
 
     def checkTimestep(self, currentTimestep):

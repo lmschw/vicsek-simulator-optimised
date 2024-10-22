@@ -6,7 +6,7 @@ import numpy as np
 Service contains static methods to save and load models to/from json files.
 """
 
-def saveModel(simulationData, path="sample.json", modelParams=None, saveInterval=1, switchValues=np.array([None])):
+def saveModel(simulationData, path="sample.json", modelParams=None, saveInterval=1, switchValues={'nsms': [], 'ks': [], 'speeds': [], 'activationTimeDelays': []}):
     """
     Saves a model trained by the Viscek simulator implementation.
 
@@ -24,8 +24,9 @@ def saveModel(simulationData, path="sample.json", modelParams=None, saveInterval
     dict = {"time": __getSpecifiedIntervals(saveInterval, time.tolist()), 
             "positions": __getSpecifiedIntervals(saveInterval, positions.tolist()), 
             "orientations": __getSpecifiedIntervals(saveInterval, orientations.tolist())}
-    if None in switchValues:
-        dict["switchValues"] = __getSpecifiedIntervals(saveInterval, switchValues.tolist())
+    for key in switchValues.keys():
+        vals = {key :__getSpecifiedIntervals(saveInterval, switchValues[key])}
+        dict["switchValues"] = {k : np.array(v).tolist() for k,v in vals.items()} # deal with np.array instances in the values
     __saveDict(path, dict, modelParams)
 
 def loadModel(path, loadSwitchValues=False):
@@ -46,7 +47,7 @@ def loadModel(path, loadSwitchValues=False):
     positions = np.array(loadedJson["positions"])
     orientations = np.array(loadedJson["orientations"])
     if loadSwitchValues == True:
-        switchValues = np.array(loadedJson["switchValues"])
+        switchValues = loadedJson["switchValues"]
         return modelParams, (time, positions, orientations), switchValues
     return modelParams, (time, positions, orientations)
 

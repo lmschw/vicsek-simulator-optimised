@@ -16,7 +16,8 @@ import DefaultValues as dv
 class VicsekWithNeighbourSelection:
 
     def __init__(self, domainSize, radius, noise, numberOfParticles, k, neighbourSelectionMechanism,
-                 speed=dv.DEFAULT_SPEED, switchSummary=None, events=None, degreesOfVision=dv.DEFAULT_DEGREES_OF_VISION):
+                 speed=dv.DEFAULT_SPEED, switchSummary=None, events=None, degreesOfVision=dv.DEFAULT_DEGREES_OF_VISION, 
+                 activationTimeDelays=[], isActivationTimeDelayRelevantForEvents=False):
         self.domainSize = np.asarray(domainSize)
         self.radius = radius
         self.noise = noise
@@ -34,6 +35,8 @@ class VicsekWithNeighbourSelection:
 
         self.events = events
         self.degreesOfVision = degreesOfVision
+        self.activationTimeDelays = np.array(activationTimeDelays)
+        self.isActivationTimeDelayRelevantForEvents = isActivationTimeDelayRelevantForEvents
 
     def getParameterSummary(self, asString=False):
         """
@@ -53,7 +56,9 @@ class VicsekWithNeighbourSelection:
                     "domainSize": self.domainSize.tolist(),
                     "tmax": self.tmax,
                     "dt": self.dt,
-                    "degreesOfVision": self.degreesOfVision
+                    "degreesOfVision": self.degreesOfVision,
+                    "activationTimeDelays": self.activationTimeDelays.tolist(),
+                    "isActivationTimeDelayRelevantForEvents": self.isActivationTimeDelayRelevantForEvents
                     }
         if self.switchSummary != None:
             summary["switchSummary"] = self.switchSummary.getParameterSummary()
@@ -94,6 +99,8 @@ class VicsekWithNeighbourSelection:
         ks = np.array(self.numberOfParticles * [self.k])
         speeds = np.full(self.numberOfParticles, self.speed)
 
+        activationTimeDelays = np.ones(self.numberOfParticles)
+
         if self.switchSummary != None:
             info = self.switchSummary.getBySwitchType(SwitchType.NEIGHBOUR_SELECTION_MECHANISM)
             if info != None and info.initialValues != None:
@@ -104,7 +111,14 @@ class VicsekWithNeighbourSelection:
             info = self.switchSummary.getBySwitchType(SwitchType.SPEED)
             if info != None and info.initialValues != None:
                 speeds = info.initialValues
-        return nsms, ks, speeds
+            info = self.switchSummary.getBySwitchType(SwitchType.ACTIVATION_TIME_DELAY)
+            if info != None and info.initialValues != None:
+                activationTimeDelays = info.initialValues
+
+        if len(self.activationTimeDelays) > 0:
+            activationTimeDelays = self.activationTimeDelays
+
+        return nsms, ks, speeds, activationTimeDelays
 
     def generateNoise(self):
         """
@@ -287,7 +301,7 @@ class VicsekWithNeighbourSelection:
                 pickedNeighbours = neighbours
         return pickedNeighbours
 
-    def computeNewOrientations(self, neighbours, positions, orientations, nsms, ks):
+    def computeNewOrientations(self, neighbours, positions, orientations, nsms, ks, activationTimeDelays):
         """
         Computes the new orientation of every individual based on the neighbour selection mechanism, k and Vicsek-like 
         averaging.
@@ -330,8 +344,10 @@ class VicsekWithNeighbourSelection:
 
         np.fill_diagonal(pickedNeighbours, True)
 
-        orientations = self.calculateMeanOrientations(orientations, pickedNeighbours)
-        orientations = ServiceOrientations.normalizeOrientations(orientations+self.generateNoise())
+        newOrientations = self.calculateMeanOrientations(orientations, pickedNeighbours)
+        newOrientations = ServiceOrientations.normalizeOrientations(orientations+self.generateNoise())
+
+        orientations = ServiceVicsekHelper.revertTimeDelayedChanges(self.t, orientations, newOrientations, activationTimeDelays)
 
         return orientations
      
@@ -365,7 +381,7 @@ class VicsekWithNeighbourSelection:
 
         return np.array(switchTypeValuesDf["val"])
     
-    def appendSwitchValues(self, nsms, ks, speeds):
+    def appendSwitchValues(self, nsms, ks, speeds, activationTimeDelays):
         if self.switchSummary == None:
             return
         if self.switchSummary.isActive(SwitchType.NEIGHBOUR_SELECTION_MECHANISM):
@@ -374,6 +390,8 @@ class VicsekWithNeighbourSelection:
             self.switchTypeValuesHistory['ks'].append(ks)
         if self.switchSummary.isActive(SwitchType.SPEED):
             self.switchTypeValuesHistory['speeds'].append(speeds)
+        if self.switchSummary.isActive(SwitchType.ACTIVATION_TIME_DELAY):
+            self.switchTypeValuesHistory['activationTimeDelays'].append(activationTimeDelays)
     
     def prepareSimulation(self, initialState, dt, tmax):
          # Preparations and setting of parameters if they are not passed to the method
@@ -383,7 +401,7 @@ class VicsekWithNeighbourSelection:
         else:
             positions, orientations = initialState
 
-        nsms, ks, speeds = self.initialiseSwitchingValues()
+        nsms, ks, speeds, activationTimeDelays = self.initialiseSwitchingValues()
 
         #print(f"t=pre, order={ServiceMetric.computeGlobalOrder(orientations)}")
 
@@ -403,19 +421,19 @@ class VicsekWithNeighbourSelection:
         self.localOrdersHistory = []  
         self.positionsHistory = np.zeros((self.numIntervals,self.numberOfParticles,len(self.domainSize)))
         self.orientationsHistory = np.zeros((self.numIntervals,self.numberOfParticles,len(self.domainSize)))  
-        self.switchTypeValuesHistory = {'nsms': [], 'ks': [], 'speeds': []}
+        self.switchTypeValuesHistory = {'nsms': [], 'ks': [], 'speeds': [], 'activationTimeDelays': []}
 
         self.positionsHistory[0,:,:]=positions
         self.orientationsHistory[0,:,:]=orientations
-        self.appendSwitchValues(nsms, ks, speeds)
+        self.appendSwitchValues(nsms, ks, speeds, activationTimeDelays)
 
-        return positions, orientations, nsms, ks, speeds
+        return positions, orientations, nsms, ks, speeds, activationTimeDelays
     
-    def handleEvents(self, t, positions, orientations, nsms, ks, speeds):
+    def handleEvents(self, t, positions, orientations, nsms, ks, speeds, activationTimeDelays):
         blocked = np.full(self.numberOfParticles, False)
         if self.events != None:
                 for event in self.events:
-                    orientations, nsms, ks, speeds, blocked = event.check(self.numberOfParticles, t, positions, orientations, nsms, ks, speeds, self.dt)
+                    orientations, nsms, ks, speeds, blocked = event.check(self.numberOfParticles, t, positions, orientations, nsms, ks, speeds, self.dt, activationTimeDelays, self.isActivationTimeDelayRelevantForEvents)
         return orientations, nsms, ks, speeds, blocked
 
     def simulate(self, initialState=(None, None, None), dt=None, tmax=None):
@@ -433,12 +451,13 @@ class VicsekWithNeighbourSelection:
             times, positionsHistory, orientationsHistory, coloursHistory, switchTypeValueHistory. All of them as ordered arrays so that they can be matched by index matching
         """
        
-        positions, orientations, nsms, ks, speeds = self.prepareSimulation(initialState=initialState, dt=dt, tmax=tmax)
+        positions, orientations, nsms, ks, speeds, activationTimeDelays = self.prepareSimulation(initialState=initialState, dt=dt, tmax=tmax)
         for t in range(self.numIntervals):
+            self.t = t
             if t % 5000 == 0:
                 print(f"t={t}/{self.tmax}")
 
-            orientations, nsms, ks, speeds, blocked = self.handleEvents(t, positions, orientations, nsms, ks, speeds)
+            orientations, nsms, ks, speeds, blocked = self.handleEvents(t, positions, orientations, nsms, ks, speeds, activationTimeDelays)
 
             # all neighbours (including self)
             neighbours = ServiceVicsekHelper.getNeighboursWithLimitedVision(positions=positions, orientations=orientations, domainSize=self.domainSize,
@@ -454,17 +473,19 @@ class VicsekWithNeighbourSelection:
                     ks = self.getDecisions(t, localOrders, self.localOrdersHistory, SwitchType.K, ks, blocked)
                 if SwitchType.SPEED in self.switchSummary.switches.keys():
                     speeds = self.getDecisions(t, localOrders, self.localOrdersHistory, SwitchType.SPEED, speeds, blocked)
+                if SwitchType.ACTIVATION_TIME_DELAY in self.switchSummary.switches.keys():
+                    activationTimeDelays = self.getDecisions(t, localOrders, self.localOrdersHistory, SwitchType.ACTIVATION_TIME_DELAY, activationTimeDelays, blocked)
 
-            orientations = self.computeNewOrientations(neighbours, positions, orientations, nsms, ks)
+            orientations = self.computeNewOrientations(neighbours, positions, orientations, nsms, ks, activationTimeDelays)
 
             positions += self.dt*(orientations.T * speeds).T
             positions += -self.domainSize*np.floor(positions/self.domainSize)
 
             self.positionsHistory[t,:,:]=positions
             self.orientationsHistory[t,:,:]=orientations
-            self.appendSwitchValues(nsms, ks, speeds)
+            self.appendSwitchValues(nsms, ks, speeds, activationTimeDelays)
 
             # if t % 500 == 0:
             #     print(f"t={t}, order={ServiceMetric.computeGlobalOrder(orientations)}")
             
-        return (self.dt*np.arange(self.numIntervals), self.positionsHistory, self.orientationsHistory), np.array(self.switchTypeValuesHistory)
+        return (self.dt*np.arange(self.numIntervals), self.positionsHistory, self.orientationsHistory), self.switchTypeValuesHistory

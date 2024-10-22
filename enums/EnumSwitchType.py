@@ -6,4 +6,5 @@ Contains the different hyperparameters that can be used to switch between behavi
 class SwitchType(str, Enum):
     NEIGHBOUR_SELECTION_MECHANISM = "NSM",
     K = "K",
-    SPEED = "SPEED"
+    SPEED = "SPEED",
+    ACTIVATION_TIME_DELAY = "ATD"
