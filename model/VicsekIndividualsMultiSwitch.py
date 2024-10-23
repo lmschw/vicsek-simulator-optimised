@@ -344,10 +344,12 @@ class VicsekWithNeighbourSelection:
 
         np.fill_diagonal(pickedNeighbours, True)
 
-        newOrientations = self.calculateMeanOrientations(orientations, pickedNeighbours)
-        newOrientations = ServiceOrientations.normalizeOrientations(orientations+self.generateNoise())
+        oldOrientations = np.copy(orientations)
 
-        orientations = ServiceVicsekHelper.revertTimeDelayedChanges(self.t, orientations, newOrientations, activationTimeDelays)
+        orientations = self.calculateMeanOrientations(orientations, pickedNeighbours)
+        orientations = ServiceOrientations.normalizeOrientations(orientations+self.generateNoise())
+        
+        orientations = ServiceVicsekHelper.revertTimeDelayedChanges(self.t, oldOrientations, orientations, activationTimeDelays)
 
         return orientations
      
