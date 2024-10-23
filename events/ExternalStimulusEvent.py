@@ -113,15 +113,20 @@ class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
     
 
     def selectAffected(self, candidates, rij2):
+        if self.numberOfAffected == None:
+            numberOfAffected = len(candidates.nonzero()[0])
+        else:
+            numberOfAffected = self.numberOfAffected
+
         preselection = candidates # default case, we take all the candidates
         match self.eventSelectionType:
             case EventSelectionType.NEAREST_DISTANCE:
-                indices = np.argsort(rij2)[:self.numberOfAffected]
+                indices = np.argsort(rij2)[:numberOfAffected]
                 preselection = np.full(len(candidates), False)
                 preselection[indices] = True
             case EventSelectionType.RANDOM:
-                indices = np.argwhere(candidates).flatten()
-                selectedIndices = np.random.choice(indices, self.numberOfAffected, replace=False)
+                indices = candidates.nonzero()[0]
+                selectedIndices = np.random.choice(indices, numberOfAffected, replace=False)
                 preselection = np.full(len(candidates), False)
                 preselection[selectedIndices] = True
         return candidates & preselection
