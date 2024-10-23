@@ -56,7 +56,29 @@ for t in [0, 1000, 2000, 3000]:
     print(ServiceMetric.findClustersWithRadius(positions[t], orientations[t], domainSize, radius, threshold=0.01))
 """
 
-metric = Metrics.DUAL_OVERLAY_ORDER_AND_PERCENTAGE
+def getEvaluatorWithSwitch(filenames, switchType, switchOptions):
+    modelParams = []
+    simulationData = []
+    switchTypeValues = []
+    modelParamsDensity, simulationDataDensity, switchTypeValuesDensity = ServiceSavedModel.loadModels(filenames, loadSwitchValues=True)
+    modelParams.append(modelParamsDensity)
+    simulationData.append(simulationDataDensity)
+    switchTypeValues.append(switchTypeValuesDensity)
+    threshold = 0.01
+    evaluator = EvaluatorMultiComp.EvaluatorMultiAvgComp(modelParams, metric, simulationData, evaluationTimestepInterval=1, threshold=threshold, switchTypeValues=switchTypeValues, switchType=switchType, switchTypeOptions=switchOptions)
+    return evaluator
+
+def getEvaluatorWithoutSwitch(filenames):
+    modelParams = []
+    simulationData = []
+    modelParamsDensity, simulationDataDensity = ServiceSavedModel.loadModels(filenames, loadSwitchValues=False)
+    modelParams.append(modelParamsDensity)
+    simulationData.append(simulationDataDensity)
+    threshold = 0.01
+    evaluator = EvaluatorMultiComp.EvaluatorMultiAvgComp(modelParams, metric, simulationData, evaluationTimestepInterval=1, threshold=threshold)
+    return evaluator
+
+metric = Metrics.ORDER
 
 if metric == Metrics.DUAL_OVERLAY_ORDER_AND_PERCENTAGE:
     labels = ["order", "order value percentage"]
@@ -65,15 +87,11 @@ else:
 xAxisLabel = "timesteps"
 yAxisLabel = metric.label
 startEval = time.time()
-modelParams = []
-simulationData = []
-switchTypeValues = []
-modelParamsDensity, simulationDataDensity, switchTypeValuesDensity = ServiceSavedModel.loadModels(["test.json"], loadSwitchValues=True)
-modelParams.append(modelParamsDensity)
-simulationData.append(simulationDataDensity)
-switchTypeValues.append(switchTypeValuesDensity)
-threshold = 0.01
-evaluator = EvaluatorMultiComp.EvaluatorMultiAvgComp(modelParams, metric, simulationData, evaluationTimestepInterval=1, threshold=threshold, switchTypeValues=switchTypeValues, switchType=SwitchType.ACTIVATION_TIME_DELAY, switchTypeOptions=(1, 5))
+
+
+filenames = ServiceGeneral.createListOfFilenamesForI("test", minI=1, maxI=11)
+evaluator = getEvaluatorWithoutSwitch(filenames=filenames)
+
 savePath = f"{metric.val}_test_new_implementation.jpeg"
 evaluator.evaluateAndVisualize(labels=labels, xLabel=xAxisLabel, yLabel=yAxisLabel, savePath=savePath)    
 endEval = time.time()
