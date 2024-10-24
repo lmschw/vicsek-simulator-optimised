@@ -1,6 +1,14 @@
 
 class SwitchInformation(object):
     def __init__(self, switchType, values, thresholds, numberPreviousStepsForThreshold, initialValues=None):
+        """
+        Params:
+            - switchType (SwitchType): what property to switch on
+            - values (tuple of two values): the values that can be set by this switch. The type must correspond to the property described by the switchType
+            - thresholds (array of floats): a single or two values that determine the thresholds for switching on this property
+            - numberPreviousStepsForThreshold (int): how many previous steps are used when computing the average of the previous local order
+            - initialValues (numpy array) [optional]: the initial value chosen by every individual in accordance with the switchType and the value options
+        """
         self.switchType = switchType
         self.thresholds = thresholds
         self.orderSwitchValue, self.disorderSwitchValue = values

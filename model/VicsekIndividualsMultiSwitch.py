@@ -19,6 +19,23 @@ class VicsekWithNeighbourSelection:
     def __init__(self, domainSize, radius, noise, numberOfParticles, k, neighbourSelectionMechanism,
                  speed=dv.DEFAULT_SPEED, switchSummary=None, events=None, degreesOfVision=dv.DEFAULT_DEGREES_OF_VISION, 
                  activationTimeDelays=[], isActivationTimeDelayRelevantForEvents=False, colourType=None):
+        """
+        Params:
+            - domainSize (tuple of floats): the size of the domain
+            - radius (float): the perception radius of the individuals
+            - noise (float): the noise in the environment that is applied to the orientation of each particle at every timestep
+            - numberOfParticles (int): how many particles are in the domain
+            - k (int): how many neighbours should each individual consider (start value if k-switching is active)
+            - neighbourSelectonMechansim (NeighbourSelectionMechanism): which neighbours each individual should consider (start value if nsm-switching is active)
+            - speed (float) [optional]: the speed at which the particles move
+            - switchSummary (SwitchSummary) [optional]: The switches that are available to the particles
+            - events (list of BaseEvents or child classes) [optional]: the events that occur within the domain during the simulation
+            - degreesOfVision (float, range(0, 2pi)) [optional]: how much of their surroundings each individual is able to see. By default 2pi
+            - activationTimeDelays (array of int) [optional]: how often each individual updates its orientation
+            - isActivationTimeDelayRelevantForEvents (boolean) [optional]: whether an individual should also ignore events when it is not ready to update its orientation
+            - colourType (ColourType) [optional]: if and how individuals should be coloured for future rendering
+        """
+
         self.domainSize = np.asarray(domainSize)
         self.radius = radius
         self.noise = noise
@@ -29,16 +46,17 @@ class VicsekWithNeighbourSelection:
 
         self.switchSummary = switchSummary
 
-        self.minReplacementValue = -1
-        self.maxReplacementValue = domainSize[0] * domainSize[1] + 1
-        self.disorderPlaceholder = -1
-        self.orderPlaceholder = -2
-
         self.events = events
         self.degreesOfVision = degreesOfVision
         self.activationTimeDelays = np.array(activationTimeDelays)
         self.isActivationTimeDelayRelevantForEvents = isActivationTimeDelayRelevantForEvents
         self.colourType = colourType
+
+        # Preparation of constants
+        self.minReplacementValue = -1
+        self.maxReplacementValue = domainSize[0] * domainSize[1] + 1
+        self.disorderPlaceholder = -1
+        self.orderPlaceholder = -2
 
     def getParameterSummary(self, asString=False):
         """
@@ -91,7 +109,7 @@ class VicsekWithNeighbourSelection:
             None
         
         Returns:
-            Arrays of positions, orientations and switchTypeValues containing values for every individual within the system
+            Arrays of positions and orientations containing values for every individual within the system
         """
         positions = self.domainSize*np.random.rand(self.numberOfParticles,len(self.domainSize))
         orientations = ServiceOrientations.normalizeOrientations(np.random.rand(self.numberOfParticles, len(self.domainSize))-0.5)
@@ -99,6 +117,16 @@ class VicsekWithNeighbourSelection:
         return positions, orientations
     
     def initialiseSwitchingValues(self):
+        """
+        Initialises the valus that may be affected by switching: neighbour selection mechanisms, ks, speeds, time delays.
+
+        Params:
+            None
+
+        Returns:
+            Numpy arrays containing the neighbour selection mechanisms, ks, speeds and time delays for each particle.
+        """
+
         nsms = np.full(self.numberOfParticles, self.orderPlaceholder)
         nsmsDf = pd.DataFrame(nsms, columns=["nsms"])
         nsmsDf["nsms"] = nsmsDf["nsms"].replace(self.orderPlaceholder, self.neighbourSelectionMechanism)
@@ -155,6 +183,17 @@ class VicsekWithNeighbourSelection:
         return ServiceOrientations.normalizeOrientations(summedOrientations)
     
     def __getPickedNeighbourIndices(self, sortedIndices, kMaxPresent, ks):
+        """
+        Chooses the indices of the neighbours that will be considered for updates.
+
+        Params:
+            - sortedIndices (arrays of ints): the sorted indices of all neighbours
+            - kMaxPresent (int): what is the highest value of k present in the current values of k
+            - ks (array of int): the current values of k for every individual
+
+        Returns:
+            Array containing the selected indices for each individual.
+        """
         if self.switchSummary != None and self.switchSummary.isActive(SwitchType.K):
             kSwitch = self.switchSummary.getBySwitchType(SwitchType.K)
             kMin, kMax = self.switchSummary.getMinMaxValuesForKSwitchIfPresent()
@@ -173,6 +212,17 @@ class VicsekWithNeighbourSelection:
         return candidates
     
     def __checkPickedForNeighbourhood(self, posDiff, candidates, kMaxPresent):
+        """
+        Verifies that all the selected neighbours are within the perception radius.
+
+        Params:
+            - posDiff (array of arrays of float): the position difference between every pair of individuals
+            - candidates (array of int): the indices of the selected neighbours
+            - kMaxPresent (int): waht is the highest value of k present in the current values of k
+
+        Returns:
+            An array of int indices of the selected neighbours that are actually within the neighbourhood.
+        """
         if len(candidates) == 0 or len(candidates[0]) == 0:
             return candidates
         # exclude any individuals that are not neighbours
@@ -182,6 +232,15 @@ class VicsekWithNeighbourSelection:
         return picked
     
     def __createBooleanMaskFromPickedNeighbourIndices(self, picked):
+        """
+        Creates a boolean mask from the indices of the selected neighbours.
+
+        Params:
+            - picked (array of array of int): the selected indices for each individual
+
+        Returns:
+            An array of arrays of booleans representing which neighbours have been selected by each individual.
+        """
         if len(picked) == 0 or len(picked[0]) == 0:
             return np.full((self.numberOfParticles, self.numberOfParticles), False)
         # create the boolean mask
@@ -193,12 +252,12 @@ class VicsekWithNeighbourSelection:
     
     def __getPickedNeighbours(self, posDiff, candidates, ks, isMin):
         """
-        Determines which neighbours the individuals should considered based on a preexisting maskedArray, the neighbour selection mechanism and k.
+        Determines which neighbours the individuals should consider.
 
         Params:
-            - maskedArray (MaskedArray): masked array containing the values for consideration
             - posDiff (array of arrays of floats): the distance from every individual to all other individuals
-            - ks (Dataframe): which value of k every individual observes (in column "val")
+            - candidates (array of arrays of floats): represents either the position distance between each pair of individuals or a fillValue if they are not neighbours  
+            - ks (array of ints): which value of k every individual observes
             - isMin (boolean) [optional, default=True]: whether to take the nearest or farthest neighbours
 
         Returns:
@@ -218,12 +277,12 @@ class VicsekWithNeighbourSelection:
             
     def pickPositionNeighbours(self, positions, neighbours, ks, isMin=True):
         """
-        Determines which neighbours the individuals should considered based on the neighbour selection mechanism and k.
+        Determines which neighbours the individuals should considered based on the neighbour selection mechanism and k with regard to position.
 
         Params:
             - positions (array of floats): the position of every individual at the current timestep
             - neighbours (array of arrays of booleans): the identity of every neighbour of every 
-            - ks (Dataframe): which value of k every individual observes (in column "val")
+            - ks (array of ints): which value of k every individual observes
             - isMin (boolean) [optional, default=True]: whether to take the nearest or farthest neighbours
 
         Returns:
@@ -243,13 +302,13 @@ class VicsekWithNeighbourSelection:
     
     def pickOrientationNeighbours(self, positions, orientations, neighbours, ks, isMin=True):
         """
-        Determines which neighbours the individuals should considered based on the neighbour selection mechanism and k.
+        Determines which neighbours the individuals should consider based on the neighbour selection mechanism and k with regard to orientation.
 
         Params:
             - positions (array of floats): the position of every individual at the current timestep
             - orientations (array of floats): the orientation of every individual at the current timestep
             - neighbours (array of arrays of booleans): the identity of every neighbour of every individual
-            - ks (Dataframe): which value of k every individual observes (in column "val")
+            - ks (array of ints): which value of k every individual observes
             - isMin (boolean) [optional, default=True]: whether to take the least orientionally different or most orientationally different neighbours
 
         Returns:
@@ -270,6 +329,17 @@ class VicsekWithNeighbourSelection:
         return self.__getPickedNeighbours(posDiff=posDiff, candidates=candidates, ks=ks, isMin=isMin)
     
     def pickRandomNeighbours(self, positions, neighbours, ks):
+        """
+        Determines which neighbours the individuals should consider based on random selection.
+
+        Params:
+            - positions (array of floats): the position of every individual at the current timestep
+            - neighbours (array of arrays of booleans): the identity of every neighbour of every individual
+            - ks (array of ints): which value of k every individual observes
+
+        Returns:
+            An array of arrays of booleans representing the selected neighbours
+        """
         np.fill_diagonal(neighbours, False)
         posDiff = ServiceVicsekHelper.getPositionDifferences(positions, self.domainSize)
         kMaxPresent = np.max(ks)
@@ -294,6 +364,16 @@ class VicsekWithNeighbourSelection:
         return selection
 
     def getPickedNeighboursForNeighbourSelectionMechanism(self, neighbourSelectionMechanism, positions, orientations, neighbours, ks):
+        """
+        Determines which neighbours should be considered by each individual.
+
+        Params:
+            - neighbourSelectionMechanism (NeighbourSelectionMechanism): how the neighbours should be selected
+            - positions (array of floats): the position of every individual at the current timestep
+            - orientations (array of floats): the orientation of every individual at the current timestep
+            - neighbours (array of arrays of booleans): the identity of every neighbour of every individual
+            - ks (array of ints): which value of k every individual observes
+        """
         match neighbourSelectionMechanism:
             case NeighbourSelectionMechanism.NEAREST:
                 pickedNeighbours = self.pickPositionNeighbours(positions, neighbours, ks, isMin=True)
@@ -311,14 +391,17 @@ class VicsekWithNeighbourSelection:
 
     def computeNewOrientations(self, neighbours, positions, orientations, nsms, ks, activationTimeDelays):
         """
-        Computes the new orientation of every individual based on the neighbour selection mechanism, k and Vicsek-like 
+        Computes the new orientation of every individual based on the neighbour selection mechanisms, ks, time delays and Vicsek-like 
         averaging.
+        Also sets the colours for ColourType.EXAMPLE.
 
         Params:
             - neighbours (array of arrays of booleans): the identity of every neighbour of every individual
             - positions (array of floats): the position of every individual at the current timestep
             - orientations (array of floats): the orientation of every individual at the current timestep
-            - switchTypeValues (array of ints): the chosen value for every individual at the current timestep
+            - nsms (array of NeighbourSelectionMechanism): the neighbour selection mechanism used by every individual at the current timestep
+            - ks (array of ints): the number of neighbours k used by every individual at the current timestep
+            - activationTimeDelays (array of ints): at what rate updates are possible for every individual at the current timestep
 
         Returns:
             An array of floats representing the orientations of all individuals after the current timestep
@@ -375,10 +458,12 @@ class VicsekWithNeighbourSelection:
             - t (int): the current timestep
             - localOrders (array of floats): the local order from the point of view of every individual
             - previousLocalOrders (array of arrays of floats): the local order for every individual at every previous time step
+            - switchType (SwitchType): the property that the values are assigned to
             - switchTypeValues (array of ints): the current switchTypeValue selection for every individual
+            - blocked (array of booleans): whether updates are possible
 
         Returns:
-            A pandas Dataframe containing the switchTypeValues for every individual
+            Numpy array containing the updated switchTypeValues for every individual for the given switchType.
         """
         switchInfo = self.switchSummary.getBySwitchType(switchType)
         switchDifferenceThresholdLower = switchInfo.lowerThreshold
@@ -391,6 +476,18 @@ class VicsekWithNeighbourSelection:
         return updatedSwitchValues
     
     def appendSwitchValues(self, nsms, ks, speeds, activationTimeDelays):
+        """
+        Appends all relevant switch type values to the history.
+
+        Params:
+            - nsms (array of NeighbourSelectionMechanism): how each individual selects its neighbours
+            - ks (array of ints): how many neighbours each individual considers
+            - speeds (array of floats): how fast each agent moves
+            - activationTimeDelays (array of ints): how long each agent waits until it is ready to update its orientation again
+
+        Returns:
+            Nothing.
+        """
         if self.switchSummary == None:
             return
         if self.switchSummary.isActive(SwitchType.NEIGHBOUR_SELECTION_MECHANISM):
@@ -403,6 +500,17 @@ class VicsekWithNeighbourSelection:
             self.switchTypeValuesHistory['activationTimeDelays'].append(activationTimeDelays)
     
     def prepareSimulation(self, initialState, dt, tmax):
+        """
+        Prepares the simulation by initialising all necessary properties.
+
+        Params:
+            - initialState (tuple of arrays) [optional]: A tuple containing the initial positions of all particles, their initial orientations and their initial switch type values
+            - dt (int) [optional]: time step
+            - tmax (int) [optional]: the total number of time steps of the experiment
+
+        Returns:
+            Arrays containing the positions, orientations, neighbour selection mechanisms, ks, speeds and time delays.
+        """
          # Preparations and setting of parameters if they are not passed to the method
         
         if any(ele is None for ele in initialState):
@@ -441,6 +549,21 @@ class VicsekWithNeighbourSelection:
         return positions, orientations, nsms, ks, speeds, activationTimeDelays
     
     def handleEvents(self, t, positions, orientations, nsms, ks, speeds, activationTimeDelays):
+        """
+        Handles all types of events.
+
+        Params:
+            - t (int): the current timestep
+            - positions (array of (x,y)-coordinates): the position of every particle at the current timestep
+            - orientations (array of (u,v)-coordinates): the orientation of every particle at the current timestep
+            - nsms (array of NeighbourSelectionMechanism): how every particle selects its neighbours at the current timestep
+            - ks (array of ints): how many neighbours each particle considers at the current timestep
+            - speeds (array of floats): how fast each particle moves at the current timestep
+            - activationTimeDelays (array of ints): how often a particle is ready to update its orientation
+
+        Returns:
+            Arrays containing the updates orientations, neighbour selecton mechanisms, ks, speeds, which particles are blocked from updating and the colours assigned to each particle.
+        """
         blocked = np.full(self.numberOfParticles, False)
         colours = np.full(self.numberOfParticles, 'k')
         if self.events != None:
@@ -452,7 +575,7 @@ class VicsekWithNeighbourSelection:
         """
         Runs the simulation experiment.
         First the parameters are computed if they are not passed. 
-        Then the positions, orientations and colours are computed for each particle at each time step.
+        Then the positions and orientations are computed for each particle at each time step.
 
         Params:
             - initialState (tuple of arrays) [optional]: A tuple containing the initial positions of all particles, their initial orientations and their initial switch type values
@@ -460,7 +583,7 @@ class VicsekWithNeighbourSelection:
             - tmax (int) [optional]: the total number of time steps of the experiment
 
         Returns:
-            times, positionsHistory, orientationsHistory, coloursHistory, switchTypeValueHistory. All of them as ordered arrays so that they can be matched by index matching
+            (times, positionsHistory, orientationsHistory), the history of the switchValues as a dictionary  and optionally coloursHistory. All except the switchValueHistory as ordered arrays so that they can be matched by index matching
         """
        
         positions, orientations, nsms, ks, speeds, activationTimeDelays = self.prepareSimulation(initialState=initialState, dt=dt, tmax=tmax)
