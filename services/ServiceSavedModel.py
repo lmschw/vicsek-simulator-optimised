@@ -6,7 +6,7 @@ import numpy as np
 Service contains static methods to save and load models to/from json files.
 """
 
-def saveModel(simulationData, path="sample.json", modelParams=None, saveInterval=1, switchValues={'nsms': [], 'ks': [], 'speeds': [], 'activationTimeDelays': []}):
+def saveModel(simulationData, path="sample.json", modelParams=None, saveInterval=1, switchValues={'nsms': [], 'ks': [], 'speeds': [], 'activationTimeDelays': []}, colours=None):
     """
     Saves a model trained by the Viscek simulator implementation.
 
@@ -27,9 +27,11 @@ def saveModel(simulationData, path="sample.json", modelParams=None, saveInterval
     for key in switchValues.keys():
         vals = {key :__getSpecifiedIntervals(saveInterval, switchValues[key])}
         dict["switchValues"] = {k : np.array(v).tolist() for k,v in vals.items()} # deal with np.array instances in the values
+    if colours:
+        dict["colours"] = [np.array(cols).tolist() for cols in colours]
     __saveDict(path, dict, modelParams)
 
-def loadModel(path, loadSwitchValues=False):
+def loadModel(path, loadSwitchValues=False, loadColours=False):
     """
     Loads a single model from a single file.
 
@@ -46,12 +48,19 @@ def loadModel(path, loadSwitchValues=False):
     time = np.array(loadedJson["time"])
     positions = np.array(loadedJson["positions"])
     orientations = np.array(loadedJson["orientations"])
-    if loadSwitchValues == True:
+    if loadSwitchValues == True and loadColours == True:
+        switchValues = loadedJson["switchValues"]
+        colours = loadedJson["colours"]
+        return modelParams, (time, positions, orientations), switchValues, colours
+    elif loadSwitchValues == True:
         switchValues = loadedJson["switchValues"]
         return modelParams, (time, positions, orientations), switchValues
+    elif loadColours == True:
+        colours = loadedJson["colours"]
+        return modelParams, (time, positions, orientations), colours
     return modelParams, (time, positions, orientations)
 
-def loadModels(paths, loadSwitchValues=False):
+def loadModels(paths, loadSwitchValues=False, loadColours=False):
     """
     Loads multiple models from multiple files.
 
@@ -65,18 +74,28 @@ def loadModels(paths, loadSwitchValues=False):
     data = []
     params = []
     switchValuesArr = []
+    coloursArr = []
     for path in paths:
-        if loadSwitchValues == True:
-            modelParams, simulationData, switchValues = loadModel(path, loadSwitchValues=loadSwitchValues)
-            params.append(modelParams)
-            data.append(simulationData)
+        if loadSwitchValues == True and loadColours == True:
+            modelParams, simulationData, switchValues, colours = loadModel(path, loadSwitchValues=loadSwitchValues, loadColours=loadColours)
             switchValuesArr.append(switchValues)
+            coloursArr.append(colours)
+        elif loadSwitchValues == True:
+            modelParams, simulationData, switchValues = loadModel(path, loadSwitchValues=loadSwitchValues)
+            switchValuesArr.append(switchValues)
+        elif loadColours == True:
+            modelParams, simulationData, colours = loadModel(path, loadSwitchValues=loadSwitchValues, loadColours=loadColours)
+            coloursArr.append(colours)
         else:
             modelParams, simulationData = loadModel(path, loadSwitchValues=loadSwitchValues)
-            params.append(modelParams)
-            data.append(simulationData)
-    if loadSwitchValues == True:
+        params.append(modelParams)
+        data.append(simulationData)
+    if loadSwitchValues == True and loadColours == True:
+        return params, data, switchValuesArr, coloursArr
+    elif loadSwitchValues == True:
         return params, data, switchValuesArr
+    elif loadColours == True:
+        return params, data, coloursArr
     return params, data
 
 def saveTimestepsResults(results, path, modelParams=None, saveInterval=1):
