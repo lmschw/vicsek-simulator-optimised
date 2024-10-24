@@ -25,4 +25,4 @@ TODO 22.10.:
 - add weights to the local order of each previous step (same weights for all individuals) and then apply evolutionary algorithms to find the best weights
 
 TODO 24.10.:
-- find a genetic learning algo that will transform time data into a discrete value -> train it to pick between the nsm/k-combinations
+- find a genetic learning algo that will transform time data into a discrete value -> train it to pick between the nsm/k-combinations (without using local order)
