@@ -7,6 +7,7 @@ from scipy.spatial.transform import Rotation as R
 from enums.EnumDistributionType import DistributionType
 from enums.EnumEventEffect import EventEffect
 from enums.EnumEventSelectionType import EventSelectionType
+from enums.EnumColourType import ColourType
 
 import events.BaseEvent as BaseEvent
 
@@ -74,7 +75,7 @@ class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
             summary["eventSelectionType"] = self.eventSelectionType.value
         return summary
     
-    def executeEvent(self, totalNumberOfParticles, positions, orientations, nsms, ks, speeds, dt=None):
+    def executeEvent(self, totalNumberOfParticles, positions, orientations, nsms, ks, speeds, dt=None, colourType=None):
         """
         Executes the event.
 
@@ -109,7 +110,10 @@ class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
             case EventEffect.RANDOM:
                 orientations[affected] = self.__getRandomOrientations(np.count_nonzero(affected))
         orientations = ServiceOrientations.normalizeOrientations(orientations)
-        return orientations, nsms, ks, speeds, affected # external events do not directly impact the values
+
+        colours = self.getColours(colourType=colourType, affected=affected, totalNumberOfParticles=totalNumberOfParticles)
+
+        return orientations, nsms, ks, speeds, affected, colours # external events do not directly impact the values
     
 
     def selectAffected(self, candidates, rij2):

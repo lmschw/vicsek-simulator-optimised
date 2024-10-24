@@ -3,6 +3,7 @@ import numpy as np
 
 from enums.EnumNeighbourSelectionMechanism import NeighbourSelectionMechanism
 from enums.EnumSwitchType import SwitchType
+from enums.EnumColourType import ColourType
 
 import services.ServiceOrientations as ServiceOrientations
 import services.ServiceVicsekHelper as ServiceVicsekHelper
@@ -17,7 +18,7 @@ class VicsekWithNeighbourSelection:
 
     def __init__(self, domainSize, radius, noise, numberOfParticles, k, neighbourSelectionMechanism,
                  speed=dv.DEFAULT_SPEED, switchSummary=None, events=None, degreesOfVision=dv.DEFAULT_DEGREES_OF_VISION, 
-                 activationTimeDelays=[], isActivationTimeDelayRelevantForEvents=False):
+                 activationTimeDelays=[], isActivationTimeDelayRelevantForEvents=False, colourType=None):
         self.domainSize = np.asarray(domainSize)
         self.radius = radius
         self.noise = noise
@@ -37,6 +38,7 @@ class VicsekWithNeighbourSelection:
         self.degreesOfVision = degreesOfVision
         self.activationTimeDelays = np.array(activationTimeDelays)
         self.isActivationTimeDelayRelevantForEvents = isActivationTimeDelayRelevantForEvents
+        self.colourType = colourType
 
     def getParameterSummary(self, asString=False):
         """
@@ -58,8 +60,14 @@ class VicsekWithNeighbourSelection:
                     "dt": self.dt,
                     "degreesOfVision": self.degreesOfVision,
                     "activationTimeDelays": self.activationTimeDelays.tolist(),
-                    "isActivationTimeDelayRelevantForEvents": self.isActivationTimeDelayRelevantForEvents
+                    "isActivationTimeDelayRelevantForEvents": self.isActivationTimeDelayRelevantForEvents,
                     }
+
+        if self.colourType != None:
+            summary["colourType"] = self.colourType.value
+            if self.exampleId != None:
+                summary["exampleId"] = self.exampleId.tolist()
+
         if self.switchSummary != None:
             summary["switchSummary"] = self.switchSummary.getParameterSummary()
 
@@ -351,6 +359,11 @@ class VicsekWithNeighbourSelection:
         
         orientations = ServiceVicsekHelper.revertTimeDelayedChanges(self.t, oldOrientations, orientations, activationTimeDelays)
 
+        if self.colourType == ColourType.EXAMPLE and self.exampleId != None:
+            self.colours = np.full(self.numberOfParticles, 'k')
+            self.colours[pickedNeighbours[self.exampleId][0]] = 'y'
+            self.colours[self.exampleId] = 'r'
+
         return orientations
      
     def getDecisions(self, t, localOrders, previousLocalOrders, switchType, switchTypeValues, blocked):
@@ -418,6 +431,8 @@ class VicsekWithNeighbourSelection:
         self.positionsHistory = np.zeros((self.numIntervals,self.numberOfParticles,len(self.domainSize)))
         self.orientationsHistory = np.zeros((self.numIntervals,self.numberOfParticles,len(self.domainSize)))  
         self.switchTypeValuesHistory = {'nsms': [], 'ks': [], 'speeds': [], 'activationTimeDelays': []}
+        if self.colourType != None:
+            self.coloursHistory = self.numIntervals * [self.numberOfParticles * ['k']]
 
         self.positionsHistory[0,:,:]=positions
         self.orientationsHistory[0,:,:]=orientations
@@ -427,10 +442,11 @@ class VicsekWithNeighbourSelection:
     
     def handleEvents(self, t, positions, orientations, nsms, ks, speeds, activationTimeDelays):
         blocked = np.full(self.numberOfParticles, False)
+        colours = np.full(self.numberOfParticles, 'k')
         if self.events != None:
                 for event in self.events:
-                    orientations, nsms, ks, speeds, blocked = event.check(self.numberOfParticles, t, positions, orientations, nsms, ks, speeds, self.dt, activationTimeDelays, self.isActivationTimeDelayRelevantForEvents)
-        return orientations, nsms, ks, speeds, blocked
+                    orientations, nsms, ks, speeds, blocked, colours = event.check(self.numberOfParticles, t, positions, orientations, nsms, ks, speeds, self.dt, activationTimeDelays, self.isActivationTimeDelayRelevantForEvents, self.colourType)
+        return orientations, nsms, ks, speeds, blocked, colours
 
     def simulate(self, initialState=(None, None, None), dt=None, tmax=None):
         """
@@ -448,12 +464,14 @@ class VicsekWithNeighbourSelection:
         """
        
         positions, orientations, nsms, ks, speeds, activationTimeDelays = self.prepareSimulation(initialState=initialState, dt=dt, tmax=tmax)
+        if self.colourType == ColourType.EXAMPLE:
+            self.exampleId = np.random.choice(self.numberOfParticles, 1)
         for t in range(self.numIntervals):
             self.t = t
             if t % 5000 == 0:
                 print(f"t={t}/{self.tmax}")
 
-            orientations, nsms, ks, speeds, blocked = self.handleEvents(t, positions, orientations, nsms, ks, speeds, activationTimeDelays)
+            orientations, nsms, ks, speeds, blocked, self.colours = self.handleEvents(t, positions, orientations, nsms, ks, speeds, activationTimeDelays)
 
             # all neighbours (including self)
             neighbours = ServiceVicsekHelper.getNeighboursWithLimitedVision(positions=positions, orientations=orientations, domainSize=self.domainSize,
@@ -480,8 +498,13 @@ class VicsekWithNeighbourSelection:
             self.positionsHistory[t,:,:]=positions
             self.orientationsHistory[t,:,:]=orientations
             self.appendSwitchValues(nsms, ks, speeds, activationTimeDelays)
+            if self.colourType != None:
+                self.coloursHistory[t] = self.colours
 
             # if t % 500 == 0:
             #     print(f"t={t}, order={ServiceMetric.computeGlobalOrder(orientations)}")
             
-        return (self.dt*np.arange(self.numIntervals), self.positionsHistory, self.orientationsHistory), self.switchTypeValuesHistory
+        if self.colourType == None:
+            return (self.dt*np.arange(self.numIntervals), self.positionsHistory, self.orientationsHistory), self.switchTypeValuesHistory
+        else:
+            return (self.dt*np.arange(self.numIntervals), self.positionsHistory, self.orientationsHistory), self.switchTypeValuesHistory, self.coloursHistory

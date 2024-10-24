@@ -7,6 +7,7 @@ from scipy.spatial.transform import Rotation as R
 from enums.EnumDistributionType import DistributionType
 from enums.EnumEventEffect import InternalEventEffect
 from enums.EnumSwitchType import SwitchType
+from enums.EnumColourType import ColourType
 
 import DefaultValues as dv
 import services.ServiceOrientations as ServiceOrientations
@@ -58,7 +59,7 @@ class InternalStimulusOrientationChangeEvent(BaseEvent):
         summary["numberOfAffectedParticles"] = self.numberOfAffectedParticles
         return summary
     
-    def executeEvent(self, totalNumberOfParticles, positions, orientations,nsms, ks, speeds, dt=None):
+    def executeEvent(self, totalNumberOfParticles, positions, orientations,nsms, ks, speeds, dt=None, colourType=None):
         """
         Executes the event.
 
@@ -103,7 +104,9 @@ class InternalStimulusOrientationChangeEvent(BaseEvent):
         orientations = ServiceOrientations.normalizeOrientations(orientations)
         blocked = np.full(totalNumberOfParticles, False)
         blocked[self.affectedParticles] = True
-        return orientations, nsms, ks, speeds, blocked
+        colours = self.getColours(colourType=colourType, affected=self.affectedParticles, totalNumberOfParticles=totalNumberOfParticles)
+        
+        return orientations, nsms, ks, speeds, blocked, colours
     
     def selectParticles(self, totalNumberOfParticles):
         if self.numberOfAffectedParticles == None:

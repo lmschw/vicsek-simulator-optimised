@@ -1,6 +1,8 @@
 
 import numpy as np
 
+from enums.EnumColourType import ColourType
+
 import services.ServicePreparation as ServicePreparation
 import services.ServiceVicsekHelper as ServiceVicsekHelper
 
@@ -57,7 +59,7 @@ class BaseEvent:
             summary["switchSummary"] = None
         return summary
 
-    def check(self, totalNumberOfParticles, currentTimestep, positions, orientations, nsms, ks, speeds, dt=None, activationTimeDelays=None, isActivationTimeDelayRelevantForEvent=False):
+    def check(self, totalNumberOfParticles, currentTimestep, positions, orientations, nsms, ks, speeds, dt=None, activationTimeDelays=None, isActivationTimeDelayRelevantForEvent=False, colourType=None):
         """
         Checks if the event is triggered at the current timestep and executes it if relevant.
 
@@ -75,10 +77,11 @@ class BaseEvent:
             The orientations of all particles - altered if the event has taken place, unaltered otherwise.
         """
         blocked = np.full(totalNumberOfParticles, False)
+        colours = np.full(totalNumberOfParticles, 'k')
         if self.checkTimestep(currentTimestep):
             if currentTimestep == self.startTimestep or currentTimestep == (self.startTimestep + self.duration):
                 print(f"executing event at timestep {currentTimestep}")
-            alteredOrientations, alteredNsms, alteredKs, alteredSpeeds, blockedUpdate = self.executeEvent(totalNumberOfParticles=totalNumberOfParticles, positions=positions, orientations=orientations, nsms=nsms, ks=ks, speeds=speeds, dt=dt)
+            alteredOrientations, alteredNsms, alteredKs, alteredSpeeds, blockedUpdate, colours = self.executeEvent(totalNumberOfParticles=totalNumberOfParticles, positions=positions, orientations=orientations, nsms=nsms, ks=ks, speeds=speeds, dt=dt, colourType=colourType)
 
             if isActivationTimeDelayRelevantForEvent:
                 orientations = ServiceVicsekHelper.revertTimeDelayedChanges(currentTimestep, orientations, alteredOrientations, activationTimeDelays)
@@ -90,7 +93,7 @@ class BaseEvent:
                     nsms = alteredNsms
                     ks = alteredKs
                     speeds = alteredSpeeds
-        return orientations, nsms, ks, speeds, blocked
+        return orientations, nsms, ks, speeds, blocked, colours
 
     def checkTimestep(self, currentTimestep):
         """
@@ -107,7 +110,7 @@ class BaseEvent:
     def applyNoiseDistribution(self, orientations):
         return orientations + np.random.normal(scale=self.noise, size=(len(orientations), len(self.domainSize)))
     
-    def executeEvent(self, totalNumberOfParticles, positions, orientations, nsms, ks, speeds, dt):
+    def executeEvent(self, totalNumberOfParticles, positions, orientations, nsms, ks, speeds, dt, colourType=None):
         """
         Executes the event.
 
@@ -124,4 +127,10 @@ class BaseEvent:
             The orientations, switchTypeValues of all particles after the event has been executed as well as a list containing the indices of all affected particles.
         """
         # base event does not do anything here
-        return orientations, nsms, ks, speeds, np.full(totalNumberOfParticles, False)
+        return orientations, nsms, ks, speeds, np.full(totalNumberOfParticles, False), np.full(totalNumberOfParticles, 'k')
+    
+    def getColours(self, colourType, affected, totalNumberOfParticles):
+        colours = np.full(totalNumberOfParticles, 'k')
+        if colourType == ColourType.AFFECTED:
+            colours[affected] = 'r'
+        return colours

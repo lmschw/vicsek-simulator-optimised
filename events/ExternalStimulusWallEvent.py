@@ -26,7 +26,7 @@ class ExternalEventStimulusWallEvent(BaseEvent):
         summary["turnBy"] = self.turnBy
         return summary
 
-    def executeEvent(self, totalNumberOfParticles, positions, orientations, nsms, ks, speeds, dt):
+    def executeEvent(self, totalNumberOfParticles, positions, orientations, nsms, ks, speeds, dt, colourType=None):
         """
         Executes the event.
 
@@ -48,7 +48,8 @@ class ExternalEventStimulusWallEvent(BaseEvent):
         newOrientations = self.wallTypeBehaviour.getAvoidanceOrientations(positions, orientations, speeds, dt, self.turnBy)
         orientations = self.__applyNoiseDistribution(newOrientations)
         orientations = ServiceOrientations.normalizeOrientations(orientations)
-        return orientations, nsms, ks, speeds, affected
+        colours = self.getColours(colourType=colourType, affected=affected, totalNumberOfParticles=totalNumberOfParticles)
+        return orientations, nsms, ks, speeds, affected, colours
     
     def __applyNoiseDistribution(self, orientations):
         if self.noise == None:

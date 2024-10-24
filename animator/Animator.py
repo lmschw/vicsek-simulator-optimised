@@ -63,7 +63,9 @@ class Animator(object):
         self._radius = modelParams["radius"]
         self._neighbourSelectionMechanism = modelParams["neighbourSelectionMechanism"]
         self._domainSize = modelParams["domainSize"]
-        
+        self._exampleId = None
+        if "exampleId" in modelParams.keys():
+            self._exampleId = modelParams["exampleId"]
 
     def showAnimation(self):
         """
