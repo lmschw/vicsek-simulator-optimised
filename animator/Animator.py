@@ -27,7 +27,7 @@ class Animator(object):
 
         return self
 
-    def setSimulationData(self, simulationData, domainSize, colours=None, redIndices=[]):
+    def setSimulationData(self, simulationData, domainSize, colours=None, redIndices=[], showRadiusForExample=False):
         """
         Sets
         keyword arguments:
@@ -47,6 +47,8 @@ class Animator(object):
             self._colours = len(self._time) * [a.tolist()]
         else:
             self._colours = colours
+        
+        self._showRadusForExample = showRadiusForExample
 
         return self
     

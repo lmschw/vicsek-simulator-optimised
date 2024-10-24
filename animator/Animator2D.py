@@ -25,7 +25,7 @@ class Animator2D(Animator.Animator):
 
         plt.clf()
 
-        if self._exampleId != None:
+        if self._exampleId != None and self._showRadusForExample == True:
             plt.gca().add_patch(patches.Circle((self._positions[i,self._exampleId, 0], self._positions[i, self._exampleId, 1]), self._radius, color="#FFC1C3"))
             plt.gca().set_aspect("equal")
         plt.quiver(self._positions[i,:,0],self._positions[i,:,1],self._orientations[i,:,0],self._orientations[i,:,1],color=self._colours[i])
