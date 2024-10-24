@@ -6,7 +6,7 @@ import pandas as pd
 import evaluators.Evaluator as Evaluator
 from enums.EnumMetrics import Metrics
 
-# matplotlib default colours with corresponding colours that are 65% lighter
+# matplotlib default colours with corresponding colours that are 65% and 50% lighter
 COLOURS = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
            '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
 BACKGROUND_COLOURS_65_PERCENT_LIGHTER = ['#a6d1f0', '#ffd2ab', '#abe8ab', '#f1b3b3', '#dacae8',
@@ -18,9 +18,6 @@ class EvaluatorMultiAvgComp(object):
     """
     Implementation of the evaluation mechanism for the Vicsek model for comparison of multiple models.
     """
-
-    
-    
 
     def __init__(self, modelParams, metric, simulationData=None, evaluationTimestepInterval=1, threshold=0.01, switchTypeValues=None, 
                  switchType=None, switchTypeOptions=None):
@@ -34,6 +31,7 @@ class EvaluatorMultiAvgComp(object):
             - evaluationTimestepInterval (int) [optional]: the interval of the timesteps to be evaluated. By default, every time step is evaluated
             - threshold (float) [optional]: the threshold for the AgglomerativeClustering cutoff
             - switchTypeValues (array of arrays of switchTypeValues) [optional]: the switch type value of every particle at every timestep
+            - switchType (SwitchType) [optional]: the switch type that was used
             - switchTypeOptions (tuple) [optional]: the two possible values for the switch type value
         
         Returns:
@@ -51,6 +49,9 @@ class EvaluatorMultiAvgComp(object):
     def evaluate(self):
         """
         Evaluates all models according to the metric specified for the evaluator.
+
+        Parameters:
+            None
 
         Returns:
             A dictionary with the results for each model at every time step.
@@ -108,6 +109,9 @@ class EvaluatorMultiAvgComp(object):
             - yLabel (string) [optional]: the label for the y-axis
             - subtitle (string) [optional]: subtitle to be included in the title of the visualisation
             - colourBackgroundForTimesteps ([start, stop]) [optional]: the start and stop timestep for the background colouring for the event duration
+            - varianceData (array) [optional]: the variance for every timestep
+            - xlim (float) [optional]: the x-limit for the plot
+            - ylim (float) [optional]: the y-limit for the plot
             - savePath (string) [optional]: the location and name of the file where the model should be saved. Will not be saved unless a savePath is provided
 
         Returns:
@@ -178,7 +182,13 @@ class EvaluatorMultiAvgComp(object):
 
         Parameters:
             - labels (array of strings): the label for each model
+            - xLabel (string) [optional]: the label for the x-axis
+            - yLabel (string) [optional]: the label for the y-axis
             - subtitle (string) [optional]: subtitle to be included in the title of the visualisation
+            - colourBackgroundForTimesteps ([start, stop]) [optional]: the start and stop timestep for the background colouring for the event duration
+            - showVariance (boolean) [optional]: whether the variance data should be added to the plot, by default False
+            - xlim (float) [optional]: the x-limit for the plot
+            - ylim (float) [optional]: the y-limit for the plot
             - savePath (string) [optional]: the location and name of the file where the model should be saved. Will not be saved unless a savePath is provided
 
         Returns:
@@ -191,12 +201,14 @@ class EvaluatorMultiAvgComp(object):
         
     def __createStandardLineplot(self, data, labels, xlim=None, ylim=None):
         """
-        Creates a bar plot for the number of clusters in the system for every model at every timestep
+        Creates a line plot for every model at every timestep
 
         Parameters:
             - data (dictionary): a dictionary with the time step as its key and a list of the number of clusters for every model as its value
             - labels (list of strings): labels for the models
-            
+            - xlim (float) [optional]: the x-limit for the plot
+            - ylim (float) [optional]: the y-limit for the plot
+
         Returns:
             Nothing.
         """
@@ -218,7 +230,9 @@ class EvaluatorMultiAvgComp(object):
 
         Parameters:
             - data (dictionary): a dictionary with the time step as its key and a list of the number of clusters for every model as its value
-            - labels (list of strings): labels for the models
+            - labels (list of strings) [optional]: labels for the models
+            - xlim (float) [optional]: the x-limit for the plot
+            - ylim (float) [optional]: the y-limit for the plot
             
         Returns:
             Nothing.
@@ -243,7 +257,9 @@ class EvaluatorMultiAvgComp(object):
 
         Parameters:
             - data (dictionary): a dictionary with the time step as its key and a list of the min, avg and max number of neighbours for every model as its value
-            
+            - xlim (float) [optional]: the x-limit for the plot
+            - ylim (float) [optional]: the y-limit for the plot
+
         Returns:
             Nothing.
         """
@@ -259,6 +275,17 @@ class EvaluatorMultiAvgComp(object):
             df.plot.line()
 
     def getMinAvgMaxNumberOfNeighboursOverWholeRun(self):
+        """
+        Computes the minimum, average and maximum number of neighbours over the course of the whole run. Therefore, the resulting data
+        is not useful to plot the tendency over time. Rather, it shows the boundaries of the number of neighbours any particle can see
+        during the whole simulation.
+
+        Parameters:
+            None
+
+        Returns:
+            Three numbers representing the minimum, average and maximum number of neighbours for all particles during the whole simulation.
+        """
         self.metric = Metrics.MIN_AVG_MAX_NUMBER_NEIGHBOURS
         dataDict = self.evaluate()
         mins = []

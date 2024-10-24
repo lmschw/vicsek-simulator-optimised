@@ -1,7 +1,7 @@
 from enum import Enum
 
 """
-Indicates what should happen to the particles' orientation
+Indicates what should happen to the particles' orientation during an event.
 """
 class EventEffect(Enum):
     ALIGN_TO_FIXED_ANGLE = "align_fixed", "DISTANT", # the same angle is imposed on all particles

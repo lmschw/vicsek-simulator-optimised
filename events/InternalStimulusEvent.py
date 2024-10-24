@@ -25,17 +25,20 @@ class InternalStimulusOrientationChangeEvent(BaseEvent):
     def __init__(self, startTimestep, duration, domainSize, eventEffect, numberOfAffectedParticles=None, percentage=None, angle=None, 
                  noisePercentage=None, blockValues=False, alterValues=False, switchSummary=None):
         """
-        Creates an external stimulus event that affects part of the swarm at a given timestep.
+        Creates an event that affects part of the swarm at a given timestep.
 
         Params:
-            - timestep (int): the timestep at which the stimulus is presented and affects the swarm
-            - percentage (float, range: 0-100): how many percent of the swarm is directly affected by the event
-            - angle (int, range: 1-359): how much the orientation of the affected particles is changed in a counterclockwise manner
+            - startTimestep (int): the first timestep at which the stimulus is presented and affects the swarm
+            - duration (int): the number of timesteps during which the stimulus is present and affects the swarm
+            - domainSize (tuple of floats): the size of the domain
             - eventEffect (EnumEventEffect): how the orientations should be affected
-            - distributionType (EnumDistributionType) [optional]: how the directly affected particles are distributed, i.e. if the event occurs globally or locally
-            - areas ([(centerXCoordinate, centerYCoordinate, radius)]) [optional]: list of areas in which the event takes effect. Should be specified if the distributionType is not GLOBAL and match the DistributionType
-            - domainSize (tuple of floats) [optional]: the size of the domain
-            - targetSwitchValue (switchTypeValue) [optional]: the value that every affected particle should select
+            - numberOfAffectedParticles (int) [optional]: how many particles should be affected
+            - percentage (float) [optional]: how many particles should be affected in terms of percentage
+            - angle (float) [optional]: the angle that the affected particles should be set to (only applicable to some EventEffects)
+            - noisePercentage (float, range: 0-100) [optional]: how much noise is added to the orientation determined by the event (only works for certain events)
+            - blockValues (boolean) [optional]: whether the values (nsm, k, speed etc.) should be blocked after the update. By default False
+            - alterValues (boolean) [optional]: whether the values (nsm, k, speed etc.) should be altered by the event. If False, only the orientations will be updated. By default False
+            - switchSummary (SwitchSummary) [optional]: The switches that are available to the particles. Required to perform value alterations
             
         Returns:
             No return.
@@ -67,13 +70,14 @@ class InternalStimulusOrientationChangeEvent(BaseEvent):
             - totalNumberOfParticles (int): the total number of particles within the domain. Used to compute the number of affected particles
             - positions (array of tuples (x,y)): the position of every particle in the domain at the current timestep
             - orientations (array of tuples (u,v)): the orientation of every particle in the domain at the current timestep
-            - switchValues (array of switchTypeValues): the switch type value of every particle in the domain at the current timestep
-            - cells (array: [(minX, minY), (maxX, maxY)]): the cells within the cellbased domain
-            - cellDims (tuple of floats): the dimensions of a cell (the same for all cells)
-            - cellToParticleDistribution (dictionary {cellIdx: array of indices of all particles within the cell}): A dictionary containing the indices of all particles within each cell
+            - nsms (array of NeighbourSelectionMechanisms): the neighbour selection mechanism currently selected by each individual at the current timestep
+            - ks (array of int): the number of neighbours currently selected by each individual at the current timestep
+            - speeds (array of float): the speed of every particle at the current timestep
+            - dt (float) [optional]: the difference between the timesteps
+            - colourType (ColourType) [optional]: if and how particles should be encoded for colour for future video rendering
 
         Returns:
-            The orientations, switchTypeValues of all particles after the event has been executed as well as a list containing the indices of all affected particles.
+            The orientations, neighbour selection mechanisms, ks, speeds, blockedness and colour of all particles after the event has been executed.
         """
 
         if len(self.affectedParticles) == 0:
@@ -109,54 +113,20 @@ class InternalStimulusOrientationChangeEvent(BaseEvent):
         return orientations, nsms, ks, speeds, blocked, colours
     
     def selectParticles(self, totalNumberOfParticles):
+        """
+        Determines which particles are affected by the event.
+
+        Params:
+            - totalNumberOfParticles (int): how many particles are in the domain
+
+        Returns:
+            A list of indices of the affected particles
+        """
         if self.numberOfAffectedParticles == None:
             self.numberOfAffectedParticles = int((self.percentage / 100) * totalNumberOfParticles)
         if self.numberOfAffectedParticles > totalNumberOfParticles:
             self.numberOfAffectedParticles = totalNumberOfParticles
         return np.random.choice(totalNumberOfParticles, self.numberOfAffectedParticles, replace=False)
-
-    def computeAwayFromOrigin(self, positions):
-        """
-        Computes the (u,v)-coordinates for the orientation after turning away from the point of origin.
-
-        Params:
-            - position ([X,Y]): the position of the current particle that should turn away from the point of origin
-
-        Returns:
-            [U,V]-coordinates representing the new orientation of the current particle.
-        """
-        angles = self.__computeAngleWithRegardToOrigin(positions)
-        #angles = ServiceOrientations.normaliseAngles(angles)
-        return ServiceOrientations.computeUvCoordinatesForList(angles)
-
-    def __computeAngleWithRegardToOrigin(self, positions):
-        """
-        Computes the angle between the position of the current particle and the point of origin of the event.
-
-        Params:
-            - position ([X,Y]): the position of the current particle that should turn towards the point of origin
-
-        Returns:
-            The angle in radians between the two points.
-        """
-        orientationFromOrigin = positions - self.getOriginPoint()
-        anglesRadian = ServiceOrientations.computeAnglesForOrientations(orientationFromOrigin)
-        return anglesRadian
-
-    def getOriginPoint(self):
-        """
-        Determines the point of origin of the event.
-
-        Returns:
-            The point of origin of the event in [X,Y]-coordinates.
-        """
-        match self.distributionType:
-            case DistributionType.GLOBAL:
-                origin = (self.domainSize[0]/2, self.domainSize[1]/2)
-            case DistributionType.LOCAL_SINGLE_SITE:
-                origin = self.areas[0][:2]
-        return origin
-
     
     def getRandomOrientations(self, numAffectedParticles):
         """

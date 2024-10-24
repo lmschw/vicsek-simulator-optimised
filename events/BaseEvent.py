@@ -8,6 +8,7 @@ import services.ServiceVicsekHelper as ServiceVicsekHelper
 
 class BaseEvent:
     # TODO refactor to allow areas with a radius bigger than the radius of a particle, i.e. remove neighbourCells and determine all affected cells here
+    # TODO make noisePercentage applicable to all events
     """
     Representation of an event occurring at a specified time and place within the domain and affecting 
     a specified percentage of particles. After creation, the check()-method takes care of everything.
@@ -15,17 +16,17 @@ class BaseEvent:
     def __init__(self, startTimestep, duration, domainSize, eventEffect, noisePercentage=None, blockValues=False, alterValues=False, 
                  switchSummary=None):
         """
-        Creates an external stimulus event that affects part of the swarm at a given timestep.
+        Creates an event that affects part of the swarm at a given timestep.
 
         Params:
-            - timestep (int): the timestep at which the stimulus is presented and affects the swarm
-            - percentage (float, range: 0-100): how many percent of the swarm is directly affected by the event
-            - angle (int, range: 1-359): how much the orientation of the affected particles is changed in a counterclockwise manner
+            - startTimestep (int): the first timestep at which the stimulus is presented and affects the swarm
+            - duration (int): the number of timesteps during which the stimulus is present and affects the swarm
+            - domainSize (tuple of floats): the size of the domain
             - eventEffect (EnumEventEffect): how the orientations should be affected
-            - distributionType (EnumDistributionType) [optional]: how the directly affected particles are distributed, i.e. if the event occurs globally or locally
-            - areas ([(centerXCoordinate, centerYCoordinate, radius)]) [optional]: list of areas in which the event takes effect. Should be specified if the distributionType is not GLOBAL and match the DistributionType
-            - domainSize (tuple of floats) [optional]: the size of the domain
-            - targetSwitchValue (switchTypeValue) [optional]: the value that every affected particle should select
+            - noisePercentage (float, range: 0-100) [optional]: how much noise is added to the orientation determined by the event (only works for certain events)
+            - blockValues (boolean) [optional]: whether the values (nsm, k, speed etc.) should be blocked after the update. By default False
+            - alterValues (boolean) [optional]: whether the values (nsm, k, speed etc.) should be altered by the event. If False, only the orientations will be updated. By default False
+            - switchSummary (SwitchSummary) [optional]: The switches that are available to the particles. Required to perform value alterations
             
         Returns:
             No return.
@@ -40,6 +41,9 @@ class BaseEvent:
         self.switchSummary = switchSummary
         if self.noisePercentage != None:
             self.noise = ServicePreparation.getNoiseAmplitudeValueForPercentage(self.noisePercentage)
+        if self.alterValues == True and self.switchSummary == None:
+            raise Exception("If the event is supposed to alter the values, a switchSummary needs to be supplied")
+        
 
     def getShortPrintVersion(self):
         return f"t{self.startTimestep}d{self.duration}e{self.eventEffect.val}"
@@ -59,7 +63,8 @@ class BaseEvent:
             summary["switchSummary"] = None
         return summary
 
-    def check(self, totalNumberOfParticles, currentTimestep, positions, orientations, nsms, ks, speeds, dt=None, activationTimeDelays=None, isActivationTimeDelayRelevantForEvent=False, colourType=None):
+    def check(self, totalNumberOfParticles, currentTimestep, positions, orientations, nsms, ks, speeds, dt=None, activationTimeDelays=None, 
+              isActivationTimeDelayRelevantForEvent=False, colourType=None):
         """
         Checks if the event is triggered at the current timestep and executes it if relevant.
 
@@ -68,10 +73,13 @@ class BaseEvent:
             - currentTimestep (int): the timestep within the experiment run to see if the event should be triggered
             - positions (array of tuples (x,y)): the position of every particle in the domain at the current timestep
             - orientations (array of tuples (u,v)): the orientation of every particle in the domain at the current timestep
-            - switchValues (array of switchTypeValues): the switch type value of every particle in the domain at the current timestep
-            - cells (array: [(minX, minY), (maxX, maxY)]): the cells within the cellbased domain
-            - cellDims (tuple of floats): the dimensions of a cell (the same for all cells)
-            - cellToParticleDistribution (dictionary {cellIdx: array of indices of all particles within the cell}): A dictionary containing the indices of all particles within each cell
+            - nsms (array of NeighbourSelectionMechanisms): the neighbour selection mechanism currently selected by each individual at the current timestep
+            - ks (array of int): the number of neighbours currently selected by each individual at the current timestep
+            - speeds (array of float): the speed of every particle at the current timestep
+            - dt (float) [optional]: the difference between the timesteps
+            - activationTimeDelays (array of int) [optional]: the time delay for the updates of each individual
+            - isActivationTimeDelayRelevantForEvent (boolean) [optional]: whether the event can affect particles that may not be ready to update due to a time delay. They may still be selected but will retain their current values
+            - colourType (ColourType) [optional]: if and how particles should be encoded for colour for future video rendering
 
         Returns:
             The orientations of all particles - altered if the event has taken place, unaltered otherwise.
@@ -108,6 +116,15 @@ class BaseEvent:
         return self.startTimestep <= currentTimestep and currentTimestep <= (self.startTimestep + self.duration)
     
     def applyNoiseDistribution(self, orientations):
+        """
+        Applies noise to the orientations.
+
+        Params:
+            - orientations (array of tuples (u,v)): the orientation of every particle at the current timestep
+
+        Returns:
+            An array of tuples (u,v) that represents the orientation of every particle at the current timestep after noise has been applied.
+        """
         return orientations + np.random.normal(scale=self.noise, size=(len(orientations), len(self.domainSize)))
     
     def executeEvent(self, totalNumberOfParticles, positions, orientations, nsms, ks, speeds, dt, colourType=None):
@@ -118,18 +135,30 @@ class BaseEvent:
             - totalNumberOfParticles (int): the total number of particles within the domain. Used to compute the number of affected particles
             - positions (array of tuples (x,y)): the position of every particle in the domain at the current timestep
             - orientations (array of tuples (u,v)): the orientation of every particle in the domain at the current timestep
-            - switchValues (array of switchTypeValues): the switch type value of every particle in the domain at the current timestep
-            - cells (array: [(minX, minY), (maxX, maxY)]): the cells within the cellbased domain
-            - cellDims (tuple of floats): the dimensions of a cell (the same for all cells)
-            - cellToParticleDistribution (dictionary {cellIdx: array of indices of all particles within the cell}): A dictionary containing the indices of all particles within each cell
+            - nsms (array of NeighbourSelectionMechanisms): the neighbour selection mechanism currently selected by each individual at the current timestep
+            - ks (array of int): the number of neighbours currently selected by each individual at the current timestep
+            - speeds (array of float): the speed of every particle at the current timestep
+            - dt (float) [optional]: the difference between the timesteps
+            - colourType (ColourType) [optional]: if and how particles should be encoded for colour for future video rendering
 
         Returns:
-            The orientations, switchTypeValues of all particles after the event has been executed as well as a list containing the indices of all affected particles.
+            The orientations, neighbour selection mechanisms, ks, speeds, blockedness and colour of all particles after the event has been executed.
         """
         # base event does not do anything here
         return orientations, nsms, ks, speeds, np.full(totalNumberOfParticles, False), np.full(totalNumberOfParticles, 'k')
     
     def getColours(self, colourType, affected, totalNumberOfParticles):
+        """
+        Determines the colour of every particle for future video rendering.
+
+        Params:
+            - colourType (ColourType): if and how the particles should be encoded for colour for future video rendering.
+            - affected (array of booleans): which particles are affected
+            - totalNumberOfParticles (int): how many particles are in the domain
+
+        Returns:
+            Numpy array containing a string representation of the colour of every particle.
+        """
         colours = np.full(totalNumberOfParticles, 'k')
         if colourType == ColourType.AFFECTED:
             colours[affected] = 'r'

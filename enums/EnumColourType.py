@@ -1,8 +1,7 @@
 from enum import Enum
 
 """
-Indicates how the particles should be distributed spatially when selecting which particles are affected by 
-an event.
+Indicates which particles should be coloured during the experiment to facilitate better understanding in the video rendering.
 """
 class ColourType(str, Enum):
     EXAMPLE = "EX",

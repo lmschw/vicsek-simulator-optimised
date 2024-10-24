@@ -4,21 +4,21 @@ import animator.Animator as Animator
 
 class Animator2D(Animator.Animator):
     """
-    Animator class for 2D graphical representation.
+    Animator class for 2D graphical representation for a circular domain
     """
 
     def __init__(self, modelParams):
-        """
-        Constructor. Returns the Animator2D instance.
-        """
         self.setParams(modelParams)
 
     def _animate(self, i):
         """
         Animator class that goes through sim data.
 
-        keyword arguments:
-        i -- Loop index.
+        Parameters:
+            - i (int): Loop index.
+
+        Returns:
+            Nothing
         """
 
         if i % 500 == 0:

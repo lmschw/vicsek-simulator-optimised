@@ -52,6 +52,11 @@ class Evaluator(object):
         """
         Evaluates the model according to the metric specified for the evaluator.
 
+        Parameters:
+            - startTimestep (int) [optional]: The first timestep used for the evaluation, i.e. the lower bound of the evaluation window. By default 0, the very first timestep
+            - endTimestep (int) [optional]: The last timestep used for the evaluation, i.e. the upper bound of the evaluation window. By default the very last timestep
+            - saveTimestepsResultsPath (String) [optional]: where the results of the individual timesteps should be saved
+
         Returns:
             A dictionary with the results for the model at every time step.
         """

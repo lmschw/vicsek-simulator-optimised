@@ -14,12 +14,13 @@ class Animator(object):
         """
         Prepares the 2D animator object for animation.
 
-        parameters:
-        matplotlibFigure: Matplotlibs figure object.
-        frameInterval -- The interval between two frames.
-        frames -- The number of frames used in the animation.
+        Parameters:
+            - matplotlibFigure (Figure): Matplotlibs figure object.
+            - frameInterval (int): The interval between two frames.
+            - frames (int): The number of frames used in the animation.
 
-        returns self
+        Returns: 
+            self
         """
         self._matplotlibFigure = matplotlibFigure
         self._frames = frames
@@ -29,18 +30,22 @@ class Animator(object):
 
     def setSimulationData(self, simulationData, domainSize, colours=None, redIndices=[], showRadiusForExample=False):
         """
-        Sets
-        keyword arguments:
-        simulationData -- The simulation data array.
-        domainSize -- The tuple that represents the lenghts of the square domain in each dimension.
+        Sets the simulation data.
+        
+        Parameters:
+            - simulationData (array of arrays): The simulation data array containing times, positions and orientations
+            - domainSize (tuple of floats): The tuple that represents the lenghts of the square domain in each dimension.
+            - colours (array of arrays) [optional]: Contains the colour for every particle at every timestep. By default, all particles will be shown in black
+            - redIndices (list) [optional]: A list containing indices of particles that will be shown in red. Will be ignored if a colour array is passed
+            - showRadiusForExample (boolean) [optional]: if an example particle is provided in the modelParams, toggles if the perception radius is drawn in the video
 
-        return:
-        self
+        Returns:
+            self
         """        
         self._time, self._positions, self._orientations = simulationData
         self._domainSize = domainSize
 
-        if colours is None:
+        if colours is None: # if the colours are provided, we don't mess with those as they may show an example
             a = np.array(len(self._positions[0]) * ['k'])
             if len(redIndices) > 0:
                 a[redIndices] = 'r'
@@ -73,7 +78,11 @@ class Animator(object):
         """
         Shows the animation
 
-        returns self
+        Parameters:
+            None
+
+        Returns: 
+            self
         """
         self._getAnimation()
         plt.show()
@@ -84,8 +93,11 @@ class Animator(object):
         """
         Saves the animation. Requires FFMPEG
 
-        returns
-        Animator
+        Parameters:
+            None
+
+        Returns:
+            Animator
         """
         print("Saving commenced...")
         animation = self._getAnimation()
@@ -99,10 +111,13 @@ class Animator(object):
 
     def _generateAnimation(self):
         """
-        Generate the animation.
+        Generates the animation.
+
+        Parameters:
+            None
         
-        returns
-        animation object
+        Returns
+            animation object
         """
         self.animation = FuncAnimation(self._matplotlibFigure, self._animate, interval=self._frameInterval, frames = self._frames)
 
