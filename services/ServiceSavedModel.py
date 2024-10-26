@@ -29,7 +29,7 @@ def saveModel(simulationData, path="sample.json", modelParams=None, saveInterval
         dict["switchValues"] = {k : np.array(v).tolist() for k,v in vals.items()} # deal with np.array instances in the values
     if colours:
         dict["colours"] = [np.array(cols).tolist() for cols in colours]
-    __saveDict(path, dict, modelParams)
+    saveDict(path, dict, modelParams)
 
 def loadModel(path, loadSwitchValues=False, loadColours=False):
     """
@@ -113,7 +113,7 @@ def saveTimestepsResults(results, path, modelParams=None, saveInterval=1):
     """
     dict = {"time": __getSpecifiedIntervals(saveInterval, list(results.keys())),
             "results": __getSpecifiedIntervals(saveInterval, list(results.values()))}
-    __saveDict(path, dict, modelParams)
+    saveDict(path, dict, modelParams)
 
 def loadTimestepsResults(path):
     """
@@ -144,7 +144,7 @@ def saveConnectionTrackingInformation(data, path="sample.json"):
     Returns:
         Nothing. Creates or overwrites a file.
     """
-    __saveDict(path, data)
+    saveDict(path, data)
 
 def loadConnectionTrackingInformation(path):
     """
@@ -204,7 +204,7 @@ def __getSpecifiedIntervals(interval, lst):
     """
     return [lst[idx] for idx in range(0, len(lst)) if idx % interval == 0]
 
-def __saveDict(path, dict, modelParams=None):
+def saveDict(path, dict, modelParams=None):
     """
     Saves the values of a dictionary to a file at the specified path.
 
