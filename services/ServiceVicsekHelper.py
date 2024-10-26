@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 import services.ServiceVision as ServiceVision
 
@@ -50,13 +51,24 @@ def getNeighboursWithLimitedVision(positions, orientations, domainSize, radius, 
     np.fill_diagonal(combined, True)
     return combined
 
-def padArray(a, n, kMin, kMax):
+def padArray(a, n, kMin, kMax, paddingValue=-1):
     if kMax > len(a[0]):
-        minusDiff = np.full((n,kMax-kMin), -1)
+        minusDiff = np.full((n,kMax-kMin), paddingValue)
         return np.concatenate((a, minusDiff), axis=1)
     return a
 
-def getIndicesForTrueValues(a):
+def padWithRepetition(vector, pad_width, iaxis, kwargs):
+    if pad_width == (0, 0):
+        values = vector
+    else:
+        values = list(vector[pad_width[0]:-pad_width[1]])
+    randomValues = np.random.choice(values, len(vector))
+    #c =  np.where((vector == 0), randomValues, vector)
+    #vector = c
+    vector[:pad_width[0]] = randomValues[:pad_width[0]]
+    vector[-pad_width[1]:] = randomValues[-pad_width[1]:]
+
+def getIndicesForTrueValues(a, paddingType='constant', paddingValue=-1):
     indices = np.transpose(np.nonzero(a))
     perRow = np.full(len(a), None)
     maxLength = 0
@@ -70,19 +82,16 @@ def getIndicesForTrueValues(a):
     result = []
     for rowIdx in range(len(a)):
         if perRow[rowIdx] == None:
-            result.append(np.full(maxLength, -1))
+            result.append(np.full(maxLength, paddingValue))
         else:
             #result.append(np.pad(perRow[rowIdx], maxLength, ))
             pr = np.array(perRow[rowIdx])
-            result.append(np.pad(pr, ((0, maxLength-pr.shape[0])), 'constant', constant_values=-1))
+            if paddingType == 'constant':
+                result.append(np.pad(pr, ((0, maxLength-pr.shape[0])), 'constant', constant_values=paddingValue))
+            elif paddingType == 'repetition':
+                result.append(np.pad(pr, (0, maxLength-pr.shape[0]), padWithRepetition))
     
     return np.array(result)
-
-def getIndicesForTrueValuesWithPadding(a, n, kMin, kMax):
-    withoutPadding = getIndicesForTrueValues(a)
-    if len(withoutPadding) == 0 or len(withoutPadding[0]) == 0:
-        return np.full((len(a), kMax), -1)
-    return padArray(withoutPadding, n, np.max(np.min(withoutPadding), 0), kMax)
 
 def revertTimeDelayedChanges(t, oldValues, newValues, activationTimeDelays):
     vals = np.where((np.array([t % activationTimeDelays == 0, t % activationTimeDelays == 0]).T), newValues, oldValues)

@@ -344,13 +344,9 @@ class VicsekWithNeighbourSelection:
         posDiff = ServiceVicsekHelper.getPositionDifferences(positions, self.domainSize)
         kMaxPresent = np.max(ks)
         
-        indices = ServiceVicsekHelper.getIndicesForTrueValuesWithPadding(neighbours, self.numberOfParticles, np.min(ks), kMaxPresent)
+        candidateIndices = ServiceVicsekHelper.getIndicesForTrueValues(neighbours, paddingType='repetition')
         rng = np.random.default_rng()
-        rng.shuffle(indices, axis=1)
-        indicesOrdered = [np.arange(len(indices[0]))] * len(indices)
-        sortedIndices = np.flip(np.sort(np.where((indices == -1), indices, indicesOrdered)))
-        originalSortedIndices = np.take_along_axis(indices, sortedIndices, axis=1)
-        candidateIndices = np.where((sortedIndices == -1), sortedIndices, originalSortedIndices)
+        rng.shuffle(candidateIndices, axis=1)
         if self.switchSummary != None and self.switchSummary.isActive(SwitchType.K):
             kMin, kMax = self.switchSummary.getMinMaxValuesForKSwitchIfPresent()
             if len(candidateIndices[0]) < kMax:
