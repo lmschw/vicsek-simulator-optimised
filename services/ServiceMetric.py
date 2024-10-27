@@ -81,20 +81,6 @@ def computeGlobalOrder(orientations):
     sumOrientation = np.sum(orientations[np.newaxis,:,:],axis=1)
     return np.divide(np.sqrt(np.sum(sumOrientation**2,axis=1)), len(orientations))[0]
 
-def computeLocalOrders(orientations, neighbours):
-    """
-    Computes the local order for every individual.
-
-    Params: 
-        - orientations (array of floats): the orientation of every individual at the current timestep
-        - neighbours (array of arrays of booleans): the identity of every neighbour of every individual
-
-    Returns:
-        An array of floats representing the local order for every individual at the current time step (values between 0 and 1)
-    """
-    sumOrientation = np.sum(neighbours[:,:,np.newaxis]*orientations[np.newaxis,:,:],axis=1)
-    return np.divide(np.sqrt(np.sum(sumOrientation**2,axis=1)), np.count_nonzero(neighbours, axis=1))
-
 def findClusters(orientations, threshold):
     """
     Find clusters in the data using AgglomerativeClustering.
@@ -275,12 +261,15 @@ def getMinAvgMaxNumberOfNeighbours(positions, domainSize, radius):
     neighbourNumbersArray = np.count_nonzero(neighbours, axis=1)
     return np.min(neighbourNumbersArray), np.average(neighbourNumbersArray), np.max(neighbourNumbersArray)
 
-def getMinAvgMaxDistanceOfNeighbours(positions, domainSize, radius):
-    neighbours = ServiceVicsekHelper.getNeighbours(positions=positions, domainSize=domainSize, radius=radius)
+def getDistanceOfNeighbours(positions, neighbours, domainSize):
     np.fill_diagonal(neighbours, False)
     posDiff = np.sqrt(ServiceVicsekHelper.getPositionDifferences(positions=positions, domainSize=domainSize))
-    maskedArray = np.ma.MaskedArray(posDiff, mask=neighbours==False, fill_value=0)
-    return np.min(maskedArray), np.average(maskedArray), np.max(maskedArray)
+    return neighbours*posDiff
+
+def getMinAvgMaxDistanceOfNeighbours(positions, domainSize, radius):
+    neighbours = ServiceVicsekHelper.getNeighbours(positions=positions, domainSize=domainSize, radius=radius)
+    dists = getDistanceOfNeighbours(positions, neighbours, domainSize)
+    return np.min(dists), np.average(dists), np.max(dists)
 
 def getMinAvgMaxDistanceFromCentroid(positions):
     centroid = np.mean(positions, axis=0)
