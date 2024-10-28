@@ -204,6 +204,15 @@ def __getSpecifiedIntervals(interval, lst):
     """
     return [lst[idx] for idx in range(0, len(lst)) if idx % interval == 0]
 
+def saveGenInfo(path, dict):
+    fitnessDict = {}
+    allFit = dict["all_fitnesses"]
+    for i in range(len(allFit)):
+        for key in allFit[i].keys():
+            fitnessDict[str(key)] = allFit[i][key]
+    dict["all_fitnesses"] = [fitnessDict]
+    saveDict(path, dict)
+
 def saveDict(path, dict, modelParams=None):
     """
     Saves the values of a dictionary to a file at the specified path.

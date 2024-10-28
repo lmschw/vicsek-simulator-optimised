@@ -201,11 +201,11 @@ class VicsekWithNeighbourSelection():
             kMin, kMax = self.switchSummary.getMinMaxValuesForKSwitchIfPresent()
             
             candidatesOrder = sortedIndices[:, :kSwitch.orderSwitchValue]
-            if kSwitch.orderSwitchValue < kMax and kMax == kMaxPresent:
+            if kSwitch.orderSwitchValue < kMax:
                 candidatesOrder = ServiceVicsekHelper.padArray(candidatesOrder, self.numberOfParticles, kMin=kMin, kMax=kMax)
 
             candidatesDisorder = sortedIndices[:, :kSwitch.disorderSwitchValue]
-            if kSwitch.disorderSwitchValue < kMax and kMax == kMaxPresent:
+            if kSwitch.disorderSwitchValue < kMax:
                 candidatesDisorder = ServiceVicsekHelper.padArray(candidatesDisorder, self.numberOfParticles, kMin=kMin, kMax=kMax)
 
             candidates = np.where(((ks == kSwitch.orderSwitchValue)[:, None]), candidatesOrder, candidatesDisorder)
@@ -233,7 +233,7 @@ class VicsekWithNeighbourSelection():
         picked = np.where(((candidates == -1) | (pickedDistances > self.radius**2)), minusOnes, candidates)
         return picked
     
-    def __createBooleanMaskFromPickedNeighbourIndices(self, picked):
+    def __createBooleanMaskFromPickedNeighbourIndices(self, picked, kMax):
         """
         Creates a boolean mask from the indices of the selected neighbours.
 
@@ -247,7 +247,7 @@ class VicsekWithNeighbourSelection():
             return np.full((self.numberOfParticles, self.numberOfParticles), False)
         # create the boolean mask
         ns = np.full((self.numberOfParticles,self.numberOfParticles+1), False) # add extra dimension to catch indices that are not applicable
-        pickedValues = np.full((self.numberOfParticles, self.k), True)
+        pickedValues = np.full((self.numberOfParticles, kMax), True)
         np.put_along_axis(ns, picked, pickedValues, axis=1)
         ns = ns[:, :-1] # remove extra dimension to catch indices that are not applicable
         return ns
@@ -266,15 +266,18 @@ class VicsekWithNeighbourSelection():
             An array of arrays of booleans representing the selected neighbours
         """
         
-        kMaxPresent = np.max(ks)
+        kMax = np.max(ks)
+
+        if self.switchSummary != None and self.switchSummary.isActive(SwitchType.K):
+            _, kMax = self.switchSummary.getMinMaxValuesForKSwitchIfPresent()
 
         sortedIndices = candidates.argsort(axis=1)
         if isMin == False:
             sortedIndices = np.flip(sortedIndices, axis=1)
         
-        picked = self.__getPickedNeighbourIndices(sortedIndices=sortedIndices, kMaxPresent=kMaxPresent, ks=ks)
-        picked = self.__checkPickedForNeighbourhood(posDiff=posDiff, candidates=picked, kMaxPresent=kMaxPresent)
-        mask = self.__createBooleanMaskFromPickedNeighbourIndices(picked)
+        picked = self.__getPickedNeighbourIndices(sortedIndices=sortedIndices, kMaxPresent=kMax, ks=ks)
+        picked = self.__checkPickedForNeighbourhood(posDiff=posDiff, candidates=picked, kMaxPresent=kMax)
+        mask = self.__createBooleanMaskFromPickedNeighbourIndices(picked, kMax)
         return mask        
             
     def pickPositionNeighbours(self, positions, neighbours, ks, isMin=True):
@@ -344,7 +347,7 @@ class VicsekWithNeighbourSelection():
         """
         np.fill_diagonal(neighbours, False)
         posDiff = ServiceVicsekHelper.getPositionDifferences(positions, self.domainSize)
-        kMaxPresent = np.max(ks)
+        kMax = np.max(ks)
         
         candidateIndices = ServiceVicsekHelper.getIndicesForTrueValues(neighbours, paddingType='repetition')
         rng = np.random.default_rng()
@@ -353,11 +356,11 @@ class VicsekWithNeighbourSelection():
             kMin, kMax = self.switchSummary.getMinMaxValuesForKSwitchIfPresent()
             if len(candidateIndices[0]) < kMax:
                 candidateIndices = ServiceVicsekHelper.padArray(candidateIndices, self.numberOfParticles, kMin, kMax)
-        elif kMaxPresent < self.k:
-            candidateIndices = ServiceVicsekHelper.padArray(candidateIndices, self.numberOfParticles, kMaxPresent, self.k)
-        picked = self.__getPickedNeighbourIndices(sortedIndices=candidateIndices, kMaxPresent=kMaxPresent, ks=ks)
-        picked = self.__checkPickedForNeighbourhood(posDiff=posDiff, candidates=picked, kMaxPresent=kMaxPresent)
-        selection = self.__createBooleanMaskFromPickedNeighbourIndices(picked)
+        elif kMax < self.k:
+            candidateIndices = ServiceVicsekHelper.padArray(candidateIndices, self.numberOfParticles, kMax, self.k)
+        picked = self.__getPickedNeighbourIndices(sortedIndices=candidateIndices, kMaxPresent=kMax, ks=ks)
+        picked = self.__checkPickedForNeighbourhood(posDiff=posDiff, candidates=picked, kMaxPresent=kMax)
+        selection = self.__createBooleanMaskFromPickedNeighbourIndices(picked, kMax)
         np.fill_diagonal(selection, True)
         return selection
 
@@ -589,8 +592,8 @@ class VicsekWithNeighbourSelection():
             self.exampleId = np.random.choice(self.numberOfParticles, 1)
         for t in range(self.numIntervals):
             self.t = t
-            if t % 5000 == 0:
-                print(f"t={t}/{self.tmax}")
+            # if t % 5000 == 0:
+            #     print(f"t={t}/{self.tmax}")
 
             orientations, nsms, ks, speeds, blocked, self.colours = self.handleEvents(t, positions, orientations, nsms, ks, speeds, activationTimeDelays)
 
@@ -623,8 +626,8 @@ class VicsekWithNeighbourSelection():
             if self.colourType != None:
                 self.coloursHistory[t] = self.colours
 
-            if t % 500 == 0:
-                print(f"t={t}, th={self.thresholdEvaluationMethod.name}, order={ServiceMetric.computeGlobalOrder(orientations)}")
+            # if t % 500 == 0:
+            #     print(f"t={t}, th={self.thresholdEvaluationMethod.name}, order={ServiceMetric.computeGlobalOrder(orientations)}")
             
         if self.colourType == None:
             return (self.dt*np.arange(self.numIntervals), self.positionsHistory, self.orientationsHistory), self.switchTypeValuesHistory

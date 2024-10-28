@@ -87,8 +87,8 @@ class BaseEvent:
         blocked = np.full(totalNumberOfParticles, False)
         colours = np.full(totalNumberOfParticles, 'k')
         if self.checkTimestep(currentTimestep):
-            if currentTimestep == self.startTimestep or currentTimestep == (self.startTimestep + self.duration):
-                print(f"executing event at timestep {currentTimestep}")
+            # if currentTimestep == self.startTimestep or currentTimestep == (self.startTimestep + self.duration):
+            #     print(f"executing event at timestep {currentTimestep}")
             alteredOrientations, alteredNsms, alteredKs, alteredSpeeds, blockedUpdate, colours = self.executeEvent(totalNumberOfParticles=totalNumberOfParticles, positions=positions, orientations=orientations, nsms=nsms, ks=ks, speeds=speeds, dt=dt, colourType=colourType)
 
             if isActivationTimeDelayRelevantForEvent:
