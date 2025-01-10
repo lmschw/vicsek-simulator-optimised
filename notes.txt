@@ -26,3 +26,15 @@ TODO 22.10.:
 
 TODO 24.10.:
 - find a genetic learning algo that will transform time data into a discrete value -> train it to pick between the nsm/k-combinations (without using local order)
+
+TODO 29.10.:
+- look into explainability of genetic results to explain the real world data and match it to our model
+- check if anything has been done on open world scenarios for neighbour selection for survival (with food and predator and reproduction )
+
+TODO 10.01.25:
+- add table with combinations (rules, mechanisms, events) to the appendix of the paper
+- Create tables for rules, mechanisms, events
+- Reorganise the plots into panels in overleaf (so that they can be rearranged)
+- Implement the naming conventions: rule with parameter k (e.g. nearest(1)), mechanism (e.g. m(rule1, rule2)), event (e.g. Random)
+- Rework text
+- Conduct sensitivity analysis on event duration
