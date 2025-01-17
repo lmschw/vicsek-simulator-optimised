@@ -358,6 +358,8 @@ class VicsekWithNeighbourSelection():
                 candidateIndices = ServiceVicsekHelper.padArray(candidateIndices, self.numberOfParticles, kMin, kMax)
         elif kMax < self.k:
             candidateIndices = ServiceVicsekHelper.padArray(candidateIndices, self.numberOfParticles, kMax, self.k)
+        elif len(candidateIndices[0]) < kMax:
+            candidateIndices = ServiceVicsekHelper.padArray(candidateIndices, self.numberOfParticles, len(candidateIndices[0]), kMax)
         picked = self.__getPickedNeighbourIndices(sortedIndices=candidateIndices, kMaxPresent=kMax, ks=ks)
         picked = self.__checkPickedForNeighbourhood(posDiff=posDiff, candidates=picked, kMaxPresent=kMax)
         selection = self.__createBooleanMaskFromPickedNeighbourIndices(picked, kMax)
