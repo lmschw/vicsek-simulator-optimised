@@ -19,7 +19,8 @@ class VicsekWithNeighbourSelection():
 
     def __init__(self, domainSize, radius, noise, numberOfParticles, k, neighbourSelectionMechanism,
                  speed=dv.DEFAULT_SPEED, switchSummary=None, events=None, degreesOfVision=dv.DEFAULT_DEGREES_OF_VISION, 
-                 activationTimeDelays=[], isActivationTimeDelayRelevantForEvents=False, colourType=None, thresholdEvaluationMethod=ThresholdEvaluationMethod.LOCAL_ORDER):
+                 activationTimeDelays=[], isActivationTimeDelayRelevantForEvents=False, colourType=None, 
+                 thresholdEvaluationMethod=ThresholdEvaluationMethod.LOCAL_ORDER, updateIfNoNeighbours=True):
         """
         Params:
             - domainSize (tuple of floats): the size of the domain
@@ -53,6 +54,7 @@ class VicsekWithNeighbourSelection():
         self.isActivationTimeDelayRelevantForEvents = isActivationTimeDelayRelevantForEvents
         self.colourType = colourType
         self.thresholdEvaluationMethod = thresholdEvaluationMethod
+        self.updateIfNoNeighbours = updateIfNoNeighbours
 
         # Preparation of constants
         self.minReplacementValue = -1
@@ -452,7 +454,7 @@ class VicsekWithNeighbourSelection():
 
         return orientations
      
-    def getDecisions(self, t, thresholdEvaluationChoiceValues, previousthresholdEvaluationChoiceValues, switchType, switchTypeValues, blocked):
+    def getDecisions(self, t, neighbours, thresholdEvaluationChoiceValues, previousthresholdEvaluationChoiceValues, switchType, switchTypeValues, blocked):
         """
         Computes whether the individual chooses to use option A or option B as its value based on the local order, 
         the average previous local order and a threshold.
@@ -476,6 +478,9 @@ class VicsekWithNeighbourSelection():
 
         oldWithNewOrderValues = np.where(((thresholdEvaluationChoiceValues >= switchDifferenceThresholdUpper) & (prev <= switchDifferenceThresholdUpper) & (blocked != True)), np.full(len(switchTypeValues), switchInfo.orderSwitchValue), switchTypeValues)
         updatedSwitchValues = np.where(((thresholdEvaluationChoiceValues <= switchDifferenceThresholdLower) & (prev >= switchDifferenceThresholdLower) & (blocked != True)), np.full(len(switchTypeValues), switchInfo.disorderSwitchValue), oldWithNewOrderValues)
+        if self.updateIfNoNeighbours == False:
+            neighbour_counts = np.count_nonzero(neighbours, axis=1)
+            updatedSwitchValues = np.where((neighbour_counts == 1), switchTypeValues, updatedSwitchValues)
         return updatedSwitchValues
     
     def appendSwitchValues(self, nsms, ks, speeds, activationTimeDelays):
@@ -609,13 +614,13 @@ class VicsekWithNeighbourSelection():
                 self.thresholdEvaluationChoiceValuesHistory.append(thresholdEvaluationChoiceValues)
             
                 if SwitchType.NEIGHBOUR_SELECTION_MECHANISM in self.switchSummary.switches.keys():
-                    nsms = self.getDecisions(t, thresholdEvaluationChoiceValues, self.thresholdEvaluationChoiceValuesHistory, SwitchType.NEIGHBOUR_SELECTION_MECHANISM, nsms, blocked)
+                    nsms = self.getDecisions(t, neighbours, thresholdEvaluationChoiceValues, self.thresholdEvaluationChoiceValuesHistory, SwitchType.NEIGHBOUR_SELECTION_MECHANISM, nsms, blocked)
                 if SwitchType.K in self.switchSummary.switches.keys():
-                    ks = self.getDecisions(t, thresholdEvaluationChoiceValues, self.thresholdEvaluationChoiceValuesHistory, SwitchType.K, ks, blocked)
+                    ks = self.getDecisions(t, neighbours, thresholdEvaluationChoiceValues, self.thresholdEvaluationChoiceValuesHistory, SwitchType.K, ks, blocked)
                 if SwitchType.SPEED in self.switchSummary.switches.keys():
-                    speeds = self.getDecisions(t, thresholdEvaluationChoiceValues, self.thresholdEvaluationChoiceValuesHistory, SwitchType.SPEED, speeds, blocked)
+                    speeds = self.getDecisions(t, neighbours, thresholdEvaluationChoiceValues, self.thresholdEvaluationChoiceValuesHistory, SwitchType.SPEED, speeds, blocked)
                 if SwitchType.ACTIVATION_TIME_DELAY in self.switchSummary.switches.keys():
-                    activationTimeDelays = self.getDecisions(t, thresholdEvaluationChoiceValues, self.thresholdEvaluationChoiceValuesHistory, SwitchType.ACTIVATION_TIME_DELAY, activationTimeDelays, blocked)
+                    activationTimeDelays = self.getDecisions(t, neighbours, thresholdEvaluationChoiceValues, self.thresholdEvaluationChoiceValuesHistory, SwitchType.ACTIVATION_TIME_DELAY, activationTimeDelays, blocked)
 
             orientations = self.computeNewOrientations(neighbours, positions, orientations, nsms, ks, activationTimeDelays)
 
