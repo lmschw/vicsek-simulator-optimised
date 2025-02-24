@@ -8,4 +8,7 @@ __pycache__
 *.json
 *.png
 *.svg
+*.pdf
+*.csv
 *.jpeg
+*.log
