@@ -24,8 +24,10 @@ def saveModel(simulationData, path="sample.json", modelParams=None, saveInterval
     dict = {"time": __getSpecifiedIntervals(saveInterval, time.tolist()), 
             "positions": __getSpecifiedIntervals(saveInterval, positions.tolist()), 
             "orientations": __getSpecifiedIntervals(saveInterval, orientations.tolist())}
+    vals = {}
     for key in switchValues.keys():
-        vals = {key :__getSpecifiedIntervals(saveInterval, switchValues[key])}
+        vals[key] = __getSpecifiedIntervals(saveInterval, switchValues[key])
+    if len(vals) > 0:
         dict["switchValues"] = {k : np.array(v).tolist() for k,v in vals.items()} # deal with np.array instances in the values
     if colours:
         dict["colours"] = [np.array(cols).tolist() for cols in colours]
