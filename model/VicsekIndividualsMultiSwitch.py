@@ -133,7 +133,7 @@ class VicsekWithNeighbourSelection():
 
         nsms = np.full(self.numberOfParticles, self.orderPlaceholder)
         nsmsDf = pd.DataFrame(nsms, columns=["nsms"])
-        nsmsDf["nsms"] = nsmsDf["nsms"].replace(self.orderPlaceholder, self.neighbourSelectionMechanism)
+        nsmsDf["nsms"] = nsmsDf["nsms"].replace(self.orderPlaceholder, self.neighbourSelectionMechanism.value)
         nsms = np.array(nsmsDf["nsms"])
 
         ks = np.array(self.numberOfParticles * [self.k])
@@ -429,7 +429,7 @@ class VicsekWithNeighbourSelection():
                                                                                     orientations=orientations,
                                                                                     neighbours=neighbours,
                                                                                     ks=ks)
-            pickedNeighbours = np.where(((nsms == nsmsSwitch.orderSwitchValue)), neighboursDisorder, neighboursOrder)
+            pickedNeighbours = np.where(((nsms == nsmsSwitch.orderSwitchValue.value)), neighboursOrder, neighboursDisorder)
             
         else:
             pickedNeighbours = self.getPickedNeighboursForNeighbourSelectionMechanism(neighbourSelectionMechanism=self.neighbourSelectionMechanism,
@@ -476,8 +476,8 @@ class VicsekWithNeighbourSelection():
 
         prev = np.average(previousthresholdEvaluationChoiceValues[max(t-switchInfo.numberPreviousStepsForThreshold, 0):t+1], axis=0)
 
-        oldWithNewOrderValues = np.where(((thresholdEvaluationChoiceValues >= switchDifferenceThresholdUpper) & (prev <= switchDifferenceThresholdUpper) & (blocked != True)), np.full(len(switchTypeValues), switchInfo.orderSwitchValue), switchTypeValues)
-        updatedSwitchValues = np.where(((thresholdEvaluationChoiceValues <= switchDifferenceThresholdLower) & (prev >= switchDifferenceThresholdLower) & (blocked != True)), np.full(len(switchTypeValues), switchInfo.disorderSwitchValue), oldWithNewOrderValues)
+        oldWithNewOrderValues = np.where(((thresholdEvaluationChoiceValues >= switchDifferenceThresholdUpper) & (prev <= switchDifferenceThresholdUpper) & (blocked != True)), np.full(len(switchTypeValues), switchInfo.getOrderValue()), switchTypeValues)
+        updatedSwitchValues = np.where(((thresholdEvaluationChoiceValues <= switchDifferenceThresholdLower) & (prev >= switchDifferenceThresholdLower) & (blocked != True)), np.full(len(switchTypeValues), switchInfo.getDisorderValue()), oldWithNewOrderValues)
         if self.updateIfNoNeighbours == False:
             neighbour_counts = np.count_nonzero(neighbours, axis=1)
             updatedSwitchValues = np.where((neighbour_counts == 1), switchTypeValues, updatedSwitchValues)
@@ -601,6 +601,8 @@ class VicsekWithNeighbourSelection():
             self.t = t
             # if t % 5000 == 0:
             #     print(f"t={t}/{self.tmax}")
+            # if self.t % 100 == 0:
+            #     print(f"{t}: {ServiceMetric.computeGlobalOrder(orientations)}")
 
             orientations, nsms, ks, speeds, blocked, self.colours = self.handleEvents(t, positions, orientations, nsms, ks, speeds, activationTimeDelays)
 
