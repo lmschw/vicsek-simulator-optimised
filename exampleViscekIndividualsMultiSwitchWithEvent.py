@@ -9,6 +9,7 @@ from enums.EnumEventEffect import EventEffect
 from enums.EnumDistributionType import DistributionType
 from enums.EnumEventSelectionType import EventSelectionType
 from enums.EnumColourType import ColourType
+from enums.EnumThresholdEvaluationMethod import ThresholdEvaluationMethod
 
 from model.SwitchInformation import SwitchInformation
 from model.SwitchSummary import SwitchSummary
@@ -23,18 +24,17 @@ domainSize = (25, 25)
 #domainSize = (50, 50)
 noisePercentage = 1
 noise = ServicePreparation.getNoiseAmplitudeValueForPercentage(noisePercentage)
+print(f"noiseP={noisePercentage}, noise={noise}")
 #noise = 0
 n = ServicePreparation.getNumberOfParticlesForConstantDensity(0.05, domainSize)
 print(n)
 speed = 1
 
-threshold = 0.2
+threshold = 0.1
 numberOfPreviousSteps = 100
 
-# TODO: check why N-F always returns to order -> only with high radius
-
-radius = 10
-k = 6
+radius = 20
+k = 1
 nsm = NeighbourSelectionMechanism.NEAREST
 
 infoNsm = SwitchInformation(switchType=SwitchType.NEIGHBOUR_SELECTION_MECHANISM, 
@@ -78,13 +78,13 @@ threshold = [threshold]
 event = ExternalStimulusOrientationChangeEvent(startTimestep=1000,
                                                duration=1000,  
                                                domainSize=domainSize, 
-                                               eventEffect=EventEffect.ALIGN_TO_FIXED_ANGLE, 
+                                               eventEffect=EventEffect.AWAY_FROM_ORIGIN, 
                                                distributionType=DistributionType.LOCAL_SINGLE_SITE, 
                                                areas=[[domainSize[0]/2, domainSize[1]/2, radius]],
                                                angle=np.pi,
-                                               noisePercentage=1,
+                                               noisePercentage=noise,
                                                radius=radius,
-                                               numberOfAffected=1,
+                                               numberOfAffected=None,
                                                eventSelectionType=EventSelectionType.RANDOM
                                                )
 
@@ -92,26 +92,30 @@ tstart = time.time()
 
 ServiceGeneral.logWithTime("start")
 
-#initialState = ServicePreparation.createOrderedInitialDistributionEquidistancedIndividual(None, domainSize, n, angleX=0.5, angleY=0.5)
-simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
-                                         radius=radius,
-                                         noise=noise,
-                                         numberOfParticles=n,
-                                         k=k,
-                                         neighbourSelectionMechanism=nsm,
-                                         speed=speed,
-                                         switchSummary=switchSummary,
-                                         degreesOfVision=np.pi*2,
-                                         events=[event],
-                                         colourType=ColourType.EXAMPLE)
-#simulationData, switchTypeValues = simulator.simulate(initialState=initialState, tmax=tmax)
-simulationData, switchTypeValues, colours = simulator.simulate(tmax=tmax)
-import services.ServiceMetric as sm
-times, positions, orientations = simulationData
-print(sm.computeGlobalOrder(orientations[3000]))
+for i in range(1, 26):
+    initialState = ServicePreparation.createOrderedInitialDistributionEquidistancedIndividual(None, domainSize, n, angleX=0.5, angleY=0.5)
+    simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
+                                            radius=radius,
+                                            noise=noise,
+                                            numberOfParticles=n,
+                                            k=k,
+                                            neighbourSelectionMechanism=nsm,
+                                            speed=speed,
+                                            switchSummary=switchSummary,
+                                            degreesOfVision=np.pi*2,
+                                            events=[event],
+                                            colourType=ColourType.EXAMPLE,
+                                            thresholdEvaluationMethod=ThresholdEvaluationMethod.LOCAL_ORDER,
+                                            updateIfNoNeighbours=False)
+    simulationData, switchTypeValues, colours = simulator.simulate(initialState=initialState, tmax=tmax)
+    #simulationData, switchTypeValues, colours = simulator.simulate(tmax=tmax)
+    import services.ServiceMetric as sm
+    times, positions, orientations = simulationData
+    print("order at end:")
+    print(sm.computeGlobalOrder(orientations[-1]))
 
-ServiceSavedModel.saveModel(simulationData=simulationData, path="test.json", 
-                            modelParams=simulator.getParameterSummary(), switchValues=switchTypeValues, colours=colours)
+    # ServiceSavedModel.saveModel(simulationData=simulationData, path=f"test_{i}.json", 
+    #                             modelParams=simulator.getParameterSummary(), switchValues=switchTypeValues, colours=colours)
 
 tend = time.time()
 ServiceGeneral.logWithTime(f"duration: {ServiceGeneral.formatTime(tend-tstart)}")

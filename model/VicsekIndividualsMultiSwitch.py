@@ -480,7 +480,7 @@ class VicsekWithNeighbourSelection():
         updatedSwitchValues = np.where(((thresholdEvaluationChoiceValues <= switchDifferenceThresholdLower) & (prev >= switchDifferenceThresholdLower) & (blocked != True)), np.full(len(switchTypeValues), switchInfo.getDisorderValue()), oldWithNewOrderValues)
         if self.updateIfNoNeighbours == False:
             neighbour_counts = np.count_nonzero(neighbours, axis=1)
-            updatedSwitchValues = np.where((neighbour_counts == 1), switchTypeValues, updatedSwitchValues)
+            updatedSwitchValues = np.where((neighbour_counts <= 1), switchTypeValues, updatedSwitchValues)
         return updatedSwitchValues
     
     def appendSwitchValues(self, nsms, ks, speeds, activationTimeDelays):
@@ -604,11 +604,12 @@ class VicsekWithNeighbourSelection():
             # if self.t % 100 == 0:
             #     print(f"{t}: {ServiceMetric.computeGlobalOrder(orientations)}")
 
-            orientations, nsms, ks, speeds, blocked, self.colours = self.handleEvents(t, positions, orientations, nsms, ks, speeds, activationTimeDelays)
-
             # all neighbours (including self)
             neighbours = ServiceVicsekHelper.getNeighboursWithLimitedVision(positions=positions, orientations=orientations, domainSize=self.domainSize,
                                                                             radius=self.radius, degreesOfVision=self.degreesOfVision)
+            
+            orientations, nsms, ks, speeds, blocked, self.colours = self.handleEvents(t, positions, orientations, nsms, ks, speeds, activationTimeDelays)
+
 
             if self.switchSummary != None:
                 thresholdEvaluationChoiceValues = ServiceThresholdEvaluation.getThresholdEvaluationValuesForChoice(thresholdEvaluationMethod=self.thresholdEvaluationMethod, positions=positions, orientations=orientations, neighbours=neighbours, domainSize=self.domainSize)
