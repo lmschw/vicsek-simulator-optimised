@@ -1,4 +1,6 @@
 
+from enums.EnumSwitchType import SwitchType
+
 class SwitchInformation(object):
     def __init__(self, switchType, values, thresholds, numberPreviousStepsForThreshold, initialValues=None):
         """
@@ -37,3 +39,13 @@ class SwitchInformation(object):
             switchDifferenceThresholdLower = self.thresholds[0]
             switchDifferenceThresholdUpper = self.thresholds[1]
         return switchDifferenceThresholdLower, switchDifferenceThresholdUpper
+    
+    def getOrderValue(self):
+        if self.switchType == SwitchType.NEIGHBOUR_SELECTION_MECHANISM:
+            return self.orderSwitchValue.value
+        return self.orderSwitchValue
+    
+    def getDisorderValue(self):
+        if self.switchType == SwitchType.NEIGHBOUR_SELECTION_MECHANISM:
+            return self.disorderSwitchValue.value
+        return self.disorderSwitchValue
