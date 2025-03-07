@@ -79,6 +79,8 @@ threshold = [threshold]
 tstart = time.time()
 
 ServiceGeneral.logWithTime("start")
+stress_num_neighbours = 8
+stress_delta = 0.05
 
 for i in range(1, 2):
     initialState = ServicePreparation.createOrderedInitialDistributionEquidistancedIndividual(None, domainSize, n, angleX=0.5, angleY=0.5)
@@ -94,10 +96,10 @@ for i in range(1, 2):
                                             events=[],
                                             colourType=ColourType.EXAMPLE,
                                             thresholdEvaluationMethod=ThresholdEvaluationMethod.LOCAL_ORDER,
-                                            updateIfNoNeighbours=False,
-                                            stress_num_neighbours=8,
-                                            social_stress_delta=0.05,
-                                            individualistic_stress_delta=0.05)
+                                            updateIfNoNeighbours=True,
+                                            stress_num_neighbours=stress_num_neighbours,
+                                            social_stress_delta=stress_delta,
+                                            individualistic_stress_delta=stress_delta)
     simulationData, switchTypeValues, colours, stressLevels = simulator.simulate(initialState=initialState, tmax=tmax)
     #simulationData, switchTypeValues, colours = simulator.simulate(tmax=tmax)
     import services.ServiceMetric as sm
@@ -105,7 +107,7 @@ for i in range(1, 2):
     print("order at end:")
     print(sm.computeGlobalOrder(orientations[-1]))
 
-    ServiceSavedModel.saveModel(simulationData=simulationData, path=f"test_stress_{i}.json", 
+    ServiceSavedModel.saveModel(simulationData=simulationData, path=f"test_stress_{stress_num_neighbours}_{i}.json", 
                                 modelParams=simulator.getParameterSummary(), switchValues=switchTypeValues, colours=colours)
 
 tend = time.time()

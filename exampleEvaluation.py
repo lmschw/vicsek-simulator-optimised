@@ -89,7 +89,7 @@ yAxisLabel = metric.label
 startEval = time.time()
 
 
-filenames = ServiceGeneral.createListOfFilenamesForI("test_stress", minI=2, maxI=3)
+filenames = ServiceGeneral.createListOfFilenamesForI("test_stress_8", minI=1, maxI=2)
 evaluator = getEvaluatorWithSwitch(filenames=filenames, switchType=SwitchType.NEIGHBOUR_SELECTION_MECHANISM, switchOptions=[NeighbourSelectionMechanism.FARTHEST, NeighbourSelectionMechanism.NEAREST])
 
 savePath = f"{metric.val}_debug.jpeg"
