@@ -78,7 +78,7 @@ def getEvaluatorWithoutSwitch(filenames):
     evaluator = EvaluatorMultiComp.EvaluatorMultiAvgComp(modelParams, metric, simulationData, evaluationTimestepInterval=1, threshold=threshold)
     return evaluator
 
-metric = Metrics.ORDER
+metric = Metrics.DUAL_OVERLAY_ORDER_AND_PERCENTAGE
 
 if metric == Metrics.DUAL_OVERLAY_ORDER_AND_PERCENTAGE:
     labels = ["order", "order value percentage"]
@@ -89,10 +89,19 @@ yAxisLabel = metric.label
 startEval = time.time()
 
 
-filenames = ServiceGeneral.createListOfFilenamesForI("test", minI=1, maxI=11)
-evaluator = getEvaluatorWithoutSwitch(filenames=filenames)
+filenames = ServiceGeneral.createListOfFilenamesForI("test_stress", minI=2, maxI=3)
+evaluator = getEvaluatorWithSwitch(filenames=filenames, switchType=SwitchType.NEIGHBOUR_SELECTION_MECHANISM, switchOptions=[NeighbourSelectionMechanism.FARTHEST, NeighbourSelectionMechanism.NEAREST])
 
-savePath = f"{metric.val}_test_new_implementation.jpeg"
+savePath = f"{metric.val}_debug.jpeg"
 evaluator.evaluateAndVisualize(labels=labels, xLabel=xAxisLabel, yLabel=yAxisLabel, savePath=savePath)    
+
+""" 
+for i in range(1, 11):
+    filenames = ServiceGeneral.createListOfFilenamesForI("test", minI=i, maxI=i+1)
+    evaluator = getEvaluatorWithoutSwitch(filenames=filenames)
+
+    savePath = f"{metric.val}_test_new_implementation_{i}.jpeg"
+    evaluator.evaluateAndVisualize(labels=labels, xLabel=xAxisLabel, yLabel=yAxisLabel, savePath=savePath)    
+"""
 endEval = time.time()
 print(f"Duration eval {ServiceGeneral.formatTime(endEval-startEval)}")
