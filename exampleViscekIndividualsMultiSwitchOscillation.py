@@ -72,14 +72,14 @@ switchType = SwitchType.SPEED
 switchValues = (0.1, 1)
 """
 
-tmax = 5000
+tmax = 500000
 
 threshold = [threshold]
 
 tstart = time.time()
 
 ServiceGeneral.logWithTime("start")
-stress_num_neighbours = 8
+stress_num_neighbours = 9
 stress_delta = 0.05
 
 for i in range(1, 2):
@@ -107,7 +107,7 @@ for i in range(1, 2):
     print("order at end:")
     print(sm.computeGlobalOrder(orientations[-1]))
 
-    ServiceSavedModel.saveModel(simulationData=simulationData, path=f"test_stress_{stress_num_neighbours}_{i}.json", 
+    ServiceSavedModel.saveModel(simulationData=simulationData, path=f"test_stress_{stress_num_neighbours}_tmax={tmax}_{i}.json", 
                                 modelParams=simulator.getParameterSummary(), switchValues=switchTypeValues, colours=colours)
 
 tend = time.time()
