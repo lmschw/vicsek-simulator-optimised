@@ -186,7 +186,7 @@ def getNumbersPerSwitchTypeValue(switchTypeValues, switchType, switchTypeOptions
     Returns:
         Two integer representing the counts of the orderValue and disorderValue respectively
     """
-    unique, counts = np.unique(switchTypeValues[switchType.switchTypeValueKey], return_counts=True)
+    unique, counts = np.unique(switchTypeValues, return_counts=True)
     d = dict(zip(unique, counts))
     n = sum(list(d.values()))
     if d.get(switchTypeOptions[0]) != None:
