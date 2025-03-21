@@ -1,7 +1,8 @@
 #import csv
 
-import codecs, json
+import codecs, json, csv
 import numpy as np
+import pandas as pd
 """
 Service contains static methods to save and load models to/from json files.
 """
@@ -33,7 +34,92 @@ def saveModel(simulationData, path="sample.json", modelParams=None, saveInterval
         dict["colours"] = [np.array(cols).tolist() for cols in colours]
     saveDict(path, dict, modelParams)
 
-def loadModel(path, switchType=None, loadSwitchValues=False, loadColours=False):
+
+def logModelParams(path, modelParamsDict):
+    """
+    Logs the model params as a single row with headers.
+    """
+    with open(f"{path}.csv", 'w', newline='') as f:
+        w = csv.writer(f)
+        w.writerow(modelParamsDict.keys())
+        w.writerow(modelParamsDict.values())
+
+def initialiseCsvFileHeaders(path, headers=['t', 'i', 'x', 'y', 'u', 'v', 'colour'], addSwitchTypeHeader=True):
+    """
+    Appends the headers to the csv file.
+
+    Params:
+        - headers (list of strings): the headers to be inserted into the file
+        - save_path (string): the path of the file where the headers should be inserted
+
+    Returns:
+        Nothing.
+    """
+    if addSwitchTypeHeader:
+        headers.append('switchValue')
+    with open(f"{path}.csv", 'w', newline='') as f:
+        w = csv.writer(f)
+        w.writerow(headers)
+
+def createSwitchValueDict(switchTypes, switchValues, i):
+    switchValueDict = {}
+    for switchType in switchTypes:
+        switchValueDict[switchType.switchTypeValueKey] = switchValues[switchType.switchTypeValueKey][i]
+    return switchValueDict
+
+def transformSwitchValue(switchValue):
+    if isinstance(switchValue, int) or isinstance(switchValue, float):
+        return switchValue
+    return switchValue.value
+
+def createDictList(timestep, positions, orientations, colours, switchValues, switchTypes=[]):
+    if len(switchTypes) > 0:
+
+        return [{'t': timestep, 'i': i, 'x': positions[i][0], 'y': positions[i][1], 'u': orientations[i][0], 'v': orientations[i][1], 'colour': colours[i], 'switchValue': createSwitchValueDict(switchTypes, switchValues, i)} for i in range(len(positions))]
+    return [{'t': timestep, 'i': i, 'x': positions[i][0], 'y': positions[i][1], 'u': orientations[i][0], 'v': orientations[i][1], 'colour': colours[i]} for i in range(len(positions))]
+
+def saveModelTimestep(timestep, positions, orientations, colours, path, switchValues, switchTypes=[]):
+    dict_list = createDictList(timestep, positions, orientations, colours, switchValues, switchTypes)
+    with open(f"{path}.csv", 'a', newline='') as f:
+        w = csv.writer(f)
+        for dict in dict_list:
+            w.writerow(dict.values())
+
+def loadModelFromCsv(filepathData, filePathModelParams, switchTypes=[], loadColours=False):
+    dfParams = pd.read_csv(filePathModelParams,index_col=False)
+    modelParams = dfParams.to_dict(orient='records')[0]
+    domainSize = modelParams['domainSize'].split(',')
+    modelParams['domainSize'] = [float(domainSize[0][1:]), float(domainSize[1][:-1])]
+
+    df = pd.read_csv(filepathData,index_col=False)
+    times = []
+    positions = []
+    orientations = []
+    colours = []
+    switchValues = {k.switchTypeValueKey :[] for k in switchTypes}
+    #tmax = df['t'].max()
+    for t in df['t']:
+        if t not in times:
+            times.append(t)
+            dfT = df[df['t'] == t]
+            positions.append(np.column_stack((dfT['x'], dfT['y'])))
+            orientations.append(np.column_stack((dfT['u'], dfT['v'])))
+            if loadColours:
+                colours.append(dfT['colour'].to_list())
+            if len(switchTypes) > 0:
+                for switchType in switchTypes:
+                    switchValues[switchType].append(dfT[switchType.switchTypeValueKey].to_list())
+    if len(switchTypes) > 0:
+        if loadColours:
+            return modelParams, (np.array(times), np.array(positions), np.array(orientations)), np.array(colours), switchValues
+        else:
+            return modelParams, (np.array(times), np.array(positions), np.array(orientations)), switchValues
+    if loadColours:
+        return modelParams, (np.array(times), np.array(positions), np.array(orientations)), np.array(colours)
+    else:
+        return modelParams, (np.array(times), np.array(positions), np.array(orientations))
+
+def loadModel(path, switchTypes=[], loadSwitchValues=False, loadColours=False):
     """
     Loads a single model from a single file.
 
@@ -50,23 +136,24 @@ def loadModel(path, switchType=None, loadSwitchValues=False, loadColours=False):
     time = np.array(loadedJson["time"])
     positions = np.array(loadedJson["positions"])
     orientations = np.array(loadedJson["orientations"])
+    switchTypeValues = {}
     if loadSwitchValues == True and loadColours == True:
         switchValues = loadedJson["switchValues"]
-        if switchType:
-            switchValues = switchValues[switchType.switchTypeValueKey]
+        for switchType in switchTypes:
+            switchTypeValues[switchType.switchTypeValueKey].append(switchValues[switchType.switchTypeValueKey])
         colours = loadedJson["colours"]
         return modelParams, (time, positions, orientations), switchValues, colours
     elif loadSwitchValues == True:
         switchValues = loadedJson["switchValues"]
-        if switchType:
-            switchValues = switchValues[switchType.switchTypeValueKey]
+        for switchType in switchTypes:
+            switchTypeValues[switchType.switchTypeValueKey].append(switchValues[switchType.switchTypeValueKey])
         return modelParams, (time, positions, orientations), switchValues
     elif loadColours == True:
         colours = loadedJson["colours"]
         return modelParams, (time, positions, orientations), colours
     return modelParams, (time, positions, orientations)
 
-def loadModels(paths, switchType=None, loadSwitchValues=False, loadColours=False):
+def loadModels(paths, switchTypes=[], loadSwitchValues=False, loadColours=False, loadFromCsv=False):
     """
     Loads multiple models from multiple files.
 
@@ -81,19 +168,33 @@ def loadModels(paths, switchType=None, loadSwitchValues=False, loadColours=False
     params = []
     switchValuesArr = []
     coloursArr = []
+
     for path in paths:
+        filePathModelParams = path.split(".")[0] + '_modelParams.' + path.split(".")[1]
         if loadSwitchValues == True and loadColours == True:
-            modelParams, simulationData, switchValues, colours = loadModel(path, switchType=switchType, loadSwitchValues=loadSwitchValues, loadColours=loadColours)
+            if loadFromCsv:
+                modelParams, simulationData, switchValues, colours = loadModelFromCsv(filepathData=path, filePathModelParams=filePathModelParams, switchTypes=switchTypes, loadColours=loadColours)
+            else:
+                modelParams, simulationData, switchValues, colours = loadModel(path, switchType=switchTypes, loadSwitchValues=loadSwitchValues, loadColours=loadColours)
             switchValuesArr.append(switchValues)
             coloursArr.append(colours)
         elif loadSwitchValues == True:
-            modelParams, simulationData, switchValues = loadModel(path, switchType=switchType, loadSwitchValues=loadSwitchValues)
+            if loadFromCsv:
+                modelParams, simulationData, switchValues = loadModelFromCsv(filepathData=path, filePathModelParams=filePathModelParams, switchTypes=switchTypes, loadColours=loadColours)
+            else:
+                modelParams, simulationData, switchValues = loadModel(path, switchTypes=switchTypes, loadSwitchValues=loadSwitchValues)
             switchValuesArr.append(switchValues)
         elif loadColours == True:
-            modelParams, simulationData, colours = loadModel(path, switchType=switchType, loadSwitchValues=loadSwitchValues, loadColours=loadColours)
+            if loadFromCsv:
+                modelParams, simulationData, colours = loadModelFromCsv(filepathData=path, filePathModelParams=filePathModelParams, loadColours=loadColours)
+            else:
+                modelParams, simulationData, colours = loadModel(path, switchTypes=switchTypes, loadSwitchValues=loadSwitchValues, loadColours=loadColours)
             coloursArr.append(colours)
         else:
-            modelParams, simulationData = loadModel(path, switchType=switchType, loadSwitchValues=loadSwitchValues)
+            if loadFromCsv:
+                modelParams, simulationData = loadModelFromCsv(filepathData=path, filePathModelParams=filePathModelParams, loadColours=loadColours)
+            else:
+                modelParams, simulationData = loadModel(path, switchTypes=switchTypes, loadSwitchValues=loadSwitchValues)
         params.append(modelParams)
         data.append(simulationData)
     if loadSwitchValues == True and loadColours == True:

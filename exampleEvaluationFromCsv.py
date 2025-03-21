@@ -60,7 +60,7 @@ def getEvaluatorWithSwitch(filenames, switchType, switchOptions):
     modelParams = []
     simulationData = []
     switchTypeValues = []
-    modelParamsDensity, simulationDataDensity, switchTypeValuesDensity = ServiceSavedModel.loadModels(filenames, loadSwitchValues=True, switchType=switchType)
+    modelParamsDensity, simulationDataDensity, switchTypeValuesDensity = ServiceSavedModel.loadModels(filenames, loadSwitchValues=True, switchTypes=[switchType], loadFromCsv=True)
     modelParams.append(modelParamsDensity)
     simulationData.append(simulationDataDensity)
     switchTypeValues.append(switchTypeValuesDensity)
@@ -71,14 +71,14 @@ def getEvaluatorWithSwitch(filenames, switchType, switchOptions):
 def getEvaluatorWithoutSwitch(filenames):
     modelParams = []
     simulationData = []
-    modelParamsDensity, simulationDataDensity = ServiceSavedModel.loadModels(filenames, loadSwitchValues=False)
+    modelParamsDensity, simulationDataDensity = ServiceSavedModel.loadModels(filenames, loadSwitchValues=False, loadFromCsv=True)
     modelParams.append(modelParamsDensity)
     simulationData.append(simulationDataDensity)
     threshold = 0.01
     evaluator = EvaluatorMultiComp.EvaluatorMultiAvgComp(modelParams, metric, simulationData, evaluationTimestepInterval=1, threshold=threshold)
     return evaluator
 
-metric = Metrics.DUAL_OVERLAY_ORDER_AND_PERCENTAGE
+metric = Metrics.ORDER
 
 if metric == Metrics.DUAL_OVERLAY_ORDER_AND_PERCENTAGE:
     labels = ["order", "order value percentage"]
@@ -91,40 +91,11 @@ startEval = time.time()
 speed = 0.5
 num_neigh = 9
 
-imax = 5
+imax = 2
 
-filenames = ServiceGeneral.createListOfFilenamesForI(f"test_stress_{num_neigh}_speed={speed}", minI=1, maxI=imax)
-evaluator = getEvaluatorWithSwitch(filenames=filenames, switchType=SwitchType.NEIGHBOUR_SELECTION_MECHANISM, switchOptions=[NeighbourSelectionMechanism.FARTHEST, NeighbourSelectionMechanism.NEAREST])
+filenames = ServiceGeneral.createListOfFilenamesForI(f"test", minI=1, maxI=imax, fileTypeString="csv")
+#evaluator = getEvaluatorWithSwitch(filenames=filenames, switchType=SwitchType.NEIGHBOUR_SELECTION_MECHANISM, switchOptions=[NeighbourSelectionMechanism.FARTHEST, NeighbourSelectionMechanism.NEAREST])
+evaluator = getEvaluatorWithoutSwitch(filenames=filenames)
 
-savePath = f"{metric.val}_{num_neigh}_speed={speed}_debug.jpeg"
+savePath = f"{metric.val}_debug.jpeg"
 evaluator.evaluateAndVisualize(labels=labels, xLabel=xAxisLabel, yLabel=yAxisLabel, savePath=savePath)    
-
-""" 
-for i in range(1, 11):
-    filenames = ServiceGeneral.createListOfFilenamesForI("test", minI=i, maxI=i+1)
-    evaluator = getEvaluatorWithoutSwitch(filenames=filenames)
-
-    savePath = f"{metric.val}_test_new_implementation_{i}.jpeg"
-    evaluator.evaluateAndVisualize(labels=labels, xLabel=xAxisLabel, yLabel=yAxisLabel, savePath=savePath)    
-"""
-endEval = time.time()
-print(f"Duration eval {ServiceGeneral.formatTime(endEval-startEval)}")
-
-
-for i in range(1, imax-1):
-    filenames = ServiceGeneral.createListOfFilenamesForI(f"test_stress_{num_neigh}_speed={speed}", minI=i, maxI=i+1)
-    evaluator = getEvaluatorWithSwitch(filenames=filenames, switchType=SwitchType.NEIGHBOUR_SELECTION_MECHANISM, switchOptions=[NeighbourSelectionMechanism.FARTHEST, NeighbourSelectionMechanism.NEAREST])
-
-    savePath = f"{metric.val}_{num_neigh}_speed={speed}_{i}_debug.jpeg"
-    evaluator.evaluateAndVisualize(labels=labels, xLabel=xAxisLabel, yLabel=yAxisLabel, savePath=savePath)    
-
-    """ 
-    for i in range(1, 11):
-        filenames = ServiceGeneral.createListOfFilenamesForI("test", minI=i, maxI=i+1)
-        evaluator = getEvaluatorWithoutSwitch(filenames=filenames)
-
-        savePath = f"{metric.val}_test_new_implementation_{i}.jpeg"
-        evaluator.evaluateAndVisualize(labels=labels, xLabel=xAxisLabel, yLabel=yAxisLabel, savePath=savePath)    
-    """
-    endEval = time.time()
-    print(f"Duration eval {ServiceGeneral.formatTime(endEval-startEval)}")

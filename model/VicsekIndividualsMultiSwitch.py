@@ -8,7 +8,7 @@ from enums.EnumThresholdEvaluationMethod import ThresholdEvaluationMethod
 
 import services.ServiceOrientations as ServiceOrientations
 import services.ServiceVicsekHelper as ServiceVicsekHelper
-import services.ServiceMetric as ServiceMetric
+import services.ServiceSavedModel as ServiceSavedModel
 import services.ServiceThresholdEvaluation as ServiceThresholdEvaluation
 
 import model.SwitchInformation as SwitchInformation
@@ -20,7 +20,8 @@ class VicsekWithNeighbourSelection():
     def __init__(self, domainSize, radius, noise, numberOfParticles, k, neighbourSelectionMechanism,
                  speed=dv.DEFAULT_SPEED, switchSummary=None, events=None, degreesOfVision=dv.DEFAULT_DEGREES_OF_VISION, 
                  activationTimeDelays=[], isActivationTimeDelayRelevantForEvents=False, colourType=None, 
-                 thresholdEvaluationMethod=ThresholdEvaluationMethod.LOCAL_ORDER, updateIfNoNeighbours=True):
+                 thresholdEvaluationMethod=ThresholdEvaluationMethod.LOCAL_ORDER, updateIfNoNeighbours=True, returnHistories=True,
+                 logPath=None, logInterval=1):
         """
         Params:
             - domainSize (tuple of floats): the size of the domain
@@ -55,12 +56,18 @@ class VicsekWithNeighbourSelection():
         self.colourType = colourType
         self.thresholdEvaluationMethod = thresholdEvaluationMethod
         self.updateIfNoNeighbours = updateIfNoNeighbours
+        self.returnHistories = returnHistories
+        self.logPath = logPath
+        self.logInterval = logInterval
 
         # Preparation of constants
         self.minReplacementValue = -1
         self.maxReplacementValue = domainSize[0] * domainSize[1] + 1
         self.disorderPlaceholder = -1
         self.orderPlaceholder = -2
+
+        # Preparation of active switchTypes
+        self.switchTypes = [k for k, v in self.switchSummary.actives.items() if v == True]
 
     def getParameterSummary(self, asString=False):
         """
@@ -544,15 +551,20 @@ class VicsekWithNeighbourSelection():
         self.numIntervals=int(tmax/dt+1)
 
         self.thresholdEvaluationChoiceValuesHistory = []  
-        self.positionsHistory = np.zeros((self.numIntervals,self.numberOfParticles,len(self.domainSize)))
-        self.orientationsHistory = np.zeros((self.numIntervals,self.numberOfParticles,len(self.domainSize)))  
-        self.switchTypeValuesHistory = {'nsms': [], 'ks': [], 'speeds': [], 'activationTimeDelays': []}
-        if self.colourType != None:
-            self.coloursHistory = self.numIntervals * [self.numberOfParticles * ['k']]
+        if self.returnHistories:
+            self.positionsHistory = np.zeros((self.numIntervals,self.numberOfParticles,len(self.domainSize)))
+            self.orientationsHistory = np.zeros((self.numIntervals,self.numberOfParticles,len(self.domainSize)))  
+            self.switchTypeValuesHistory = {'nsms': [], 'ks': [], 'speeds': [], 'activationTimeDelays': []}
+            if self.colourType != None:
+                self.coloursHistory = self.numIntervals * [self.numberOfParticles * ['k']]
 
-        self.positionsHistory[0,:,:]=positions
-        self.orientationsHistory[0,:,:]=orientations
-        self.appendSwitchValues(nsms, ks, speeds, activationTimeDelays)
+            self.positionsHistory[0,:,:]=positions
+            self.orientationsHistory[0,:,:]=orientations
+            self.appendSwitchValues(nsms, ks, speeds, activationTimeDelays)
+
+        if self.logPath:
+            ServiceSavedModel.logModelParams(path=f"{self.logPath}_modelParams", modelParamsDict=self.getParameterSummary())
+            ServiceSavedModel.initialiseCsvFileHeaders(path=self.logPath)
 
         return positions, orientations, nsms, ks, speeds, activationTimeDelays
     
@@ -599,8 +611,8 @@ class VicsekWithNeighbourSelection():
             self.exampleId = np.random.choice(self.numberOfParticles, 1)
         for t in range(self.numIntervals):
             self.t = t
-            # if t % 5000 == 0:
-            #     print(f"t={t}/{self.tmax}")
+            if t % 5000 == 0:
+                print(f"t={t}/{self.tmax}")
             # if self.t % 100 == 0:
             #     print(f"{t}: {ServiceMetric.computeGlobalOrder(orientations)}")
 
@@ -630,16 +642,35 @@ class VicsekWithNeighbourSelection():
             positions += self.dt*(orientations.T * speeds).T
             positions += -self.domainSize*np.floor(positions/self.domainSize)
 
-            self.positionsHistory[t,:,:]=positions
-            self.orientationsHistory[t,:,:]=orientations
-            self.appendSwitchValues(nsms, ks, speeds, activationTimeDelays)
-            if self.colourType != None:
-                self.coloursHistory[t] = self.colours
+            if self.returnHistories:
+                self.positionsHistory[t,:,:]=positions
+                self.orientationsHistory[t,:,:]=orientations
+                self.appendSwitchValues(nsms, ks, speeds, activationTimeDelays)
+                if self.colourType != None:
+                    self.coloursHistory[t] = self.colours
+            
+            if self.logPath and t % self.logInterval == 0:
+                switchValues = {'nsms': nsms, 'ks': ks, 'speeds': speeds, 'activationTimeDelays': activationTimeDelays}
+                ServiceSavedModel.saveModelTimestep(timestep=t, 
+                                                    positions=positions, 
+                                                    orientations=orientations,
+                                                    colours=self.colours,
+                                                    path=self.logPath,
+                                                    switchValues=switchValues,
+                                                    switchTypes=self.switchTypes)
+            
 
             # if t % 500 == 0:
             #     print(f"t={t}, th={self.thresholdEvaluationMethod.name}, order={ServiceMetric.computeGlobalOrder(orientations)}")
             
-        if self.colourType == None:
-            return (self.dt*np.arange(self.numIntervals), self.positionsHistory, self.orientationsHistory), self.switchTypeValuesHistory
+        if self.returnHistories:
+            if self.colourType == None:
+                return (self.dt*np.arange(self.numIntervals), self.positionsHistory, self.orientationsHistory), self.switchTypeValuesHistory
+            else:
+                return (self.dt*np.arange(self.numIntervals), self.positionsHistory, self.orientationsHistory), self.switchTypeValuesHistory, self.coloursHistory
         else:
-            return (self.dt*np.arange(self.numIntervals), self.positionsHistory, self.orientationsHistory), self.switchTypeValuesHistory, self.coloursHistory
+            if self.colourType == None:
+                return (None, None, None), None
+            else:
+                return (None, None, None), None, None
+        
