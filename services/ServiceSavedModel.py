@@ -33,7 +33,7 @@ def saveModel(simulationData, path="sample.json", modelParams=None, saveInterval
         dict["colours"] = [np.array(cols).tolist() for cols in colours]
     saveDict(path, dict, modelParams)
 
-def loadModel(path, loadSwitchValues=False, loadColours=False):
+def loadModel(path, switchType=None, loadSwitchValues=False, loadColours=False):
     """
     Loads a single model from a single file.
 
@@ -52,17 +52,21 @@ def loadModel(path, loadSwitchValues=False, loadColours=False):
     orientations = np.array(loadedJson["orientations"])
     if loadSwitchValues == True and loadColours == True:
         switchValues = loadedJson["switchValues"]
+        if switchType:
+            switchValues = switchValues[switchType.switchTypeValueKey]
         colours = loadedJson["colours"]
         return modelParams, (time, positions, orientations), switchValues, colours
     elif loadSwitchValues == True:
         switchValues = loadedJson["switchValues"]
+        if switchType:
+            switchValues = switchValues[switchType.switchTypeValueKey]
         return modelParams, (time, positions, orientations), switchValues
     elif loadColours == True:
         colours = loadedJson["colours"]
         return modelParams, (time, positions, orientations), colours
     return modelParams, (time, positions, orientations)
 
-def loadModels(paths, loadSwitchValues=False, loadColours=False):
+def loadModels(paths, switchType=None, loadSwitchValues=False, loadColours=False):
     """
     Loads multiple models from multiple files.
 
@@ -79,17 +83,17 @@ def loadModels(paths, loadSwitchValues=False, loadColours=False):
     coloursArr = []
     for path in paths:
         if loadSwitchValues == True and loadColours == True:
-            modelParams, simulationData, switchValues, colours = loadModel(path, loadSwitchValues=loadSwitchValues, loadColours=loadColours)
+            modelParams, simulationData, switchValues, colours = loadModel(path, switchType=switchType, loadSwitchValues=loadSwitchValues, loadColours=loadColours)
             switchValuesArr.append(switchValues)
             coloursArr.append(colours)
         elif loadSwitchValues == True:
-            modelParams, simulationData, switchValues = loadModel(path, loadSwitchValues=loadSwitchValues)
+            modelParams, simulationData, switchValues = loadModel(path, switchType=switchType, loadSwitchValues=loadSwitchValues)
             switchValuesArr.append(switchValues)
         elif loadColours == True:
-            modelParams, simulationData, colours = loadModel(path, loadSwitchValues=loadSwitchValues, loadColours=loadColours)
+            modelParams, simulationData, colours = loadModel(path, switchType=switchType, loadSwitchValues=loadSwitchValues, loadColours=loadColours)
             coloursArr.append(colours)
         else:
-            modelParams, simulationData = loadModel(path, loadSwitchValues=loadSwitchValues)
+            modelParams, simulationData = loadModel(path, switchType=switchType, loadSwitchValues=loadSwitchValues)
         params.append(modelParams)
         data.append(simulationData)
     if loadSwitchValues == True and loadColours == True:
