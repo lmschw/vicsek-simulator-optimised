@@ -3,6 +3,8 @@
 import codecs, json, csv
 import numpy as np
 import pandas as pd
+import ast 
+
 """
 Service contains static methods to save and load models to/from json files.
 """
@@ -91,7 +93,10 @@ def loadModelFromCsv(filepathData, filePathModelParams, switchTypes=[], loadColo
     domainSize = modelParams['domainSize'].split(',')
     modelParams['domainSize'] = [float(domainSize[0][1:]), float(domainSize[1][:-1])]
 
-    df = pd.read_csv(filepathData,index_col=False)
+    if len(switchTypes) > 0:
+        df = pd.read_csv(filepathData, index_col=False, converters = {'switchValue': to_dict})
+    else:
+        df = pd.read_csv(filepathData,index_col=False)
     times = []
     positions = []
     orientations = []
@@ -108,10 +113,10 @@ def loadModelFromCsv(filepathData, filePathModelParams, switchTypes=[], loadColo
                 colours.append(dfT['colour'].to_list())
             if len(switchTypes) > 0:
                 for switchType in switchTypes:
-                    switchValues[switchType].append(dfT[switchType.switchTypeValueKey].to_list())
+                    switchValues[switchType.switchTypeValueKey].append(extract_values(dfT, 'switchValue', switchType.switchTypeValueKey))
     if len(switchTypes) > 0:
         if loadColours:
-            return modelParams, (np.array(times), np.array(positions), np.array(orientations)), np.array(colours), switchValues
+            return modelParams, (np.array(times), np.array(positions), np.array(orientations)), switchValues, np.array(colours)
         else:
             return modelParams, (np.array(times), np.array(positions), np.array(orientations)), switchValues
     if loadColours:
@@ -352,7 +357,21 @@ def __loadJson(path):
     """
     obj_text = codecs.open(path, 'r', encoding='utf-8').read()
     return json.loads(obj_text)
-   
+
+def to_dict(x):
+    try:
+        y = ast.literal_eval(x)
+        if type(y) == dict:
+            return y
+    except:
+        return None
+    
+def extract_values(df, column, key):
+    return list(df[column].apply(lambda x: pd.Series(extract_value(x, key))).to_dict()[0].values())
+
+def extract_value(d, key):
+    return d[key]
+
 
 """
 def appendCsvRow(path, fieldnames, rowDict):
