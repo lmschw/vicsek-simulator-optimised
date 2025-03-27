@@ -154,7 +154,7 @@ class EvaluatorMultiAvgComp(object):
         ylim = ax.get_ylim()
         ax.set_ylim((0, ylim[1]))
 
-        if varianceData != None:
+        if varianceData != None and self.metric != Metrics.DUAL_OVERLAY_ORDER_AND_PERCENTAGE:
             xlim = ax.get_xlim()
             x = np.arange(start=0, stop=len(varianceData[0]), step=1)
             for i in range(len(varianceData)):
