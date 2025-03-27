@@ -189,8 +189,9 @@ class VicsekWithNeighbourSelectionOscillation(VicsekWithNeighbourSelection):
     
     def updateStressLevels(self, stressLevels, neighbours):
         neighbour_counts = np.count_nonzero(neighbours, axis=1)
-        if self.t % 500 == 0:
-            print(f"avg neighbours = {np.average(neighbour_counts)}")
+        self.avg_num_neighbours.append(np.average(neighbour_counts))
+        # if self.t % 500 == 0:
+        #     print(f"avg neighbours = {np.average(neighbour_counts)}")
         stressLevels = np.where((neighbour_counts > self.stress_num_neighbours), stressLevels - self.social_stress_delta, stressLevels)
         stressLevels = np.where((neighbour_counts < self.stress_num_neighbours), stressLevels + self.individualistic_stress_delta, stressLevels)
         return stressLevels
@@ -211,6 +212,7 @@ class VicsekWithNeighbourSelectionOscillation(VicsekWithNeighbourSelection):
         """
        
         positions, orientations, nsms, ks, speeds, activationTimeDelays, stressLevels = self.prepareSimulation(initialState=initialState, dt=dt, tmax=tmax)
+        self.avg_num_neighbours = []
         if self.colourType == ColourType.EXAMPLE:
             self.exampleId = np.random.choice(self.numberOfParticles, 1)
         for t in range(self.numIntervals):
@@ -223,6 +225,7 @@ class VicsekWithNeighbourSelectionOscillation(VicsekWithNeighbourSelection):
             # all neighbours (including self)
             neighbours = ServiceVicsekHelper.getNeighboursWithLimitedVision(positions=positions, orientations=orientations, domainSize=self.domainSize,
                                                                             radius=self.radius, degreesOfVision=self.degreesOfVision)
+            
             stressLevels = self.updateStressLevels(stressLevels, neighbours)
             orientations, nsms, ks, speeds, blocked, self.colours = self.handleEvents(t, positions, orientations, nsms, ks, speeds, activationTimeDelays)
 
@@ -256,6 +259,7 @@ class VicsekWithNeighbourSelectionOscillation(VicsekWithNeighbourSelection):
             # if t % 500 == 0:
             #     print(f"t={t}, th={self.thresholdEvaluationMethod.name}, order={ServiceMetric.computeGlobalOrder(orientations)}")
             
+        print(f"avg num neighbours overall: {np.average(self.avg_num_neighbours)}")
         if self.colourType == None:
             return (self.dt*np.arange(self.numIntervals), self.positionsHistory, self.orientationsHistory), self.switchTypeValuesHistory, self.stressLevelsHistory
         else:
