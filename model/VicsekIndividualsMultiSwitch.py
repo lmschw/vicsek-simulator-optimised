@@ -67,7 +67,10 @@ class VicsekWithNeighbourSelection():
         self.orderPlaceholder = -2
 
         # Preparation of active switchTypes
-        self.switchTypes = [k for k, v in self.switchSummary.actives.items() if v == True]
+        if self.switchSummary:
+            self.switchTypes = [k for k, v in self.switchSummary.actives.items() if v == True]
+        else:
+            self.switchTypes = []
 
     def getParameterSummary(self, asString=False):
         """
