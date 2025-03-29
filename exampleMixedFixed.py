@@ -22,8 +22,6 @@ import services.ServiceSavedModel as ServiceSavedModel
 
 # GENERAL
 domainSize = (50, 50)
-noisePercentage = 1
-noise = ServicePreparation.getNoiseAmplitudeValueForPercentage(noisePercentage)
 speed = 1
 initialAngleX = 0.5
 initialAngleY = 0.5
@@ -33,7 +31,7 @@ degreesOfVision = 2 * np.pi
 tmax = 15000
 iStart = 1
 iStop = 11
-saveLocation = ""
+saveLocation = "results_noise_stagger"
 
 # TEST VALS
 nsms = [NeighbourSelectionMechanism.ALL,
@@ -60,42 +58,84 @@ densities = [0.06]
 radii = [10]
 initialConditions = ["ordered", "random"]
 
+percentageFirstValue = 0.5
+
+noisePercentages = [1, 2, 3, 4, 5]
 
 startOverall = time.time()
 
-# ------------------------ NOSW, NOEV ---------------------------------
-for density in densities:
-    n = ServicePreparation.getNumberOfParticlesForConstantDensity(density=density, domainSize=domainSize)
-    for radius in radii:
-        for nsm in nsms:
-            for initialCondition in initialConditions:
-                for i in range(iStart, iStop):
-                    
-                    events = []
-                    if initialCondition == "ordered":
-                        initialState = ServicePreparation.createOrderedInitialDistributionEquidistancedIndividual(None, domainSize, n, angleX=initialAngleX, angleY=initialAngleY)
-                    else:
-                        initialState = (None, None, None)
-                    switchSummary = None
-                    
-                    simulator = VicsekWithNeighbourSelectionAndKStaggering(domainSize=domainSize,
-                                                            radius=radius,
-                                                            noise=noise,
-                                                            numberOfParticles=n,
-                                                            kValues=ks,
-                                                            neighbourSelectionMechanism=nsm,
-                                                            speed=speed,
-                                                            switchSummary=switchSummary,
-                                                            degreesOfVision=degreesOfVision,
-                                                            events=events,
-                                                            colourType=colourType,
-                                                            thresholdEvaluationMethod=None,
-                                                            updateIfNoNeighbours=False, 
-                                                            percentageFirstKValue=0.5,
-                                                            enforcePercentageSplit=True)
-                    simulationData, switchTypeValues = simulator.simulate(initialState=initialState, tmax=tmax)
+for noisePercentage in noisePercentages:
+    noise = ServicePreparation.getNoiseAmplitudeValueForPercentage(noisePercentage)
+    # ------------------------ FIXED STRATEGIES ---------------------------------
+    enforceSplit = True
+    for density in densities:
+        n = ServicePreparation.getNumberOfParticlesForConstantDensity(density=density, domainSize=domainSize)
+        for radius in radii:
+            for nsm in nsms:
+                for initialCondition in initialConditions:
+                    for i in range(iStart, iStop):
+                        
+                        events = []
+                        if initialCondition == "ordered":
+                            initialState = ServicePreparation.createOrderedInitialDistributionEquidistancedIndividual(None, domainSize, n, angleX=initialAngleX, angleY=initialAngleY)
+                        else:
+                            initialState = (None, None, None)
+                        switchSummary = None
+                        
+                        simulator = VicsekWithNeighbourSelectionAndKStaggering(domainSize=domainSize,
+                                                                radius=radius,
+                                                                noise=noise,
+                                                                numberOfParticles=n,
+                                                                kValues=ks,
+                                                                neighbourSelectionMechanism=nsm,
+                                                                speed=speed,
+                                                                switchSummary=switchSummary,
+                                                                degreesOfVision=degreesOfVision,
+                                                                events=events,
+                                                                colourType=colourType,
+                                                                thresholdEvaluationMethod=None,
+                                                                updateIfNoNeighbours=False, 
+                                                                percentageFirstKValue=percentageFirstValue,
+                                                                enforcePercentageSplit=enforceSplit)
+                        simulationData, switchTypeValues = simulator.simulate(initialState=initialState, tmax=tmax)
 
-                    savePath = f"{saveLocation}local_nosw_noev_d={density}_r={radius}_{initialCondition}_nsm={nsm.value}_ks={ks[0]}-{ks[1]}_{i}.json"
-                    ServiceSavedModel.saveModel(simulationData=simulationData, path=savePath, 
-                                                modelParams=simulator.getParameterSummary(), switchValues=switchTypeValues)
+                        savePath = f"{saveLocation}local_nosw_noev_stagger=({percentageFirstValue},{ks},{enforceSplit})_d={density}_r={radius}_{initialCondition}_nsm={nsm.value}_ks={ks[0]}-{ks[1]}_noise={noisePercentage}_{i}.json"
+                        ServiceSavedModel.saveModel(simulationData=simulationData, path=savePath, 
+                                                    modelParams=simulator.getParameterSummary(), switchValues=switchTypeValues)
 
+    # ------------------------ NOSW, NOEV ---------------------------------
+    enforceSplit = False
+    for density in densities:
+        n = ServicePreparation.getNumberOfParticlesForConstantDensity(density=density, domainSize=domainSize)
+        for radius in radii:
+            for nsm in nsms:
+                for initialCondition in initialConditions:
+                    for i in range(iStart, iStop):
+                        
+                        events = []
+                        if initialCondition == "ordered":
+                            initialState = ServicePreparation.createOrderedInitialDistributionEquidistancedIndividual(None, domainSize, n, angleX=initialAngleX, angleY=initialAngleY)
+                        else:
+                            initialState = (None, None, None)
+                        switchSummary = None
+                        
+                        simulator = VicsekWithNeighbourSelectionAndKStaggering(domainSize=domainSize,
+                                                                radius=radius,
+                                                                noise=noise,
+                                                                numberOfParticles=n,
+                                                                kValues=ks,
+                                                                neighbourSelectionMechanism=nsm,
+                                                                speed=speed,
+                                                                switchSummary=switchSummary,
+                                                                degreesOfVision=degreesOfVision,
+                                                                events=events,
+                                                                colourType=colourType,
+                                                                thresholdEvaluationMethod=None,
+                                                                updateIfNoNeighbours=False, 
+                                                                percentageFirstKValue=percentageFirstValue,
+                                                                enforcePercentageSplit=enforceSplit)
+                        simulationData, switchTypeValues = simulator.simulate(initialState=initialState, tmax=tmax)
+
+                        savePath = f"{saveLocation}local_nosw_noev_stagger=({percentageFirstValue},{ks},{enforceSplit})_d={density}_r={radius}_{initialCondition}_nsm={nsm.value}_ks={ks[0]}-{ks[1]}_noise={noisePercentage}_{i}.json"
+                        ServiceSavedModel.saveModel(simulationData=simulationData, path=savePath, 
+                                                    modelParams=simulator.getParameterSummary(), switchValues=switchTypeValues)
