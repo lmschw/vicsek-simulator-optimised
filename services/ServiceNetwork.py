@@ -1,8 +1,10 @@
 import numpy as np
 import random
 from scipy.stats import linregress
+import matplotlib.pyplot as plt
 
 import services.ServiceVicsekHelper as svh
+import services.ServiceOrientations as so
 
 
 def buildConnectionNetwork(positions, domainSize, radius):
@@ -82,3 +84,32 @@ def measureInformationTransferSpeedViaInformationTransferDistance(switchValues, 
     return result.slope, fullySpread
 
     
+def measureInformationTransferViaOrientationsSpread(orientations, interval=1, startTimestep=0, endTimestep=None):
+    """
+    measure the spread of orientations and plot over time
+    """
+    if endTimestep == None:
+        endTimestep = len(orientations)
+
+    angles = so.computeAnglesForOrientations(orientations=orientations)
+    x = []
+    y = []
+    for t in range(startTimestep, endTimestep, interval):
+        angle = angles[t]
+        x.extend([t for i in range(len(angle))])
+        y.extend(angle)
+    plt.scatter(x, y)
+    plt.show()
+
+
+def measureInformationSpreadViaNumberOfNeighboursBasedProbability():
+    """
+    measure the number of neighbours with the target switch value and plot the probability for switching based on that
+    """
+    pass
+
+def measureInformationSpreadViaPercentageOfNeighboursBasedProbability():
+    """
+    measure the number of neighbours with the target switch value and plot the probability for switching based on that
+    """
+    pass

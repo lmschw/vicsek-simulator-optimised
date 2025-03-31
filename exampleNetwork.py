@@ -22,8 +22,9 @@ switchType = SwitchType.K
 imin = 1
 imax = 2
 
-filenames = ServiceGeneral.createListOfFilenamesForI(f"test_info_ordered_predator_tmax=3000", minI=imin, maxI=imax, fileTypeString="csv")
+filenames = ServiceGeneral.createListOfFilenamesForI(f"test_info_ordered_predator_tmax=300", minI=imin, maxI=imax, fileTypeString="csv")
 modelParamsDensity, simulationDataDensity, switchValues = ServiceSavedModel.loadModels(filenames, loadSwitchValues=True, switchTypes=[switchType], loadFromCsv=True)
 
 times, positions, orientations = simulationDataDensity[0]
-connections = ServiceNetwork.measureInformationTransferSpeedViaInformationTransferDistance(switchValues=switchValues, targetSwitchValue=1, eventStart=1000, positions=positions, domainSize=domainSize, radius=radius)
+#connections = ServiceNetwork.measureInformationTransferSpeedViaInformationTransferDistance(switchValues=switchValues, targetSwitchValue=1, eventStart=1000, positions=positions, domainSize=domainSize, radius=radius)
+ServiceNetwork.measureInformationTransferViaOrientationsSpread(orientations=orientations, interval=20)
