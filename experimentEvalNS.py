@@ -13,10 +13,10 @@ import services.ServicePreparation as ServicePreparation
 import services.ServiceGeneral as ServiceGeneral
 
 
-dataLocation = "results_28032025/"
-saveLocation = "plots_28032025/"
+dataLocation = "J:/data4/"
+saveLocation = "results_ns/"
 iStart = 1
-iStop = 2
+iStop = 11
 
 def eval(density, n, radius, eventEffect, metrics, type, nsm=None, k=None, combo=None, evalInterval=1, tmax=15000, duration=1000):
 
@@ -30,7 +30,7 @@ def eval(density, n, radius, eventEffect, metrics, type, nsm=None, k=None, combo
     colours = []
     switchTypes = []
 
-    for initialStateString in ["ordered"]:
+    for initialStateString in ["ordered", "random"]:
         if type in ["nsmswnoev", "nsmsw", "kswnoev", "ksw"]:
             orderValue, disorderValue = combo
         if type in ["nsmswnoev", "nsmsw"]: 
@@ -68,7 +68,7 @@ def eval(density, n, radius, eventEffect, metrics, type, nsm=None, k=None, combo
         #filenames = [f"{name}.csv" for name in filenames]
         if type not in ["nosw", "noswnoev"]:
             modelParamsDensity, simulationDataDensity, switchTypeValues = ServiceSavedModel.loadModels(filenames, loadColours=False, loadSwitchValues=True, switchTypes=sTypes, loadFromCsv=False)
-            switchTypes.append([switchTypeValues[0][sTypes[0].switchTypeValueKey]])
+            switchTypes.append(switchTypeValues[sTypes[0].switchTypeValueKey])
         else:
             modelParamsDensity, simulationDataDensity = ServiceSavedModel.loadModels(filenames, loadColours=False, loadSwitchValues=False, switchTypes=sTypes, loadFromCsv=False)
         modelParams.append(modelParamsDensity)
@@ -195,6 +195,7 @@ xAxisLabel = "timesteps"
 
 
 startTime = time.time()
+
 startNoswnoev = time.time()
 ServiceGeneral.logWithTime("Starting eval for nosw noev")
 for density in densities:

@@ -145,13 +145,13 @@ def loadModel(path, switchTypes=[], loadSwitchValues=False, loadColours=False):
     if loadSwitchValues == True and loadColours == True:
         switchValues = loadedJson["switchValues"]
         for switchType in switchTypes:
-            switchTypeValues[switchType.switchTypeValueKey].append(switchValues[switchType.switchTypeValueKey])
+            switchTypeValues[switchType.switchTypeValueKey] = switchValues[switchType.switchTypeValueKey]
         colours = loadedJson["colours"]
         return modelParams, (time, positions, orientations), switchValues, colours
     elif loadSwitchValues == True:
         switchValues = loadedJson["switchValues"]
         for switchType in switchTypes:
-            switchTypeValues[switchType.switchTypeValueKey].append(switchValues[switchType.switchTypeValueKey])
+            switchTypeValues[switchType.switchTypeValueKey] = switchValues[switchType.switchTypeValueKey]
         return modelParams, (time, positions, orientations), switchValues
     elif loadColours == True:
         colours = loadedJson["colours"]
@@ -202,10 +202,14 @@ def loadModels(paths, switchTypes=[], loadSwitchValues=False, loadColours=False,
                 modelParams, simulationData = loadModel(path, switchTypes=switchTypes, loadSwitchValues=loadSwitchValues)
         params.append(modelParams)
         data.append(simulationData)
+
+    if loadSwitchValues:
+        switchValArr = {switchT: [switchValuesArr[i][switchT] for i in range(len(switchValuesArr))] for switchT in switchValuesArr[0].keys()}
+    
     if loadSwitchValues == True and loadColours == True:
-        return params, data, switchValuesArr, coloursArr
+        return params, data, switchValArr, coloursArr
     elif loadSwitchValues == True:
-        return params, data, switchValuesArr
+        return params, data, switchValArr
     elif loadColours == True:
         return params, data, coloursArr
     return params, data

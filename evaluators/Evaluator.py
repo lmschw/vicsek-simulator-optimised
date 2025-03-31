@@ -73,7 +73,8 @@ class Evaluator(object):
                 if any(ele is None for ele in self.switchTypeValues):
                     valuesPerTimeStep[self.time[i]] = ServiceMetric.evaluateSingleTimestep(positions=self.positions[i], orientations=self.orientations[i], metric=self.metric, domainSize=self.domainSize, radius=self.radius, threshold=self.threshold)
                 else:
-                    switchVals = {k: v[i] for k,v in self.switchTypeValues.items()}
+                    #switchVals = {k: v[i] for k,v in self.switchTypeValues.items()}
+                    switchVals = self.switchTypeValues[i]
                     valuesPerTimeStep[self.time[i]] = ServiceMetric.evaluateSingleTimestep(positions=self.positions[i], orientations=self.orientations[i], metric=self.metric, domainSize=self.domainSize, radius=self.radius, threshold=self.threshold, switchTypeValues=switchVals, switchType=self.switchType, switchTypeOptions=self.switchTypeOptions)
 
         #print("Evaluation completed.")
