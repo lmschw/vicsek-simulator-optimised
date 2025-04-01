@@ -84,7 +84,7 @@ def measureInformationTransferSpeedViaInformationTransferDistance(switchValues, 
     return result.slope, fullySpread
 
     
-def measureInformationTransferViaOrientationsSpread(orientations, interval=1, startTimestep=0, endTimestep=None):
+def measureInformationTransferViaOrientationsSpread(orientations, interval=1, startTimestep=0, endTimestep=None, savePath=None, show=False):
     """
     measure the spread of orientations and plot over time
     """
@@ -99,17 +99,59 @@ def measureInformationTransferViaOrientationsSpread(orientations, interval=1, st
         x.extend([t for i in range(len(angle))])
         y.extend(angle)
     plt.scatter(x, y)
-    plt.show()
+    plt.xlabel("time steps")
+    plt.ylabel("orientation")
+    if savePath:
+        plt.savefig(savePath)
+    if show:
+        plt.show()
 
 
-def measureInformationSpreadViaNumberOfNeighboursBasedProbability():
+def measureInformationSpreadViaNumberOfNeighboursBasedProbability(switchValues, positions, domainSize, radius, eventStart, targetSwitchValue, savePath=None, show=False):
     """
     measure the number of neighbours with the target switch value and plot the probability for switching based on that
     """
-    pass
+    connections = buildConnectionNetwork(positions=positions, domainSize=domainSize, radius=radius)
+    switches = {i: 0 for i in range(len(switchValues[0])+1)}
+    for t in range(eventStart, len(switchValues)):
+        svt = np.array(switchValues[t])
+        newlyInformed = (svt != np.array(switchValues[t-1])) & (svt == targetSwitchValue)
+        newlyInformedIndices = np.nonzero(newlyInformed)[0]
+        for i in newlyInformedIndices:
+            numAffectedNeighs = np.count_nonzero(connections[t][i] == targetSwitchValue)
+            switches[numAffectedNeighs] += 1
+    print(f"affected without affected neighbours: {switches[0]}")
+    #del switches[0]
+    plt.bar(switches.keys(), switches.values())
+    plt.xlabel("number of neighbours with target value")
+    plt.ylabel ("number of instances")
+    if savePath:
+        plt.savefig(savePath)
+    if show:
+        plt.show()
 
-def measureInformationSpreadViaPercentageOfNeighboursBasedProbability():
+
+def measureInformationSpreadViaPercentageOfNeighboursBasedProbability(switchValues, positions, domainSize, radius, eventStart, targetSwitchValue, savePath=None, show=False):
     """
     measure the number of neighbours with the target switch value and plot the probability for switching based on that
     """
-    pass
+    connections = buildConnectionNetwork(positions=positions, domainSize=domainSize, radius=radius)
+    switches = {i: 0 for i in range(101)}
+    for t in range(eventStart, len(switchValues)):
+        svt = np.array(switchValues[t])
+        newlyInformed = (svt != np.array(switchValues[t-1])) & (svt == targetSwitchValue)
+        newlyInformedIndices = np.nonzero(newlyInformed)[0]
+        for i in newlyInformedIndices:
+            numAffectedNeighs = np.count_nonzero(connections[t][i] == targetSwitchValue)
+            percNeigh = int((numAffectedNeighs / len(connections[t][i])) * 100)
+            switches[percNeigh] += 1
+        
+    print(f"affected without affected neighbours: {switches[0]}")
+    #del switches[0]
+    plt.bar(switches.keys(), switches.values())
+    plt.xlabel("percentage of neighbours with target value")
+    plt.ylabel("number of instances")
+    if savePath:
+        plt.savefig(savePath)
+    if show:
+        plt.show()
