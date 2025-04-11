@@ -175,7 +175,7 @@ def loadModels(paths, switchTypes=[], loadSwitchValues=False, loadColours=False,
     coloursArr = []
 
     for path in paths:
-        filePathModelParams = path.split(".")[0] + '_modelParams.' + path.split(".")[1]
+        filePathModelParams = '.'.join(path.split(".")[:-1]) + '_modelParams.' + path.split(".")[-1]
         if loadSwitchValues == True and loadColours == True:
             if loadFromCsv:
                 modelParams, simulationData, switchValues, colours = loadModelFromCsv(filepathData=path, filePathModelParams=filePathModelParams, switchTypes=switchTypes, loadColours=loadColours)
