@@ -58,7 +58,8 @@ class EvaluatorDependentInformation:
                                                      radius=self.radius,
                                                      threshold=self.threshold,
                                                      use_agglomerative_clustering=self.use_agglomerative_clustering)
-                
+                sorted_dict = dict(sorted(data.items()))
+                self.alpha = spl.determinePowerlaw(list(sorted_dict.values()))
                 
         return data
                 
@@ -73,18 +74,14 @@ class EvaluatorDependentInformation:
         ylim = ax.get_ylim()
         ax.set_ylim((0, ylim[1]))
 
-        if varianceData != None:
-            xlim = ax.get_xlim()
-            x = np.arange(start=0, stop=len(varianceData[0]), step=1)
-            for i in range(len(varianceData)):
-                ax.fill_between(x, np.mean(varianceData[i], axis=1) - np.std(varianceData[i], axis=1), np.mean(varianceData[i], axis=1) + np.std(varianceData[i], axis=1), color=COLOURS[i], alpha=0.2)
-
         if xLabel != None:
             plt.xlabel(xLabel)
         if yLabel != None:
             plt.ylabel(yLabel)
         if subtitle != None:
             plt.title(f"""{subtitle}""")
+        elif self.alpha:
+            plt.title(f"""{r'$\alpha$'} = {self.alpha}""")
         if not any(ele is None for ele in colourBackgroundForTimesteps):
             ax = plt.gca()
             ylim = ax.get_ylim()
