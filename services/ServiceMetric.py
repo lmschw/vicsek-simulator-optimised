@@ -33,15 +33,15 @@ def evaluateSingleTimestep(positions, orientations, metric, domainSize=None, rad
         case Metrics.ORDER:
             return computeGlobalOrder(orientations)
         case Metrics.CLUSTER_NUMBER:
-            nClusters, _ = ServiceClusters.findClusters(orientations, threshold)
+            nClusters, _ = ServiceClusters.find_clusters(orientations, threshold)
             return nClusters
         case Metrics.CLUSTER_NUMBER_WITH_RADIUS:
-            nClusters, _ = ServiceClusters.findClustersWithRadius(positions, orientations, domainSize, radius, threshold)
+            nClusters, _ = ServiceClusters.find_clusters_with_radius(positions, orientations, domainSize, radius, threshold)
             return nClusters
         case Metrics.CLUSTER_SIZE:
-            nClusters, clusters = ServiceClusters.findClusters(orientations, threshold)
+            nClusters, clusters = ServiceClusters.find_clusters(orientations, threshold)
             # TODO: make sure the change from array to dict is taken care of in the visualisation
-            clusterSizes = ServiceClusters.computeClusterSizes(clusters)
+            clusterSizes = ServiceClusters.compute_cluster_sizes(clusters)
             return clusterSizes
         case Metrics.ORDER_VALUE_PERCENTAGE:
             orderCount, _ = getNumbersPerSwitchTypeValue(switchTypeValues, switchType, switchTypeOptions)

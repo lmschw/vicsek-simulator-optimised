@@ -5,15 +5,29 @@ from sklearn.cluster import AgglomerativeClustering
 import services.ServiceVicsekHelper as ServiceVicsekHelper
 import services.ServiceOrientations as ServiceOrientations
 
-def getClusterHistory(positions, orientations, domainSize, radius,  threshold=0.01, use_agglomerative_clustering=True):
+def get_cluster_history(positions, orientations, domain_size, radius, threshold=0.01, use_agglomerative_clustering=True):
+    """
+    Tracks clusters across the whole duration of the simulation and compiles it into a history of cluster membership.
+
+    Params:
+        - positions (array of arrays of floats): the position of every individual at every timestep - (x,y)-coordinates
+        - orientations (array of arrays of floats): the orientation of every individual at every timestep - (u,v)-coordinates
+        - domain_size (tuple of ints): the size of the domain or arena
+        - radius (float): the perception radius of the individuals
+        - threshold (float) [optional, default=0.01]: the threshold used as a cutoff in the clustering algorithm
+        - use_agglomerative_clustering (boolean) [optional, default=True]: whether standard agglomerative clustering should be used or radius-based clustering
+
+    Returns:
+        An array containing the cluster ID of every individual at every timestep. 
+    """
     cluster_number_history = []
     cluster_history = []
     for t in range(len(orientations)):
         headings = ServiceOrientations.computeAnglesForOrientations(orientations[t])
         if use_agglomerative_clustering:
-            n_clusters, clusters = findClusters(orientations[t], threshold)
+            n_clusters, clusters = find_clusters(orientations[t], threshold)
         else:
-            n_clusters, clusters = findClustersWithRadius(positions[t], orientations[t], domainSize, radius, threshold)
+            n_clusters, clusters = find_clusters_with_radius(positions[t], orientations[t], domain_size, radius, threshold)
         cluster_number_history.append(n_clusters)
         if t == 0:
             cluster_history.append(clusters)
@@ -26,6 +40,22 @@ def getClusterHistory(positions, orientations, domainSize, radius,  threshold=0.
     return cluster_history, cluster_number_history
 
 def match_clusters(clusters, cluster_headings, clusters_old, cluster_headings_old, cluster_identity_percentage_cutoff=0.51):
+    """
+    Matches clusters between the last timestep and the current timestep and updates the cluster IDs for the current timestep 
+    accordingly.
+
+    Params:
+        - clusters (array of ints): the cluster IDs at the current timestep
+        - cluster_headings (array of floats): the average headings of every cluster at the current timestep
+        - clusters_old (array of ints): the cluster IDs at the last timestep
+        - cluster_headings_old (array of floats): the average headings of every cluster at the last timestep
+        - cluster_identity_percentage_cutoff (float, 0-1) [optional, default=0.51]: the percentage of individuals that 
+                                                                                    have to have been in a previous cluster 
+                                                                                    to assume that the new cluster is the same 
+                                                                                    as the old cluster
+    Returns:
+        An array containing the updated cluster IDs.
+    """
     distances = compute_angle_distances(cluster_headings=cluster_headings, cluster_headings_old=cluster_headings_old)
     clusters_new = np.full(clusters.shape, -1)
     unique_clusters, counts_clusters = np.unique(clusters, return_counts=True)
@@ -33,7 +63,7 @@ def match_clusters(clusters, cluster_headings, clusters_old, cluster_headings_ol
     
     cluster_counter = -2
 
-    cluster_memberships_for_old, cluster_memberships_for_new = compute_common_cluster_membership(clusters=clusters, old_clusters=clusters_old)
+    _, cluster_memberships_for_new = compute_common_cluster_membership(clusters=clusters, old_clusters=clusters_old)
 
     for agt_id in range(len(clusters)):
         new_cluster_id = np.inf
@@ -101,19 +131,25 @@ def compute_common_cluster_membership(clusters, old_clusters):
     return cluster_memberships_for_old, cluster_memberships_for_new
 
 def compute_angle_distances(cluster_headings, cluster_headings_old):
+    """
+    Computes the distances between the cluster headings at the current timestep and at the last timestep.
+    """
     xx1, xx2 = np.meshgrid(cluster_headings, cluster_headings_old)
     x_diffs = xx1 - xx2
     distances = np.sqrt(np.multiply(x_diffs, x_diffs))  
     return distances
 
 def compute_average_orientations_for_all_clusters(orientations, clusters, n_clusters):
+    """
+    Computes the average orientation/heading for every cluster.
+    """
     orients = []
     for c in range(n_clusters):
         oris = orientations[np.argwhere(clusters == c)]
         orients.append(np.average(oris))
     return np.array(orients)
 
-def findClusters(orientations, threshold):
+def find_clusters(orientations, threshold):
     """
     Find clusters in the data using AgglomerativeClustering.
 
@@ -134,7 +170,7 @@ def findClusters(orientations, threshold):
 
     return nClusters, cluster.labels_
 
-def findClustersWithRadius(positions, orientations, domainSize, radius, threshold=0.01):
+def find_clusters_with_radius(positions, orientations, domainSize, radius, threshold=0.01):
     """
     Finds clusters in the particle distribution. The clustering is performed according to the following constraints:
         - to belong to a cluster, a particle needs to be within the radius of at least one other member of the same cluster
@@ -157,7 +193,7 @@ def findClustersWithRadius(positions, orientations, domainSize, radius, threshol
 
     neighbours = ServiceVicsekHelper.getNeighbours(positions=positions, domainSize=domainSize, radius=radius)
 
-    clusterNumber, baseClusters = findClusters(orientations, threshold)
+    clusterNumber, baseClusters = find_clusters(orientations, threshold)
     neighbourIndices = np.argwhere(neighbours)
     neighbourIndicesRegrouped = {}
     maxClusterId = clusterNumber -1
@@ -170,13 +206,13 @@ def findClustersWithRadius(positions, orientations, domainSize, radius, threshol
     for c in range(clusterNumber):
         members = np.where(baseClusters==c)
         for member in members[0]:
-            maxClusterId = updateClusters(member, c, maxClusterId, clusters, members[0], neighbourIndicesRegrouped)
+            maxClusterId = update_clusters(member, c, maxClusterId, clusters, members[0], neighbourIndicesRegrouped)
         
 
     return len(np.unique(clusters)), clusters
 
 
-def updateClusters(currentIdx, clusterId, maxClusterId, clusters, candidates, neighbourIndices):
+def update_clusters(currentIdx, clusterId, maxClusterId, clusters, candidates, neighbourIndices):
     # if the currentIdx is already assigned a value, we return
     if clusters[currentIdx] != -1:
         return maxClusterId
@@ -194,7 +230,7 @@ def updateClusters(currentIdx, clusterId, maxClusterId, clusters, candidates, ne
             clusters[currentIdx] = maxClusterId
     return maxClusterId
 
-def computeClusterSizes(clusters):
+def compute_cluster_sizes(clusters):
     """
     Computes the size of every cluster.
 
@@ -210,6 +246,16 @@ def computeClusterSizes(clusters):
 
 
 def transform_cluster_history_into_colour_history(cluster_history):
+    """
+    Creates a colour history that is equivalent to the cluster history for animation purposes.
+    Colours are assigned randomly to clusters.
+
+    Params:
+        - cluster_history (np.array): The history of the clusters in the simulation with a cluster ID for each agent at every timestep
+
+    Returns:
+        An array containing RGB values representing the colour of the cluster for each agent at every timestep.
+    """
     colours = {}
     colour_history = []
     for t in range(len(cluster_history)):

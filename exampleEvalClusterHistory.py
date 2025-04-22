@@ -107,7 +107,7 @@ def eval(density, n, radius, eventEffect, metrics, type, nsm=None, k=None, combo
         if metric == Metrics.CLUSTER_DURATION:
             times, positions, orientations = simulationData[0][0]
 
-            history = ServiceClusters.getClusterHistory(positions=positions, orientations=orientations, threshold=threshold)
+            history = ServiceClusters.get_cluster_history(positions=positions, orientations=orientations, threshold=threshold)
         else:
             evaluator = EvaluatorMultiAvgComp(modelParams, metric, simulationData, evaluationTimestepInterval=evalInterval, threshold=threshold, switchType=sType, switchTypeValues=switchTypes, switchTypeOptions=combo)
             evaluator.evaluateAndVisualize(labels=labels, xLabel=xAxisLabel, yLabel=yAxisLabel, colourBackgroundForTimesteps=[e1Start, e1Start+duration], showVariance=True, xlim=xlim, ylim=ylim, savePath=savePath)    
@@ -246,7 +246,7 @@ returnHistories = True
 dt = 1
 tmax = 1000
 use_agglo_clustering = True
-agglo_threshold = noise + 0.01
+agglo_threshold = noise + 0.05
 
 simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
                                          radius=radius,
@@ -264,7 +264,7 @@ simulationData, switchValues = simulator.simulate(initialState=initialState, dt=
 
 #simulationData, switchValues = simulator.simulate(tmax=tmax)
 times, positions, orientations = simulationData
-cluster_history, cluster_number_history = ServiceClusters.getClusterHistory(positions=positions, orientations=orientations, domainSize=domainSize, radius=radius, threshold=agglo_threshold, use_agglomerative_clustering=use_agglo_clustering)
+cluster_history, cluster_number_history = ServiceClusters.get_cluster_history(positions=positions, orientations=orientations, domain_size=domainSize, radius=radius, threshold=agglo_threshold, use_agglomerative_clustering=use_agglo_clustering)
 
 colours_history = ServiceClusters.transform_cluster_history_into_colour_history(cluster_history)
 
