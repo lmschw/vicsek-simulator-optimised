@@ -18,6 +18,8 @@ BACKGROUND_COLOURS_50_PERCENT_LIGHTER = ['#7fbee9', '#ffbf86', '#87de87', '#eb92
                                         '#cca69f', '#f1bbe0', '#bfbfbf', '#e8e985', '#81e7f1']
 BACKGROUND_COLOURS = BACKGROUND_COLOURS_50_PERCENT_LIGHTER
 
+DOT_FACTOR = 10
+
 class EvaluatorDependentInformation:
 
     def __init__(self, metric, positions, orientations, domain_size, radius, threshold=0.01, use_agglomerative_clustering=True):
@@ -138,7 +140,7 @@ class EvaluatorDependentInformation:
             for d in data[k].keys():
                 x.append(k)
                 y.append(d)
-                s.append(data[k][d])
+                s.append(DOT_FACTOR * data[k][d])
         plt.scatter(x, y, s)
         ax = plt.gca()
         # reset axis to start at (0.0)
