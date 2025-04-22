@@ -81,7 +81,7 @@ def match_clusters(clusters, cluster_headings, clusters_old, cluster_headings_ol
                 new_cluster_id = clusters_old[ci]
             else:
                 new_cluster_id = max(max(clusters), max(clusters_old)) + 1
-            clusters_new = np.where(clusters == cluster_id, new_cluster_id, clusters_new)
+            clusters_new = np.where(clusters_new == clusters_new[ci], new_cluster_id, clusters_new)
     return clusters_new
 
 def compute_common_cluster_membership(clusters, old_clusters):
