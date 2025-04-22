@@ -5,6 +5,29 @@ from sklearn.cluster import AgglomerativeClustering
 import services.ServiceVicsekHelper as ServiceVicsekHelper
 import services.ServiceOrientations as ServiceOrientations
 
+def compute_cluster_durations(positons, orientations, domain_size, radius, threshold=0.01, use_agglomerative_clustering=True):
+    cluster_history, _ = get_cluster_history(positions=positons,
+                                          orientations=orientations,
+                                          domain_size=domain_size,
+                                          radius=radius,
+                                          threshold=threshold,
+                                          use_agglomerative_clustering=use_agglomerative_clustering)
+    duration_counts = {}
+    start_timesteps = {}
+    for t in range(len(cluster_history)):
+        unique_clusters, _ = np.unique(cluster_history[t], return_counts=True)
+        for cluster_id in unique_clusters:
+            if cluster_id not in start_timesteps:
+                start_timesteps[cluster_id] = t
+            start_timesteps, duration_counts = update_and_clean_durations(t=t, start_timesteps=start_timesteps, duration_counts=duration_counts, unique_clusters=unique_clusters)
+    start_timesteps, duration_counts = update_and_clean_durations(t=t+1, start_timesteps=start_timesteps, duration_counts=duration_counts, unique_clusters=[])
+
+    return duration_counts
+
+def compute_cluster_nesting(positions, orientations, domain_size, radius, threshold=0.01, use_agglomerative_clustering=True):
+    pass
+
+
 def get_cluster_history(positions, orientations, domain_size, radius, threshold=0.01, use_agglomerative_clustering=True):
     """
     Tracks clusters across the whole duration of the simulation and compiles it into a history of cluster membership.
@@ -18,7 +41,7 @@ def get_cluster_history(positions, orientations, domain_size, radius, threshold=
         - use_agglomerative_clustering (boolean) [optional, default=True]: whether standard agglomerative clustering should be used or radius-based clustering
 
     Returns:
-        An array containing the cluster ID of every individual at every timestep. 
+        An array containing the cluster ID of every individual at every timestep and an array containing the number of clusters at every tiemstep. 
     """
     cluster_number_history = []
     cluster_history = []
@@ -269,3 +292,17 @@ def transform_cluster_history_into_colour_history(cluster_history):
             colours_t.append(colour)
         colour_history.append(colours_t)
     return colour_history
+
+def update_and_clean_durations(t, start_timesteps, duration_counts, unique_clusters):
+    to_delete = []
+    for cluster_id in start_timesteps.keys():
+        if cluster_id not in unique_clusters:
+            duration = t-start_timesteps[cluster_id]
+            if duration in duration_counts:
+                duration_counts[duration] += 1
+            else:
+                duration_counts[duration] = 1
+            to_delete.append(cluster_id)
+    for i in to_delete:
+        del start_timesteps[i]
+    return start_timesteps, duration_counts
