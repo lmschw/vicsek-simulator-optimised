@@ -54,7 +54,7 @@ class EvaluatorDependentInformation:
     def evaluate(self):
         match self.metric:
             case TimeDependentMetrics.CLUSTER_DURATION:
-                data = scl.compute_cluster_durations(positions=self.positions,
+                data, _ = scl.compute_cluster_durations(positions=self.positions,
                                                      orientations=self.orientations,
                                                      domain_size=self.domain_size,
                                                      radius=self.radius,
@@ -62,6 +62,13 @@ class EvaluatorDependentInformation:
                                                      use_agglomerative_clustering=self.use_agglomerative_clustering)
                 sorted_dict = dict(sorted(data.items()))
                 self.alpha = spl.determinePowerlaw(list(sorted_dict.values()))
+            case TimeDependentMetrics.CLUSTER_DURATION_PER_STARTING_TIMESTEP:
+                _, data = scl.compute_cluster_durations(positions=self.positions,
+                                                     orientations=self.orientations,
+                                                     domain_size=self.domain_size,
+                                                     radius=self.radius,
+                                                     threshold=self.threshold,
+                                                     use_agglomerative_clustering=self.use_agglomerative_clustering)
             case TimeDependentMetrics.CLUSTER_TREE:
                 data = scl.compute_cluster_graph(positions=self.positions,
                                                orientations=self.orientations,
@@ -83,11 +90,56 @@ class EvaluatorDependentInformation:
                                     xlim=xlim, ylim=ylim,
                                     savePath=savePath, 
                                     show=show) 
+            case TimeDependentMetrics.CLUSTER_DURATION_PER_STARTING_TIMESTEP:
+                self.visualize_dots(data=data, 
+                                    xLabel=xLabel, yLabel=yLabel, 
+                                    subtitle=subtitle, 
+                                    colourBackgroundForTimesteps=colourBackgroundForTimesteps, 
+                                    varianceData=varianceData, 
+                                    xlim=xlim, ylim=ylim,
+                                    savePath=savePath, 
+                                    show=show) 
             case TimeDependentMetrics.CLUSTER_TREE:
                 self.visualize_tree(data=data, savePath=savePath, show=show)
 
     def visualize_bars(self, data, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=None, varianceData=None, xlim=None, ylim=None, savePath=None, show=False):
         plt.bar(x=data.keys(), height=data.values())
+        ax = plt.gca()
+        # reset axis to start at (0.0)
+        xlim = ax.get_xlim()
+        ax.set_xlim((0, xlim[1]))
+        ylim = ax.get_ylim()
+        ax.set_ylim((0, ylim[1]))
+
+        if xLabel != None:
+            plt.xlabel(xLabel)
+        if yLabel != None:
+            plt.ylabel(yLabel)
+        if subtitle != None:
+            plt.title(f"""{subtitle}""")
+        elif self.alpha:
+            plt.title(f"""{r'$\alpha$'} = {self.alpha}""")
+        if not any(ele is None for ele in colourBackgroundForTimesteps):
+            ax = plt.gca()
+            ylim = ax.get_ylim()
+            y = np.arange(ylim[0], ylim[1], 0.01)
+            ax.fill_betweenx(y, colourBackgroundForTimesteps[0], colourBackgroundForTimesteps[1], facecolor='green', alpha=0.2)
+        if savePath != None:
+            plt.savefig(savePath)
+        if show:
+            plt.show()
+        plt.close()
+
+    def visualize_dots(self, data, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=None, varianceData=None, xlim=None, ylim=None, savePath=None, show=False):
+        x = []
+        y = []
+        s = []
+        for k in data.keys():
+            for d in data[k].keys():
+                x.append(k)
+                y.append(d)
+                s.append(data[k][d])
+        plt.scatter(x, y, s)
         ax = plt.gca()
         # reset axis to start at (0.0)
         xlim = ax.get_xlim()

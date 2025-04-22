@@ -14,16 +14,16 @@ def compute_cluster_durations(positions, orientations, domain_size, radius, thre
                                           threshold=threshold,
                                           use_agglomerative_clustering=use_agglomerative_clustering)
     duration_counts = {}
+    duration_counts_per_start_timestep = {}
     start_timesteps = {}
     for t in range(len(cluster_history)):
         unique_clusters, _ = np.unique(cluster_history[t], return_counts=True)
         for cluster_id in unique_clusters:
             if cluster_id not in start_timesteps:
                 start_timesteps[cluster_id] = t
-            start_timesteps, duration_counts = update_and_clean_durations(t=t, start_timesteps=start_timesteps, duration_counts=duration_counts, unique_clusters=unique_clusters)
-    start_timesteps, duration_counts = update_and_clean_durations(t=t+1, start_timesteps=start_timesteps, duration_counts=duration_counts, unique_clusters=[])
-
-    return duration_counts
+            start_timesteps, duration_counts, duration_counts_per_start_timestep = update_and_clean_durations(t=t, start_timesteps=start_timesteps, duration_counts=duration_counts, duration_counts_per_start_timestep=duration_counts_per_start_timestep, unique_clusters=unique_clusters)
+    start_timesteps, duration_counts, duration_counts_per_start_timestep = update_and_clean_durations(t=t+1, start_timesteps=start_timesteps, duration_counts=duration_counts, duration_counts_per_start_timestep=duration_counts_per_start_timestep, unique_clusters=unique_clusters)
+    return duration_counts, duration_counts_per_start_timestep
 
 def compute_cluster_graph(positions, orientations, domain_size, radius, threshold=0.01, use_agglomerative_clustering=True):
     print("Computing cluster history...")
@@ -317,7 +317,7 @@ def transform_cluster_history_into_colour_history(cluster_history):
         colour_history.append(colours_t)
     return colour_history
 
-def update_and_clean_durations(t, start_timesteps, duration_counts, unique_clusters):
+def update_and_clean_durations(t, start_timesteps, duration_counts, duration_counts_per_start_timestep, unique_clusters):
     to_delete = []
     for cluster_id in start_timesteps.keys():
         if cluster_id not in unique_clusters:
@@ -326,7 +326,14 @@ def update_and_clean_durations(t, start_timesteps, duration_counts, unique_clust
                 duration_counts[duration] += 1
             else:
                 duration_counts[duration] = 1
+            if start_timesteps[cluster_id] in duration_counts_per_start_timestep and duration in duration_counts_per_start_timestep[start_timesteps[cluster_id]]:
+                duration_counts_per_start_timestep[start_timesteps[cluster_id]][duration] += 1
+            elif start_timesteps[cluster_id] in duration_counts_per_start_timestep:
+                duration_counts_per_start_timestep[start_timesteps[cluster_id]][duration] = 1
+            else:
+                duration_counts_per_start_timestep[start_timesteps[cluster_id]] = {}
+                duration_counts_per_start_timestep[start_timesteps[cluster_id]][duration] = 1
             to_delete.append(cluster_id)
     for i in to_delete:
         del start_timesteps[i]
-    return start_timesteps, duration_counts
+    return start_timesteps, duration_counts, duration_counts_per_start_timestep
