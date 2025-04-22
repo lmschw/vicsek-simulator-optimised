@@ -1,12 +1,13 @@
 import numpy as np
 import operator, random
 from sklearn.cluster import AgglomerativeClustering
+import networkx as nx
 
 import services.ServiceVicsekHelper as ServiceVicsekHelper
 import services.ServiceOrientations as ServiceOrientations
 
-def compute_cluster_durations(positons, orientations, domain_size, radius, threshold=0.01, use_agglomerative_clustering=True):
-    cluster_history, _ = get_cluster_history(positions=positons,
+def compute_cluster_durations(positions, orientations, domain_size, radius, threshold=0.01, use_agglomerative_clustering=True):
+    cluster_history, _ = get_cluster_history(positions=positions,
                                           orientations=orientations,
                                           domain_size=domain_size,
                                           radius=radius,
@@ -23,9 +24,6 @@ def compute_cluster_durations(positons, orientations, domain_size, radius, thres
     start_timesteps, duration_counts = update_and_clean_durations(t=t+1, start_timesteps=start_timesteps, duration_counts=duration_counts, unique_clusters=[])
 
     return duration_counts
-
-def compute_cluster_nesting(positions, orientations, domain_size, radius, threshold=0.01, use_agglomerative_clustering=True):
-    pass
 
 
 def get_cluster_history(positions, orientations, domain_size, radius, threshold=0.01, use_agglomerative_clustering=True):
