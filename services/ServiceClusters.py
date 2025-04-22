@@ -25,6 +25,32 @@ def compute_cluster_durations(positions, orientations, domain_size, radius, thre
 
     return duration_counts
 
+def compute_cluster_graph(positions, orientations, domain_size, radius, threshold=0.01, use_agglomerative_clustering=True):
+    print("Computing cluster history...")
+    cluster_history, cluster_number_history = get_cluster_history(positions=positions,
+                                                                    orientations=orientations,
+                                                                    domain_size=domain_size,
+                                                                    radius=radius,
+                                                                    threshold=threshold,
+                                                                    use_agglomerative_clustering=use_agglomerative_clustering)
+    
+    print(cluster_history[0])
+    print(cluster_history[-1])
+    print("Starting graph generation...")
+    G = nx.DiGraph()
+    G.add_nodes_from([f"{cluster_history[0][i]}-0" for i in range(len(cluster_history[0]))])
+    edge_labels = {}
+    for t in range(1, len(cluster_history)):
+        _, previous_cluster_memberships = compute_common_cluster_membership(clusters=cluster_history[t], old_clusters=cluster_history[t-1])
+        unique_clusters, _ = np.unique(cluster_history[t], return_counts=True)
+        G.add_nodes_from([f"{cluster_history[0][i]}-{t}" for i in range(len(cluster_history[t]))])
+        for cluster in unique_clusters:
+            if cluster in previous_cluster_memberships:
+                for i in previous_cluster_memberships[cluster].keys():
+                    if previous_cluster_memberships[cluster][i] > 0:
+                        G.add_edge(f"{i}-{t-1}", f"{cluster}-{t}")
+                        edge_labels[(f"{i}-{t-1}", f"{cluster}-{t}")] = previous_cluster_memberships[cluster][i]
+    return (G, edge_labels)
 
 def get_cluster_history(positions, orientations, domain_size, radius, threshold=0.01, use_agglomerative_clustering=True):
     """

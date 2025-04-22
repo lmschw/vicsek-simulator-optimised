@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 import numpy as np
 import pandas as pd
+import networkx as nx
 
 import services.ServiceSavedModel as ssm
 import services.ServiceClusters as scl
@@ -27,8 +28,9 @@ class EvaluatorDependentInformation:
         self.radius = radius
         self.threshold = threshold
         self.use_agglomerative_clustering = use_agglomerative_clustering
+        self.alpha = None
 
-    def evaluateAndVisualize(self, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=(None,None), xlim=None, ylim=None, savePath=None):
+    def evaluateAndVisualize(self, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=(None,None), xlim=None, ylim=None, savePath=None, show=False):
         """
         Evaluates and subsequently visualises the results for multiple models.
 
@@ -47,12 +49,12 @@ class EvaluatorDependentInformation:
             Nothing.
         """
         data = self.evaluate()
-        self.visualize(data, xLabel=xLabel, yLabel=yLabel, subtitle=subtitle, colourBackgroundForTimesteps=colourBackgroundForTimesteps, xlim=xlim, ylim=ylim, savePath=savePath)
+        self.visualize(data, xLabel=xLabel, yLabel=yLabel, subtitle=subtitle, colourBackgroundForTimesteps=colourBackgroundForTimesteps, xlim=xlim, ylim=ylim, savePath=savePath, show=show)
         
     def evaluate(self):
         match self.metric:
             case TimeDependentMetrics.CLUSTER_DURATION:
-                data = scl.compute_cluster_durations(positons=self.positions,
+                data = scl.compute_cluster_durations(positions=self.positions,
                                                      orientations=self.orientations,
                                                      domain_size=self.domain_size,
                                                      radius=self.radius,
@@ -60,13 +62,32 @@ class EvaluatorDependentInformation:
                                                      use_agglomerative_clustering=self.use_agglomerative_clustering)
                 sorted_dict = dict(sorted(data.items()))
                 self.alpha = spl.determinePowerlaw(list(sorted_dict.values()))
-                
+            case TimeDependentMetrics.CLUSTER_TREE:
+                data = scl.compute_cluster_graph(positions=self.positions,
+                                               orientations=self.orientations,
+                                               domain_size=self.domain_size,
+                                               radius=self.radius,
+                                               threshold=self.threshold,
+                                               use_agglomerative_clustering=self.use_agglomerative_clustering)   
         return data
                 
 
-    def visualize(self, data, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=None, varianceData=None, xlim=None, ylim=None, savePath=None):
-        plt.bar(x=data.keys(), height=data.values())
+    def visualize(self, data, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=None, varianceData=None, xlim=None, ylim=None, savePath=None, show=False):
+        match self.metric:
+            case TimeDependentMetrics.CLUSTER_DURATION:
+                self.visualize_bars(data=data, 
+                                    xLabel=xLabel, yLabel=yLabel, 
+                                    subtitle=subtitle, 
+                                    colourBackgroundForTimesteps=colourBackgroundForTimesteps, 
+                                    varianceData=varianceData, 
+                                    xlim=xlim, ylim=ylim,
+                                    savePath=savePath, 
+                                    show=show) 
+            case TimeDependentMetrics.CLUSTER_TREE:
+                self.visualize_tree(data=data, savePath=savePath, show=show)
 
+    def visualize_bars(self, data, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=None, varianceData=None, xlim=None, ylim=None, savePath=None, show=False):
+        plt.bar(x=data.keys(), height=data.values())
         ax = plt.gca()
         # reset axis to start at (0.0)
         xlim = ax.get_xlim()
@@ -89,5 +110,36 @@ class EvaluatorDependentInformation:
             ax.fill_betweenx(y, colourBackgroundForTimesteps[0], colourBackgroundForTimesteps[1], facecolor='green', alpha=0.2)
         if savePath != None:
             plt.savefig(savePath)
-        plt.show()
+        if show:
+            plt.show()
         plt.close()
+
+    def visualize_tree(self, data, savePath, show=False):
+        G, edge_labels = data
+        print("Starting visualisation...")
+        # For visualization purposes, layout the nodes in topological order
+        for i, layer in enumerate(nx.topological_generations(G)):
+            for n in layer:
+                G.nodes[n]["layer"] = i
+        pos = nx.multipartite_layout(G, subset_key="layer", align="horizontal")
+        # Flip the layout so the root node is on top
+        for k in pos:
+            pos[k][-1] *= -1
+
+        # Visualize the trie
+        # nx.draw_networkx_nodes(G, pos)
+        # nx.draw_networkx_edges(G, pos, alpha=0.5, width=6)
+        nx.draw(G, pos, with_labels=True)
+        nx.draw_networkx_edge_labels(
+            G, pos,
+            edge_labels=edge_labels,
+        )
+        # Customize axes
+        ax = plt.gca()
+        ax.margins(0.11)
+        plt.tight_layout()
+        plt.axis("off")
+        if savePath != None:
+            plt.savefig(savePath)
+        if show:
+            plt.show()

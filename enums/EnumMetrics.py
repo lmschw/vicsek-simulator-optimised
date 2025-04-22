@@ -21,8 +21,9 @@ class Metrics(Enum):
         self.label = label
 
 class TimeDependentMetrics(Enum):
-    CLUSTER_DURATION = "clusterduration", "cluster duration"
-    
+    CLUSTER_DURATION = "clusterduration", "cluster duration",
+    CLUSTER_TREE = "clustertree", "cluster tree"
+
     def __init__(self, val, label):
         self.val = val
         self.label = label
