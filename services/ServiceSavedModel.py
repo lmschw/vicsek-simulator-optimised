@@ -152,7 +152,7 @@ def loadModel(path, switchTypes=[], loadSwitchValues=False, loadColours=False):
         switchValues = loadedJson["switchValues"]
         for switchType in switchTypes:
             switchTypeValues[switchType.switchTypeValueKey] = switchValues[switchType.switchTypeValueKey]
-        return modelParams, (time, positions, orientations), switchValues
+        return modelParams, (time, positions, orientations), switchTypeValues
     elif loadColours == True:
         colours = loadedJson["colours"]
         return modelParams, (time, positions, orientations), colours

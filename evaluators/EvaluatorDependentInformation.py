@@ -7,6 +7,7 @@ import networkx as nx
 import services.ServiceSavedModel as ssm
 import services.ServiceClusters as scl
 import services.ServicePowerlaw as spl
+import services.ServiceSwitchAnalysis as ssa
 from enums.EnumMetrics import TimeDependentMetrics
 
 
@@ -22,7 +23,8 @@ DOT_FACTOR = 10
 
 class EvaluatorDependentInformation:
 
-    def __init__(self, metric, positions, orientations, domain_size, radius, threshold=0.01, use_agglomerative_clustering=True):
+    def __init__(self, metric, positions, orientations, domain_size, radius, threshold=0.01, use_agglomerative_clustering=True,
+                 switch_values=[], target_switch_value=None, event_start=None, event_origin_point=(None,None)):
         self.metric = metric
         self.positions = positions
         self.orientations = orientations
@@ -31,6 +33,10 @@ class EvaluatorDependentInformation:
         self.threshold = threshold
         self.use_agglomerative_clustering = use_agglomerative_clustering
         self.alpha = None
+        self.switch_values = switch_values
+        self.target_switch_value = target_switch_value
+        self.event_start = event_start
+        self.event_origin_point = event_origin_point
 
     def evaluateAndVisualize(self, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=(None,None), xlim=None, ylim=None, savePath=None, show=False):
         """
@@ -78,6 +84,14 @@ class EvaluatorDependentInformation:
                                                radius=self.radius,
                                                threshold=self.threshold,
                                                use_agglomerative_clustering=self.use_agglomerative_clustering)   
+            case TimeDependentMetrics.TIME_TO_SWITCH:
+                _, data = ssa.compute_time_between_exposure_and_switch(positions=self.positions,
+                                                                    switch_values=self.switch_values,
+                                                                    target_switch_value=self.target_switch_value,
+                                                                    event_start=self.event_start,
+                                                                    event_origin_point=self.event_origin_point,
+                                                                    event_radius=self.radius,
+                                                                    domain_size=self.domain_size)
         return data
                 
 
@@ -93,7 +107,7 @@ class EvaluatorDependentInformation:
                                     savePath=savePath, 
                                     show=show) 
             case TimeDependentMetrics.CLUSTER_DURATION_PER_STARTING_TIMESTEP:
-                self.visualize_dots(data=data, 
+                self.visualize_dots_durations(data=data, 
                                     xLabel=xLabel, yLabel=yLabel, 
                                     subtitle=subtitle, 
                                     colourBackgroundForTimesteps=colourBackgroundForTimesteps, 
@@ -103,7 +117,15 @@ class EvaluatorDependentInformation:
                                     show=show) 
             case TimeDependentMetrics.CLUSTER_TREE:
                 self.visualize_tree(data=data, savePath=savePath, show=show)
-
+            case TimeDependentMetrics.TIME_TO_SWITCH:
+                self.visualize_dots_time_to_switch(data=data, 
+                                    xLabel=xLabel, yLabel=yLabel, 
+                                    subtitle=subtitle, 
+                                    colourBackgroundForTimesteps=colourBackgroundForTimesteps, 
+                                    varianceData=varianceData, 
+                                    xlim=xlim, ylim=ylim,
+                                    savePath=savePath, 
+                                    show=show) 
     def visualize_bars(self, data, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=None, varianceData=None, xlim=None, ylim=None, savePath=None, show=False):
         plt.bar(x=data.keys(), height=data.values())
         ax = plt.gca()
@@ -132,7 +154,7 @@ class EvaluatorDependentInformation:
             plt.show()
         plt.close()
 
-    def visualize_dots(self, data, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=None, varianceData=None, xlim=None, ylim=None, savePath=None, show=False):
+    def visualize_dots_durations(self, data, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=None, varianceData=None, xlim=None, ylim=None, savePath=None, show=False):
         x = []
         y = []
         s = []
@@ -141,13 +163,44 @@ class EvaluatorDependentInformation:
                 x.append(k)
                 y.append(d)
                 s.append(DOT_FACTOR * data[k][d])
+        self.visualize_dots(x=x,
+                            y=y,
+                            s=s,
+                            xLabel=xLabel,
+                            yLabel=yLabel,
+                            subtitle=subtitle,
+                            colourBackgroundForTimesteps=colourBackgroundForTimesteps,
+                            varianceData=varianceData,
+                            xlim=xlim,
+                            ylim=ylim,
+                            savePath=savePath,
+                            show=show)
+        
+
+    def visualize_dots_time_to_switch(self, data, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=None, varianceData=None, xlim=None, ylim=None, savePath=None, show=False):
+        x = []
+        y = []
+        s = []
+        for k in data.keys():
+            x.append(k)
+            y.append(data[k])
+            s.append(DOT_FACTOR)
+        self.visualize_dots(x=x,
+                            y=y,
+                            s=s,
+                            xLabel=xLabel,
+                            yLabel=yLabel,
+                            subtitle=subtitle,
+                            colourBackgroundForTimesteps=colourBackgroundForTimesteps,
+                            varianceData=varianceData,
+                            xlim=xlim,
+                            ylim=ylim,
+                            savePath=savePath,
+                            show=show)
+
+    def visualize_dots(self, x, y, s, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=None, varianceData=None, xlim=None, ylim=None, savePath=None, show=False):
         plt.scatter(x, y, s)
         ax = plt.gca()
-        # reset axis to start at (0.0)
-        xlim = ax.get_xlim()
-        ax.set_xlim((0, xlim[1]))
-        ylim = ax.get_ylim()
-        ax.set_ylim((0, ylim[1]))
 
         if xLabel != None:
             plt.xlabel(xLabel)
