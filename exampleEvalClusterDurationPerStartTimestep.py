@@ -22,4 +22,4 @@ evaluator = EvaluatorDependentInformation(metric=metric,
                                           threshold=threshold,
                                           use_agglomerative_clustering=use_agglo)
 
-evaluator.evaluateAndVisualize(xLabel="start timestep", yLabel="duration", savePath=save_path, show=True)
+evaluator.evaluateAndVisualize(xLabel="start timestep", yLabel="duration", savePath=save_path, show=False)

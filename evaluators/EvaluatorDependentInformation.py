@@ -4,22 +4,12 @@ import numpy as np
 import pandas as pd
 import networkx as nx
 
+import evaluators.VisualizerDependentInformationEval as vde
 import services.ServiceSavedModel as ssm
 import services.ServiceClusters as scl
 import services.ServicePowerlaw as spl
 import services.ServiceSwitchAnalysis as ssa
 from enums.EnumMetrics import TimeDependentMetrics
-
-
-COLOURS = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
-        '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
-BACKGROUND_COLOURS_65_PERCENT_LIGHTER = ['#a6d1f0', '#ffd2ab', '#abe8ab', '#f1b3b3', '#dacae8',
-                                        '#dbc1bc', '#f5cfea', '#d2d2d2', '#eff0aa', '#a7eef5']
-BACKGROUND_COLOURS_50_PERCENT_LIGHTER = ['#7fbee9', '#ffbf86', '#87de87', '#eb9293', '#c9b3de',
-                                        '#cca69f', '#f1bbe0', '#bfbfbf', '#e8e985', '#81e7f1']
-BACKGROUND_COLOURS = BACKGROUND_COLOURS_50_PERCENT_LIGHTER
-
-DOT_FACTOR = 10
 
 class EvaluatorDependentInformation:
 
@@ -57,7 +47,7 @@ class EvaluatorDependentInformation:
             Nothing.
         """
         data = self.evaluate()
-        self.visualize(data, xLabel=xLabel, yLabel=yLabel, subtitle=subtitle, colourBackgroundForTimesteps=colourBackgroundForTimesteps, xlim=xlim, ylim=ylim, savePath=savePath, show=show)
+        vde.visualize(data, xLabel=xLabel, yLabel=yLabel, subtitle=subtitle, colourBackgroundForTimesteps=colourBackgroundForTimesteps, xlim=xlim, ylim=ylim, alpha=self.alpha, savePath=savePath, show=show)
         
     def evaluate(self):
         match self.metric:
@@ -95,158 +85,3 @@ class EvaluatorDependentInformation:
         return data
                 
 
-    def visualize(self, data, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=None, varianceData=None, xlim=None, ylim=None, savePath=None, show=False):
-        match self.metric:
-            case TimeDependentMetrics.CLUSTER_DURATION:
-                self.visualize_bars(data=data, 
-                                    xLabel=xLabel, yLabel=yLabel, 
-                                    subtitle=subtitle, 
-                                    colourBackgroundForTimesteps=colourBackgroundForTimesteps, 
-                                    varianceData=varianceData, 
-                                    xlim=xlim, ylim=ylim,
-                                    savePath=savePath, 
-                                    show=show) 
-            case TimeDependentMetrics.CLUSTER_DURATION_PER_STARTING_TIMESTEP:
-                self.visualize_dots_durations(data=data, 
-                                    xLabel=xLabel, yLabel=yLabel, 
-                                    subtitle=subtitle, 
-                                    colourBackgroundForTimesteps=colourBackgroundForTimesteps, 
-                                    varianceData=varianceData, 
-                                    xlim=xlim, ylim=ylim,
-                                    savePath=savePath, 
-                                    show=show) 
-            case TimeDependentMetrics.CLUSTER_TREE:
-                self.visualize_tree(data=data, savePath=savePath, show=show)
-            case TimeDependentMetrics.TIME_TO_SWITCH:
-                self.visualize_dots_time_to_switch(data=data, 
-                                    xLabel=xLabel, yLabel=yLabel, 
-                                    subtitle=subtitle, 
-                                    colourBackgroundForTimesteps=colourBackgroundForTimesteps, 
-                                    varianceData=varianceData, 
-                                    xlim=xlim, ylim=ylim,
-                                    savePath=savePath, 
-                                    show=show) 
-    def visualize_bars(self, data, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=None, varianceData=None, xlim=None, ylim=None, savePath=None, show=False):
-        plt.bar(x=data.keys(), height=data.values())
-        ax = plt.gca()
-        # reset axis to start at (0.0)
-        xlim = ax.get_xlim()
-        ax.set_xlim((0, xlim[1]))
-        ylim = ax.get_ylim()
-        ax.set_ylim((0, ylim[1]))
-
-        if xLabel != None:
-            plt.xlabel(xLabel)
-        if yLabel != None:
-            plt.ylabel(yLabel)
-        if subtitle != None:
-            plt.title(f"""{subtitle}""")
-        elif self.alpha:
-            plt.title(f"""{r'$\alpha$'} = {self.alpha}""")
-        if not any(ele is None for ele in colourBackgroundForTimesteps):
-            ax = plt.gca()
-            ylim = ax.get_ylim()
-            y = np.arange(ylim[0], ylim[1], 0.01)
-            ax.fill_betweenx(y, colourBackgroundForTimesteps[0], colourBackgroundForTimesteps[1], facecolor='green', alpha=0.2)
-        if savePath != None:
-            plt.savefig(savePath)
-        if show:
-            plt.show()
-        plt.close()
-
-    def visualize_dots_durations(self, data, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=None, varianceData=None, xlim=None, ylim=None, savePath=None, show=False):
-        x = []
-        y = []
-        s = []
-        for k in data.keys():
-            for d in data[k].keys():
-                x.append(k)
-                y.append(d)
-                s.append(DOT_FACTOR * data[k][d])
-        self.visualize_dots(x=x,
-                            y=y,
-                            s=s,
-                            xLabel=xLabel,
-                            yLabel=yLabel,
-                            subtitle=subtitle,
-                            colourBackgroundForTimesteps=colourBackgroundForTimesteps,
-                            varianceData=varianceData,
-                            xlim=xlim,
-                            ylim=ylim,
-                            savePath=savePath,
-                            show=show)
-        
-
-    def visualize_dots_time_to_switch(self, data, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=None, varianceData=None, xlim=None, ylim=None, savePath=None, show=False):
-        x = []
-        y = []
-        s = []
-        for k in data.keys():
-            x.append(k)
-            y.append(data[k])
-            s.append(DOT_FACTOR)
-        self.visualize_dots(x=x,
-                            y=y,
-                            s=s,
-                            xLabel=xLabel,
-                            yLabel=yLabel,
-                            subtitle=subtitle,
-                            colourBackgroundForTimesteps=colourBackgroundForTimesteps,
-                            varianceData=varianceData,
-                            xlim=xlim,
-                            ylim=ylim,
-                            savePath=savePath,
-                            show=show)
-
-    def visualize_dots(self, x, y, s, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=None, varianceData=None, xlim=None, ylim=None, savePath=None, show=False):
-        plt.scatter(x, y, s)
-        ax = plt.gca()
-
-        if xLabel != None:
-            plt.xlabel(xLabel)
-        if yLabel != None:
-            plt.ylabel(yLabel)
-        if subtitle != None:
-            plt.title(f"""{subtitle}""")
-        elif self.alpha:
-            plt.title(f"""{r'$\alpha$'} = {self.alpha}""")
-        if not any(ele is None for ele in colourBackgroundForTimesteps):
-            ax = plt.gca()
-            ylim = ax.get_ylim()
-            y = np.arange(ylim[0], ylim[1], 0.01)
-            ax.fill_betweenx(y, colourBackgroundForTimesteps[0], colourBackgroundForTimesteps[1], facecolor='green', alpha=0.2)
-        if savePath != None:
-            plt.savefig(savePath)
-        if show:
-            plt.show()
-        plt.close()
-
-    def visualize_tree(self, data, savePath, show=False):
-        G, edge_labels = data
-        print("Starting visualisation...")
-        # For visualization purposes, layout the nodes in topological order
-        for i, layer in enumerate(nx.topological_generations(G)):
-            for n in layer:
-                G.nodes[n]["layer"] = i
-        pos = nx.multipartite_layout(G, subset_key="layer", align="horizontal")
-        # Flip the layout so the root node is on top
-        for k in pos:
-            pos[k][-1] *= -1
-
-        # Visualize the trie
-        # nx.draw_networkx_nodes(G, pos)
-        # nx.draw_networkx_edges(G, pos, alpha=0.5, width=6)
-        nx.draw(G, pos, with_labels=True)
-        nx.draw_networkx_edge_labels(
-            G, pos,
-            edge_labels=edge_labels,
-        )
-        # Customize axes
-        ax = plt.gca()
-        ax.margins(0.11)
-        plt.tight_layout()
-        plt.axis("off")
-        if savePath != None:
-            plt.savefig(savePath)
-        if show:
-            plt.show()
