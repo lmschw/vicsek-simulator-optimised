@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 import evaluators.VisualizerDependentInformationEval as vde
+import services.ServiceSavedModel as ssm
 from evaluators.EvaluatorDependentInformation import EvaluatorDependentInformation
 from enums.EnumMetrics import Metrics
 
@@ -20,16 +21,17 @@ class EvaluatorMultiDependentInformation(object):
     Implementation of the evaluation mechanism for the Vicsek model for comparison of multiple models.
     """
 
-    def __init__(self, metric, positions, orientations, domain_size, radius, threshold=0.01, use_agglomerative_clustering=True,
-                 switch_values=[], target_switch_value=None, event_start=None, event_origin_point=(None,None), evaluationTimestepInterval=1):
+    def __init__(self, metric, base_paths, min_i, max_i, threshold=0.01, use_agglomerative_clustering=True,
+                 switch_type=None, from_csv=False, target_switch_value=None, event_start=None, 
+                 event_origin_point=(None,None), evaluationTimestepInterval=1):
         self.metric = metric
-        self.positions = positions
-        self.orientations = orientations
-        self.domain_size = domain_size
-        self.radius = radius
+        self.base_paths = base_paths
+        self.min_i = min_i
+        self.max_i = max_i
         self.threshold = threshold
         self.use_agglomerative_clustering = use_agglomerative_clustering
-        self.switch_values = switch_values
+        self.switch_type = switch_type
+        self.from_csv = from_csv
         self.target_switch_value = target_switch_value
         self.event_start = event_start
         self.event_origin_point = event_origin_point
@@ -47,11 +49,27 @@ class EvaluatorMultiDependentInformation(object):
         """
         dd = defaultdict(list)
         varianceData = []
-        for model in range(len(self.positions)):
+        for base_path in self.base_paths:
             results = []
             varianceDataModel = []
-            for individualRun in range(len(self.positions[model])):
-                evaluator = EvaluatorDependentInformation(self.metric, self.positions[model][individualRun], self.orientations[model][individualRun], self.domain_size, self.radius, self.threshold, self.use_agglomerative_clustering, [], self.target_switch_value, self.event_start, self.event_origin_point)
+            for individualRun in range(self.min_i, self.max_i):
+                if self.from_csv:
+                    path = f"{base_path}_{individualRun}.csv"
+                    path_model_params = f"{base_path}_{individualRun}_modelParams.csv"
+                    if self.switch_type:
+                        model_params, simulation_data, switch_values = ssm.loadModelFromCsv(path, path_model_params, switchTypes=[self.switch_type])
+                    else:
+                        model_params, simulation_data = ssm.loadModelFromCsv(path, path_model_params)
+                    switch_values = []
+                else:
+                    path = f"{base_path}_{individualRun}.json"
+                    if self.switch_type:
+                        model_params, simulation_data, switch_values = ssm.loadModel(path=path, switchTypes=[self.switch_type], loadSwitchValues=True)
+                    else:
+                        model_params, simulation_data = ssm.loadModel(path=path)
+                        switch_values = []
+                _, positions, orientations = simulation_data
+                evaluator = EvaluatorDependentInformation(self.metric, positions, orientations, model_params["domainSize"], model_params["radius"], self.threshold, self.use_agglomerative_clustering, switch_values, self.target_switch_value, self.event_start, self.event_origin_point)
                 result = evaluator.evaluate()
                 results.append(result)
             
