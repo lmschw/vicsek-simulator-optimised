@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 import evaluators.Evaluator as Evaluator
+import services.ServiceSavedModel as ssm
 from enums.EnumMetrics import Metrics
 
 # matplotlib default colours with corresponding colours that are 65% and 50% lighter
@@ -19,7 +20,8 @@ class EvaluatorMultiAvgComp(object):
     Implementation of the evaluation mechanism for the Vicsek model for comparison of multiple models.
     """
 
-    def __init__(self, modelParams, metric, simulationData=None, evaluationTimestepInterval=1, threshold=0.01, switchTypeValues=None, 
+    def __init__(self, metric, modelParams=None, simulationData=None, basePaths=[], runRange=[], from_csv=False,
+                 evaluationTimestepInterval=1, threshold=0.01, switchTypeValues=None, 
                  switchType=None, switchTypeOptions=None):
         """
         Initialises the evaluator.
@@ -39,12 +41,53 @@ class EvaluatorMultiAvgComp(object):
         """
         self.simulationData = simulationData
         self.modelParams = modelParams
+        self.basePaths = basePaths
+        self.runRange = runRange
+        self.from_csv = from_csv
         self.metric = metric
         self.evaluationTimestepInterval = evaluationTimestepInterval
         self.threshold = threshold
         self.switchTypeValues = switchTypeValues
         self.switchType = switchType
         self.switchTypeOptions = switchTypeOptions
+
+    def getResults(self, model):
+        results = []
+        if self.simulationData:
+            run_range = (0, len(self.simulationData[model]))
+        else:
+            run_range = self.runRange
+        for individualRun in range(run_range[0], run_range[1]):
+            if self.simulationData:
+            #print(f"step {individualRun}/{len(self.simulationData[model])}")
+                if self.switchTypeValues == None or self.switchTypeValues == []:
+                    evaluator = Evaluator.Evaluator(self.modelParams[model][individualRun], self.metric, self.simulationData[model][individualRun], self.evaluationTimestepInterval, self.threshold)
+                else:    
+                    evaluator = Evaluator.Evaluator(self.modelParams[model][individualRun], self.metric, self.simulationData[model][individualRun], self.evaluationTimestepInterval, self.threshold, self.switchTypeValues[model][individualRun], self.switchType, self.switchTypeOptions)
+            else:
+                if self.switchTypeValues == None or self.switchTypeValues == []:
+                    switchTypes = [None]
+                    if self.from_csv:
+                        params, simulationData = ssm.loadModelFromCsv(filepathData=f"{self.basePaths[model]}_{individualRun}.csv", 
+                                                                      filePathModelParams=f"{self.basePaths[model]}_{individualRun}_modelParams.csv")
+                    else:
+                        params, simulationData = ssm.loadModel(path=f"{self.basePaths[model]}_{individualRun}.json")
+                else:
+                    if self.from_csv:
+                        params, simulationData, switchTypes = ssm.loadModelFromCsv(filepathData=f"{self.basePaths[model]}_{individualRun}.csv",
+                                                                                   filePathModelParams=f"{self.basePaths[model]}_{individualRun}.csv",
+                                                                                   switchTypes=[self.switchType])
+                    else:
+                        params, simulationData, switchTypes = ssm.loadModel(path=f"{self.basePaths[model]}_{individualRun}.json",
+                                                                            switchTypes=[self.switchType],
+                                                                            loadSwitchValues=True)
+                evaluator = Evaluator.Evaluator(modelParams=params, metric=self.metric, simulationData=simulationData,
+                                                evaluationTimestepInterval=self.evaluationTimestepInterval,
+                                                threshold=self.threshold, switchTypeValues=switchTypes, switchType=self.switchType,
+                                                switchTypeOptions=self.switchTypeOptions)
+            result = evaluator.evaluate()
+            results.append(result)
+        return results
 
     def evaluate(self):
         """
@@ -58,18 +101,14 @@ class EvaluatorMultiAvgComp(object):
         """
         dd = defaultdict(list)
         varianceData = []
-        for model in range(len(self.simulationData)):
+        if self.simulationData:
+            num_models = len(self.simulationData)
+        else:
+            num_models = len(self.basePaths)
+        for model in range(num_models):
             varianceDataModel = []
             #print(f"evaluating {model}/{len(self.simulationData)}")
-            results = []
-            for individualRun in range(len(self.simulationData[model])):
-                #print(f"step {individualRun}/{len(self.simulationData[model])}")
-                if self.switchTypeValues == None or self.switchTypeValues == []:
-                    evaluator = Evaluator.Evaluator(self.modelParams[model][individualRun], self.metric, self.simulationData[model][individualRun], self.evaluationTimestepInterval, self.threshold)
-                else:    
-                    evaluator = Evaluator.Evaluator(self.modelParams[model][individualRun], self.metric, self.simulationData[model][individualRun], self.evaluationTimestepInterval, self.threshold, self.switchTypeValues[model][individualRun], self.switchType, self.switchTypeOptions)
-                result = evaluator.evaluate()
-                results.append(result)
+            results = self.getResults(model)
             
             ddi = defaultdict(list)
             for d in results: 
