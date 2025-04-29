@@ -81,4 +81,33 @@ def measureInformationTransferSpeedViaInformationTransferDistance(switchValues, 
 
     return result.slope, fullySpread
 
+
+def computeContributionRateByTargetSwitchValue(positions, orientations, switchValues, targetSwitchValue, domainSize, radius):
+    individualContributions = computeIndividualContributions(positions=positions, 
+                                                             orientations=orientations, 
+                                                             switchValues=switchValues,
+                                                             targetSwitchValue=targetSwitchValue,
+                                                             domainSize=domainSize,
+                                                             radius=radius)
     
+
+def computeIndividualContributions(positions, orientations, switchValues, targetSwitchValue, domainSize, radius):
+    """
+    The switching decision is made based on the local order.
+    Local order is computed on the basis of the orientations of all neighbours.
+    Each neighbour's orientation contributes to the local order and thus to the decision of the individual.
+    We can compute this contribution by projecting it by multiplying its orientation with the combined orientation from the local order.
+    We can then compare the sum of the absolute values for each switch value. If the contribution of the target switch value is higher, then we can assume that the information has spread
+    """    
+    contributions = {}       
+
+    for t in range(len(positions)):
+        neighbours = svh.getNeighbours(positions=positions[t], domainSize=domainSize, radius=radius)
+        V = np.sum(neighbours[:,:,np.newaxis]*orientations[np.newaxis,:,:],axis=1)
+        for i in range(len(V)):
+            V_hat = V[i] / np.linalg.norm(V[i])
+            contributions = np.dot(orientations[neighbours[i]], V_hat)
+            print()
+
+        
+
