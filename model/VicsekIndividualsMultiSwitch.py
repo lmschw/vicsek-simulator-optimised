@@ -71,6 +71,8 @@ class VicsekWithNeighbourSelection():
             self.switchTypes = [k for k, v in self.switchSummary.actives.items() if v == True]
         else:
             self.switchTypes = []
+        
+        self.exampleId = None
 
     def getParameterSummary(self, asString=False):
         """
