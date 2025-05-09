@@ -13,8 +13,8 @@ import services.ServicePreparation as ServicePreparation
 import services.ServiceGeneral as ServiceGeneral
 
 
-dataLocation = ""
-saveLocation = ""
+dataLocation = "J:/stagger/"
+saveLocation = "results_stagger/"
 iStart = 1
 iStop = 11
 
