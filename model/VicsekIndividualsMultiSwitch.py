@@ -405,6 +405,13 @@ class VicsekWithNeighbourSelection():
             case NeighbourSelectionMechanism.ALL:
                 pickedNeighbours = neighbours
         return pickedNeighbours
+    
+    def prepareKs(self, ks):
+        if self.switchSummary != None and self.switchSummary.isActive(SwitchType.K):
+            ks = ks
+        else:
+            ks = np.array(self.numberOfParticles * [self.k])
+        return ks
 
     def computeNewOrientations(self, neighbours, positions, orientations, nsms, ks, activationTimeDelays):
         """
@@ -423,11 +430,7 @@ class VicsekWithNeighbourSelection():
         Returns:
             An array of floats representing the orientations of all individuals after the current timestep
         """
-
-        if self.switchSummary != None and self.switchSummary.isActive(SwitchType.K):
-            ks = ks
-        else:
-            ks = np.array(self.numberOfParticles * [self.k])
+        ks = self.prepareKs(ks=ks)
 
         if self.switchSummary != None and self.switchSummary.isActive(SwitchType.NEIGHBOUR_SELECTION_MECHANISM):
             nsmsSwitch = self.switchSummary.getBySwitchType(SwitchType.NEIGHBOUR_SELECTION_MECHANISM)
