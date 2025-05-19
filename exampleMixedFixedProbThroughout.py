@@ -34,12 +34,9 @@ iStop = 11
 saveLocation = "J:/stagger/"
 
 # TEST VALS
-nsms = [NeighbourSelectionMechanism.ALL,
-        NeighbourSelectionMechanism.RANDOM,
+nsms = [
         NeighbourSelectionMechanism.NEAREST,
-        NeighbourSelectionMechanism.FARTHEST,
-        NeighbourSelectionMechanism.LEAST_ORIENTATION_DIFFERENCE,
-        NeighbourSelectionMechanism.HIGHEST_ORIENTATION_DIFFERENCE]
+        NeighbourSelectionMechanism.LEAST_ORIENTATION_DIFFERENCE]
 
 
 
@@ -52,15 +49,14 @@ eventEffects = [EventEffect.ALIGN_TO_FIXED_ANGLE,
 nsmCombos = [[NeighbourSelectionMechanism.FARTHEST, NeighbourSelectionMechanism.NEAREST],
              [NeighbourSelectionMechanism.HIGHEST_ORIENTATION_DIFFERENCE, NeighbourSelectionMechanism.LEAST_ORIENTATION_DIFFERENCE]]
 
-kCombos = [[1,5]]
 
-densities = [0.06, 0.05, 0.07]
-radii = [10, 5]
+densities = [0.06]
+radii = [10]
 initialConditions = ["ordered", "random"]
 
 percentageFirstValue = 0.5
 
-noisePercentages = [1, 2, 3, 4, 5]
+noisePercentages = [1]
 
 initOnly = False
 

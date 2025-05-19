@@ -223,6 +223,12 @@ class VicsekWithNeighbourSelection():
                 candidatesDisorder = ServiceVicsekHelper.padArray(candidatesDisorder, self.numberOfParticles, kMin=kMin, kMax=kMax)
 
             candidates = np.where(((ks == kSwitch.orderSwitchValue)[:, None]), candidatesOrder, candidatesDisorder)
+        elif len(ks) > 0:
+            kMin, kMax = np.min(ks), np.max(ks)
+            candidatesMax = sortedIndices[:, :kMax]
+            candidatesMin = sortedIndices[:, :kMin]
+            candidatesMin = ServiceVicsekHelper.padArray(candidatesMin, self.numberOfParticles, kMin=kMin, kMax=kMax)
+            candidates = np.where(((ks == kMax)[:, None]), candidatesMax, candidatesMin)
         else:
             candidates = sortedIndices[:, :self.k]
         return candidates
