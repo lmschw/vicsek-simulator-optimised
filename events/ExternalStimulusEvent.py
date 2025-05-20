@@ -15,6 +15,7 @@ import DefaultValues as dv
 import services.ServiceOrientations as ServiceOrientations
 import services.ServicePreparation as ServicePreparation
 import services.ServiceVicsekHelper as ServiceVicsekHelper
+import services.ServiceEvent as se
 
 class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
     # TODO refactor to allow areas with a radius bigger than the radius of a particle, i.e. remove neighbourCells and determine all affected cells here
@@ -94,13 +95,14 @@ class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
         Returns:
             The orientations, neighbour selection mechanisms, ks, speeds, blockedness and colour of all particles after the event has been executed.
         """
-        posWithCenter = np.zeros((totalNumberOfParticles+1, 2))
-        posWithCenter[:-1] = positions
-        posWithCenter[-1] = self.getOriginPoint()
-        rij2 = ServiceVicsekHelper.getDifferences(posWithCenter, self.domainSize)
-        relevantDistances = rij2[-1][:-1] # only the comps to the origin and without the origin point
-        candidates = (relevantDistances <= self.radius**2)
-        affected = self.selectAffected(candidates, relevantDistances)
+
+        affected = se.selectAffected(eventSelectionType=self.eventSelectionType,
+                                     totalNumberOfParticles=totalNumberOfParticles,
+                                     positions=positions,
+                                     originPoint=self.getOriginPoint(),
+                                     domainSize=self.domainSize,
+                                     radius=self.radius,
+                                     numberOfAffected=self.numberOfAffected)
 
         match self.eventEffect:
             case EventEffect.ALIGN_TO_FIXED_ANGLE:
@@ -117,36 +119,6 @@ class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
         colours = self.getColours(colourType=colourType, affected=affected, totalNumberOfParticles=totalNumberOfParticles)
 
         return orientations, nsms, ks, speeds, affected, colours # external events do not directly impact the values
-    
-
-    def selectAffected(self, candidates, rij2):
-        """
-        Determines which particles are affected by the event.
-
-        Params:
-            - candidates (array of boolean): which particles are within range, i.e. within the event radius
-            - rij2 (array of floats): the distance squared of every particle to the event focus point
-
-        Returns:
-            Array of booleans representing which particles are affected by the event.
-        """
-        if self.numberOfAffected == None:
-            numberOfAffected = len(candidates.nonzero()[0])
-        else:
-            numberOfAffected = self.numberOfAffected
-
-        preselection = candidates # default case, we take all the candidates
-        match self.eventSelectionType:
-            case EventSelectionType.NEAREST_DISTANCE:
-                indices = np.argsort(rij2)[:numberOfAffected]
-                preselection = np.full(len(candidates), False)
-                preselection[indices] = True
-            case EventSelectionType.RANDOM:
-                indices = candidates.nonzero()[0]
-                selectedIndices = np.random.choice(indices, numberOfAffected, replace=False)
-                preselection = np.full(len(candidates), False)
-                preselection[selectedIndices] = True
-        return candidates & preselection
 
     def computeAwayFromOrigin(self, positions):
         """
