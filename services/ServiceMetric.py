@@ -82,6 +82,10 @@ def computeGlobalOrder(orientations):
     sumOrientation = np.sum(orientations[np.newaxis,:,:],axis=1)
     return np.divide(np.sqrt(np.sum(sumOrientation**2,axis=1)), len(orientations))[0]
 
+def computeLocalOrder(orientations, neighbours):
+    sumOrientation = np.sum(neighbours[:,np.newaxis]*orientations[np.newaxis,:],axis=1)
+    return np.divide(np.sqrt(np.sum(sumOrientation**2,axis=1)), np.count_nonzero(neighbours))
+
 def getNumbersPerSwitchTypeValue(switchTypeValues, switchType, switchTypeOptions):
     """
     Counts the occurrences for all switch type values.
