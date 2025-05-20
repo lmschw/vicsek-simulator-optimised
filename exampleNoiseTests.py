@@ -32,7 +32,7 @@ degreesOfVision = 2 * np.pi
 tmax = 15000
 iStart = 1
 iStop = 11
-saveLocation = ""
+saveLocation = "J:/noise/"
 
 # SWITCHING
 thresholdEvaluationMethod = ThresholdEvaluationMethod.LOCAL_ORDER
@@ -76,7 +76,7 @@ densities = [0.06, 0.05, 0.07]
 radii = [10, 5]
 initialConditions = ["ordered", "random"]
 
-noisePercentages = [1, 2, 3, 4, 5]
+noisePercentages = []
 
 startOverall = time.time()
 

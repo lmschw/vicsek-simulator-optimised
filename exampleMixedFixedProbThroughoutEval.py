@@ -18,7 +18,7 @@ saveLocation = "results_stagger/"
 iStart = 1
 iStop = 11
 
-def eval(density, n, radius, eventEffect, metrics, type, nsm=None, combo=None, evalInterval=1, tmax=15000, duration=1000, noisePercentage=1, enforceSplit=True, percentageFirstValue=0):
+def eval(density, n, radius, eventEffect, metrics, type, nsm=None, combo=None, evalInterval=1, tmax=15000, duration=1000, noisePercentage=1, enforceSplit=True, percentageFirstValue=0, onlyInitial=True):
 
     startEval = time.time()
     ServiceGeneral.logWithTime(f"d={density}, r={radius}, nsm={nsm}, type={type}, enforceSplit={enforceSplit}") 
@@ -29,10 +29,7 @@ def eval(density, n, radius, eventEffect, metrics, type, nsm=None, combo=None, e
     switchTypes = []
 
     for initialStateString in ["ordered", "random"]:
-        if type == "enfsplit":
-            baseFilename = f"{dataLocation}local_nosw_noev_stagger=({percentageFirstValue},{ks},{enforceSplit})_d={density}_r={radius}_{initialStateString}_nsm={nsm.value}_ks={ks[0]}-{ks[1]}_noise={noisePercentage}"
-        elif type == "prob":
-            baseFilename = f"{dataLocation}local_nosw_noev_stagger=({percentageFirstValue},{ks},{enforceSplit})_d={density}_r={radius}_{initialStateString}_nsm={nsm.value}_ks={ks[0]}-{ks[1]}_noise={noisePercentage}"
+        baseFilename = f"{dataLocation}local_nosw_noev_stagger=({percentageFirstValue},{ks},{enforceSplit},{onlyInitial})_d={density}_r={radius}_{initialStateString}_nsm={nsm.value}_ks=1-2_noise={noisePercentage}"
 
         filenames = ServiceGeneral.createListOfFilenamesForI(baseFilename=baseFilename, minI=iStart, maxI=iStop, fileTypeString="json")
         #filenames = [f"{name}.csv" for name in filenames]
@@ -59,16 +56,14 @@ def eval(density, n, radius, eventEffect, metrics, type, nsm=None, combo=None, e
         yAxisLabel = metric.label
         threshold = 0.01
         
-        evaluator = EvaluatorMultiAvgComp(modelParams, metric, simulationData, evaluationTimestepInterval=evalInterval, threshold=threshold, switchType=None, switchTypeValues=switchTypes, switchTypeOptions=combo)
+        evaluator = EvaluatorMultiAvgComp(modelParams=modelParams, metric=metric, simulationData=
+                                          simulationData, evaluationTimestepInterval=evalInterval, threshold=threshold, switchType=None, switchTypeValues=switchTypes, switchTypeOptions=combo)
         
-        labels = ["ordered"]
+        labels = ["ordered", "random"]
         if metric == Metrics.DUAL_OVERLAY_ORDER_AND_PERCENTAGE:
             labels = ["ordered - order", "ordered - percentage of order-inducing value", "disordered - order", "disordered - percentage of order-inducing value"]
             labels = ["order", "percentage of order-inducing value"]
-        if type == "noswnoev":
-            savePath = f"{saveLocation}{metric.val}local_nosw_noev_stagger=({percentageFirstValue},{ks},{enforceSplit})_d={density}_r={radius}_{initialStateString}_nsm={nsm.value}_ks={ks[0]}-{ks[1]}_noise={noisePercentage}"
-        elif type == "nosw":
-            savePath = f"{saveLocation}{metric.val}local_nosw_noev_stagger=({percentageFirstValue},{ks},{enforceSplit})_d={density}_r={radius}_{initialStateString}_nsm={nsm.value}_ks={ks[0]}-{ks[1]}_noise={noisePercentage}"
+        savePath = f"{saveLocation}{metric.val}local_nosw_noev_stagger=({percentageFirstValue},{ks},{enforceSplit},{onlyInitial})_d={density}_r={radius}_nsm={nsm.value}_ks=1-2_noise={noisePercentage}.svg"
 
         evaluator.evaluateAndVisualize(labels=labels, xLabel=xAxisLabel, yLabel=yAxisLabel, colourBackgroundForTimesteps=[eventStart, eventStart+duration], showVariance=True, xlim=xlim, ylim=ylim, savePath=savePath)    
         endEval = time.time()
@@ -112,19 +107,16 @@ eventAngle = np.pi
 eventNumberAffected = None
 
 # TEST VALS
-nsms = [NeighbourSelectionMechanism.ALL,
-        NeighbourSelectionMechanism.RANDOM,
+nsms = [
         NeighbourSelectionMechanism.NEAREST,
-        NeighbourSelectionMechanism.FARTHEST,
-        NeighbourSelectionMechanism.LEAST_ORIENTATION_DIFFERENCE,
-        NeighbourSelectionMechanism.HIGHEST_ORIENTATION_DIFFERENCE]
+        NeighbourSelectionMechanism.LEAST_ORIENTATION_DIFFERENCE]
 
 nsmsReduced = [NeighbourSelectionMechanism.NEAREST,
                NeighbourSelectionMechanism.FARTHEST,
                NeighbourSelectionMechanism.LEAST_ORIENTATION_DIFFERENCE,
                NeighbourSelectionMechanism.HIGHEST_ORIENTATION_DIFFERENCE]
 
-ks = [1,5]
+ks = [1,2]
 
 eventEffects = [EventEffect.ALIGN_TO_FIXED_ANGLE,
                 EventEffect.AWAY_FROM_ORIGIN,
@@ -133,7 +125,7 @@ eventEffects = [EventEffect.ALIGN_TO_FIXED_ANGLE,
 nsmCombos = [[NeighbourSelectionMechanism.FARTHEST, NeighbourSelectionMechanism.NEAREST],
              [NeighbourSelectionMechanism.HIGHEST_ORIENTATION_DIFFERENCE, NeighbourSelectionMechanism.LEAST_ORIENTATION_DIFFERENCE]]
 
-kCombos = [[1,5]]
+kCombos = [[1,2]]
 
 densities = [0.06]
 radii = [10]
@@ -149,24 +141,11 @@ xAxisLabel = "timesteps"
 
 noisePercentages = [1, 2, 3, 4, 5]
 
-percentageFirstValue = 0.5
+percentageFirstValue = 0
 
 startTime = time.time()
 startNoswnoev = time.time()
 ServiceGeneral.logWithTime("Starting eval for nosw noev")
-for noisePercentage in noisePercentages:
-    noise = ServicePreparation.getNoiseAmplitudeValueForPercentage(noisePercentage)
-    # ------------------------ FIXED STRATEGIES ---------------------------------
-    enforceSplit = True
-    for density in densities:
-        n = ServicePreparation.getNumberOfParticlesForConstantDensity(density=density, domainSize=domainSize)
-        for radius in radii:
-            for nsm in nsms:
-                eval(density=density, n=n, radius=radius, eventEffect=None, metrics=metrics, type="enfsplit", nsm=nsm,  
-                    combo=None, evalInterval=evaluationInterval, tmax=tmax, noisePercentage=noisePercentage, percentageFirstValue=percentageFirstValue, enforceSplit=enforceSplit)
-endNoswnoev = time.time()
-ServiceGeneral.logWithTime(f"Completed eval for enforceSplit={enforceSplit} in {ServiceGeneral.formatTime(endNoswnoev-startNoswnoev)}")
-
 for noisePercentage in noisePercentages:
     noise = ServicePreparation.getNoiseAmplitudeValueForPercentage(noisePercentage)
     # ------------------------ FIXED STRATEGIES ---------------------------------
@@ -175,8 +154,8 @@ for noisePercentage in noisePercentages:
         n = ServicePreparation.getNumberOfParticlesForConstantDensity(density=density, domainSize=domainSize)
         for radius in radii:
             for nsm in nsms:
-                eval(density=density, n=n, radius=radius, eventEffect=None, metrics=metrics, type="prob", nsm=nsm,  
-                    combo=None, evalInterval=evaluationInterval, tmax=tmax, noisePercentage=noisePercentage,percentageFirstValue=percentageFirstValue, enforceSplit=enforceSplit)
+                eval(density=density, n=n, radius=radius, eventEffect=None, metrics=metrics, type="enfsplit", nsm=nsm,  
+                    combo=None, evalInterval=evaluationInterval, tmax=tmax, noisePercentage=noisePercentage, percentageFirstValue=percentageFirstValue, enforceSplit=enforceSplit, onlyInitial=False)
 endNoswnoev = time.time()
 ServiceGeneral.logWithTime(f"Completed eval for enforceSplit={enforceSplit} in {ServiceGeneral.formatTime(endNoswnoev-startNoswnoev)}")
 

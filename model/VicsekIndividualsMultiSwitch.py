@@ -223,6 +223,12 @@ class VicsekWithNeighbourSelection():
                 candidatesDisorder = ServiceVicsekHelper.padArray(candidatesDisorder, self.numberOfParticles, kMin=kMin, kMax=kMax)
 
             candidates = np.where(((ks == kSwitch.orderSwitchValue)[:, None]), candidatesOrder, candidatesDisorder)
+        elif len(ks) > 0:
+            kMin, kMax = np.min(ks), np.max(ks)
+            candidatesMax = sortedIndices[:, :kMax]
+            candidatesMin = sortedIndices[:, :kMin]
+            candidatesMin = ServiceVicsekHelper.padArray(candidatesMin, self.numberOfParticles, kMin=kMin, kMax=kMax)
+            candidates = np.where(((ks == kMax)[:, None]), candidatesMax, candidatesMin)
         else:
             candidates = sortedIndices[:, :self.k]
         return candidates
@@ -405,6 +411,13 @@ class VicsekWithNeighbourSelection():
             case NeighbourSelectionMechanism.ALL:
                 pickedNeighbours = neighbours
         return pickedNeighbours
+    
+    def prepareKs(self, ks):
+        if self.switchSummary != None and self.switchSummary.isActive(SwitchType.K):
+            ks = ks
+        else:
+            ks = np.array(self.numberOfParticles * [self.k])
+        return ks
 
     def computeNewOrientations(self, neighbours, positions, orientations, nsms, ks, activationTimeDelays):
         """
@@ -423,11 +436,7 @@ class VicsekWithNeighbourSelection():
         Returns:
             An array of floats representing the orientations of all individuals after the current timestep
         """
-
-        if self.switchSummary != None and self.switchSummary.isActive(SwitchType.K):
-            ks = ks
-        else:
-            ks = np.array(self.numberOfParticles * [self.k])
+        ks = self.prepareKs(ks=ks)
 
         if self.switchSummary != None and self.switchSummary.isActive(SwitchType.NEIGHBOUR_SELECTION_MECHANISM):
             nsmsSwitch = self.switchSummary.getBySwitchType(SwitchType.NEIGHBOUR_SELECTION_MECHANISM)

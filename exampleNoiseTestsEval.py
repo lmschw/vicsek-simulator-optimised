@@ -13,8 +13,8 @@ import services.ServicePreparation as ServicePreparation
 import services.ServiceGeneral as ServiceGeneral
 
 
-dataLocation = ""
-saveLocation = ""
+dataLocation = "J:/noise3/"
+saveLocation = "results_noise/"
 iStart = 1
 iStop = 11
 
@@ -45,7 +45,7 @@ def eval(density, n, radius, eventEffect, metrics, type, nsm=None, k=None, combo
                 k = disorderValue
 
         if type == "noswnoev":
-            baseFilename = f"{dataLocation}local_nosw_noev_d={density}_r={radius}_{initialStateString}_nsm={nsm.value}_k={k}_noise={noisePercentage}"
+            baseFilename = f"{dataLocation}global_noev_nosw_{initialStateString}_st={nsm.value}_d={density}_n={n}_r={radius}_tmax={tmax}_k={k}_noise={noisePercentage}"
             sTypes = []
         elif type == "nosw":
             baseFilename = f"{dataLocation}local_nosw_1ev_d={density}_r={radius}_{initialStateString}_nsm={nsm.value}_k={k}_ee={eventEffect.val}"
@@ -64,13 +64,14 @@ def eval(density, n, radius, eventEffect, metrics, type, nsm=None, k=None, combo
             sTypes = [SwitchType.K]
 
         
-        filenames = ServiceGeneral.createListOfFilenamesForI(baseFilename=baseFilename, minI=iStart, maxI=iStop, fileTypeString="json")
+        filenames = ServiceGeneral.createListOfFilenamesForI(baseFilename=baseFilename, minI=iStart, maxI=iStop, fileTypeString="csv")
+        modleParamsFilenames = [f"{name.split('.')[:-1]}_modelParams.csv" for name in filenames]
         #filenames = [f"{name}.csv" for name in filenames]
         if type not in ["nosw", "noswnoev"]:
-            modelParamsDensity, simulationDataDensity, switchTypeValues = ServiceSavedModel.loadModels(filenames, loadColours=False, loadSwitchValues=True, switchTypes=sTypes, loadFromCsv=False)
+            modelParamsDensity, simulationDataDensity, switchTypeValues = ServiceSavedModel.loadModels(filenames, modleParamsFilenames=modleParamsFilenames, loadColours=False, loadSwitchValues=True, switchTypes=sTypes, loadFromCsv=True)
             switchTypes.append([switchTypeValues[0][sTypes[0].switchTypeValueKey]])
         else:
-            modelParamsDensity, simulationDataDensity = ServiceSavedModel.loadModels(filenames, loadColours=False, loadSwitchValues=False, switchTypes=sTypes, loadFromCsv=False)
+            modelParamsDensity, simulationDataDensity = ServiceSavedModel.loadModels(filenames, loadColours=False, loadSwitchValues=False, switchTypes=sTypes, loadFromCsv=True)
         modelParams.append(modelParamsDensity)
         simulationData.append(simulationDataDensity)
 
@@ -97,14 +98,14 @@ def eval(density, n, radius, eventEffect, metrics, type, nsm=None, k=None, combo
         else:
             sType = None
         
-        evaluator = EvaluatorMultiAvgComp(modelParams, metric, simulationData, evaluationTimestepInterval=evalInterval, threshold=threshold, switchType=sType, switchTypeValues=switchTypes, switchTypeOptions=combo)
+        evaluator = EvaluatorMultiAvgComp(modelParams=modelParams, metric=metric, simulationData=simulationData, evaluationTimestepInterval=evalInterval, threshold=threshold, switchType=sType, switchTypeValues=switchTypes, switchTypeOptions=combo)
         
         labels = ["ordered"]
         if metric == Metrics.DUAL_OVERLAY_ORDER_AND_PERCENTAGE:
             labels = ["ordered - order", "ordered - percentage of order-inducing value", "disordered - order", "disordered - percentage of order-inducing value"]
             labels = ["order", "percentage of order-inducing value"]
         if type == "noswnoev":
-            savePath = f"{saveLocation}{metric.val}_local_nosw_noev_d={density}_r={radius}_nsm={nsm.value}_k={k}_noise={noisePercentage}.svg"
+            savePath = f"{saveLocation}{metric.val}_global_noev_nosw_nsm={nsm.value}_d={density}_n={n}_r={radius}_tmax={tmax}_k={k}_noise={noisePercentage}.svg"
         elif type == "nosw":
             savePath = f"{saveLocation}{metric.val}_local_nosw_1ev_d={density}_r={radius}_nsm={nsm.value}_k={k}_ee={eventEffect.val}.svg"
         elif type == "nsmswnoev":
@@ -170,7 +171,7 @@ nsmsReduced = [NeighbourSelectionMechanism.NEAREST,
                NeighbourSelectionMechanism.LEAST_ORIENTATION_DIFFERENCE,
                NeighbourSelectionMechanism.HIGHEST_ORIENTATION_DIFFERENCE]
 
-ks = [1,5]
+ks = [1, 2, 3, 4, 5]
 
 eventEffects = [EventEffect.ALIGN_TO_FIXED_ANGLE,
                 EventEffect.AWAY_FROM_ORIGIN,
@@ -181,7 +182,7 @@ nsmCombos = [[NeighbourSelectionMechanism.FARTHEST, NeighbourSelectionMechanism.
 
 kCombos = [[1,5]]
 
-densities = [0.06]
+densities = [0.09]
 radii = [10]
 initialConditions = ["ordered", "random"]
 
@@ -193,7 +194,7 @@ metrics = [
            ]
 xAxisLabel = "timesteps"
 
-noisePercentages = [1, 2, 3, 4, 5]
+noisePercentages = [1,4]
 
 startTime = time.time()
 startNoswnoev = time.time()
