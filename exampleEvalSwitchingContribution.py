@@ -10,8 +10,9 @@ import services.ServiceSavedModel as ssm
 switchType = SwitchType.NEIGHBOUR_SELECTION_MECHANISM
 target_switch_value = NeighbourSelectionMechanism.NEAREST
 datafileLocation = ""
-filename = "test_event_tmax=500_50_1.csv"
-modelParams, simulationData, switchValues = ssm.loadModelFromCsv(f"{datafileLocation}{filename}.csv", f"{datafileLocation}{filename}_modelParams.csv", switchTypes=[switchType])
+filename = "test_event_tmax=50_50_1.json"
+#modelParams, simulationData, switchValues = ssm.loadModelFromCsv(f"{datafileLocation}{filename}.csv", f"{datafileLocation}{filename}_modelParams.csv", switchTypes=[switchType])
+modelParams, simulationData, switchValues = ssm.loadModel(filename, switchTypes=[switchType], loadSwitchValues=True)
 
 switchValues = switchValues[switchType.switchTypeValueKey]
 times, positions, orientations = simulationData

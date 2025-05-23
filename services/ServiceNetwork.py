@@ -110,10 +110,14 @@ def computeIndividualContributions(positions, orientations, switchValues, target
 
     influenced = 0
     noninfluenced = 0
+    tgts = []
     for t in range(len(positions)):
         influenced_t = 0
         noninfluenced_t = 0
-        neighbours = svh.getNeighbours(positions=positions[t], domainSize=domainSize, radius=radius)
+        #neighbours = svh.getNeighbours(positions=positions[t], domainSize=domainSize, radius=radius)
+        neighbours = svh.getNeighboursWithLimitedVision(positions=positions[t], orientations=orientations[t], domainSize=domainSize,
+                                                                            radius=radius, degreesOfVision=np.pi*2)
+            
         affected = se.selectAffected(eventSelectionType=eventSelectionType,
                                      totalNumberOfParticles=len(positions[t]),
                                      positions=positions[t],
@@ -123,15 +127,16 @@ def computeIndividualContributions(positions, orientations, switchValues, target
                                      numberOfAffected=numberOfAffected)
         
         orients = neighbours[:,:,np.newaxis]*orientations[np.newaxis,t,:]
-        for i in range(len(orients)):
+        for i in range(1, len(orients)):
             #if t > 20 and t < 120:
-            if switchValues[t-1][i] != targetSwitchValue and switchValues[t][i] == targetSwitchValue:
+            if switchValues[t-1][i] != targetSwitchValue.value and switchValues[t][i] == targetSwitchValue.value:
                 contributions = projected_contributions(orients[i])
                 tgt_mask = np.where(neighbours[i] & ((switchValues[t] == np.full(len(switchValues[t]), targetSwitchValue)) | affected), True, False)
                 non_tgt_mask = np.where(neighbours[i] & np.invert(tgt_mask), True, False)
                 tgt = np.sum(tgt_mask*contributions) / np.count_nonzero(contributions)
                 non_tgt = np.sum(non_tgt_mask*contributions) / np.count_nonzero(contributions)
                 
+                tgts.append(tgt)
                 if tgt > non_tgt:
                     influenced_t += 1
                 else:
@@ -142,7 +147,7 @@ def computeIndividualContributions(positions, orientations, switchValues, target
             print(f"{t}: infl: {influenced_t}, ninfl: {noninfluenced_t}")
             influenced += influenced_t
             noninfluenced += noninfluenced_t
-    print(f"overall: infl: {influenced}, noninfl: {noninfluenced}")
+    print(f"overall: infl: {influenced}, noninfl: {noninfluenced}, mintgt={np.min(tgts)}, avgtgt={np.average(tgts)}, maxtgt={np.max(tgts)}")
 
 def projected_contributions(vectors):
     """Compute projected contribution of each agent."""
