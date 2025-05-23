@@ -51,7 +51,9 @@ def visualize(metric, data, xLabel=None, yLabel=None, subtitle=None, colourBackg
                                 xlim=xlim, ylim=ylim,
                                 savePath=savePath, 
                                 show=show) 
-            
+        case TimeDependentMetrics.DISTRIBUTION_NETWORK:
+            visualize_tree(data=data, savePath=savePath, show=show)
+
 def visualize_bars(data, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=[], varianceData=None, xlim=None, ylim=None, alpha=None, savePath=None, show=False):
     plt.bar(x=data.keys(), height=data.values())
     ax = plt.gca()

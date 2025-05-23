@@ -9,12 +9,15 @@ import services.ServiceSavedModel as ssm
 import services.ServiceClusters as scl
 import services.ServicePowerlaw as spl
 import services.ServiceSwitchAnalysis as ssa
+import services.ServiceNetwork as snw
 from enums.EnumMetrics import TimeDependentMetrics
+from enums.EnumEventSelectionType import EventSelectionType
 
 class EvaluatorDependentInformation:
 
     def __init__(self, metric, positions, orientations, domain_size, radius, threshold=0.01, use_agglomerative_clustering=True,
-                 switch_values=[], target_switch_value=None, event_start=None, event_origin_point=(None,None)):
+                 switch_values=[], target_switch_value=None, event_start=None, event_origin_point=(None,None), 
+                 event_selection_type=EventSelectionType.RANDOM, number_of_affected=None):
         self.metric = metric
         self.positions = positions
         self.orientations = orientations
@@ -27,6 +30,8 @@ class EvaluatorDependentInformation:
         self.target_switch_value = target_switch_value
         self.event_start = event_start
         self.event_origin_point = event_origin_point
+        self.event_selection_type = event_selection_type
+        self.number_of_affected = number_of_affected
 
     def evaluateAndVisualize(self, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=(None,None), xlim=None, ylim=None, savePath=None, show=False):
         """
@@ -47,7 +52,7 @@ class EvaluatorDependentInformation:
             Nothing.
         """
         data = self.evaluate()
-        vde.visualize(data, xLabel=xLabel, yLabel=yLabel, subtitle=subtitle, colourBackgroundForTimesteps=colourBackgroundForTimesteps, xlim=xlim, ylim=ylim, alpha=self.alpha, savePath=savePath, show=show)
+        vde.visualize(metric=self.metric, data=data, xLabel=xLabel, yLabel=yLabel, subtitle=subtitle, colourBackgroundForTimesteps=colourBackgroundForTimesteps, xlim=xlim, ylim=ylim, savePath=savePath, show=show)
         
     def evaluate(self):
         match self.metric:
@@ -82,6 +87,16 @@ class EvaluatorDependentInformation:
                                                                     event_origin_point=self.event_origin_point,
                                                                     event_radius=self.radius,
                                                                     domain_size=self.domain_size)
+            case TimeDependentMetrics.DISTRIBUTION_NETWORK:
+                data = snw.computeIndividualContributions(positions=self.positions,
+                                                          orientations=self.orientations,
+                                                          switchValues=self.switch_values,
+                                                          targetSwitchValue=self.target_switch_value,
+                                                          domainSize=self.domain_size,
+                                                          radius=self.radius,
+                                                          eventSelectionType=self.event_selection_type,
+                                                          numberOfAffected=self.number_of_affected,
+                                                          eventOriginPoint=self.event_origin_point)    
         return data
                 
 

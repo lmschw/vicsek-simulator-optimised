@@ -1,6 +1,7 @@
 import numpy as np
 import random, copy
 from scipy.stats import linregress
+import networkx as nx
 
 import services.ServiceMetric as sm
 import services.ServiceVicsekHelper as svh
@@ -111,6 +112,8 @@ def computeIndividualContributions(positions, orientations, switchValues, target
     influenced = 0
     noninfluenced = 0
     tgts = []
+    G = nx.DiGraph()
+    edge_labels = {}
     for t in range(len(positions)):
         influenced_t = 0
         noninfluenced_t = 0
@@ -130,12 +133,17 @@ def computeIndividualContributions(positions, orientations, switchValues, target
         for i in range(1, len(orients)):
             #if t > 20 and t < 120:
             if switchValues[t-1][i] != targetSwitchValue.value and switchValues[t][i] == targetSwitchValue.value:
+                G.add_nodes_from([f"{i}-{t}"])
+
                 contributions = projected_contributions(orients[i])
                 tgt_mask = np.where(neighbours[i] & ((switchValues[t] == np.full(len(switchValues[t]), targetSwitchValue)) | affected), True, False)
                 non_tgt_mask = np.where(neighbours[i] & np.invert(tgt_mask), True, False)
                 tgt = np.sum(tgt_mask*contributions) / np.count_nonzero(contributions)
                 non_tgt = np.sum(non_tgt_mask*contributions) / np.count_nonzero(contributions)
-                
+                for j in range(len(tgt_mask)):
+                    if tgt_mask[j]:
+                        G.add_edge(f"{j}-{t-1}", f"{i}-{t}")
+                        edge_labels[(f"{j}-{t-1}", f"{i}-{t}")] = contributions[j]
                 tgts.append(tgt)
                 if tgt > non_tgt:
                     influenced_t += 1
@@ -148,6 +156,7 @@ def computeIndividualContributions(positions, orientations, switchValues, target
             influenced += influenced_t
             noninfluenced += noninfluenced_t
     print(f"overall: infl: {influenced}, noninfl: {noninfluenced}, mintgt={np.min(tgts)}, avgtgt={np.average(tgts)}, maxtgt={np.max(tgts)}")
+    return (G, edge_labels)
 
 def projected_contributions(vectors):
     """Compute projected contribution of each agent."""
