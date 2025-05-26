@@ -138,7 +138,7 @@ def computeIndividualContributions(positions, orientations, switchValues, target
             if switchValues[t-1][i] == targetSwitchValue.value and i not in infected_at.keys():
                 infected_at[i] = t-1 
             if switchValues[t-1][i] != targetSwitchValue.value and switchValues[t][i] == targetSwitchValue.value:
-                G.add_nodes_from([f"{i}-{t}"])
+                G.add_nodes_from([f"{i}"])
                 infected_at[i] = t
                 contributions = projected_contributions(orients[i])
                 tgt_mask = np.where(neighbours[i] & ((switchValues[t] == np.full(len(switchValues[t]), targetSwitchValue)) | affected), True, False)
@@ -147,8 +147,8 @@ def computeIndividualContributions(positions, orientations, switchValues, target
                 non_tgt = np.sum(non_tgt_mask*contributions) / np.count_nonzero(contributions)
                 for j in range(len(tgt_mask)):
                     if tgt_mask[j]:
-                        G.add_edge(f"{j}-{infected_at[j]}", f"{i}-{t}")
-                        edge_labels[(f"{j}-{infected_at[j]}", f"{i}-{t}")] = t
+                        G.add_edge(f"{j}", f"{i}")
+                        edge_labels[(f"{j}", f"{i}")] = t
                 tgts.append(tgt)
                 if tgt > non_tgt:
                     influenced_t += 1
