@@ -17,7 +17,7 @@ class EvaluatorDependentInformation:
 
     def __init__(self, metric, positions, orientations, domain_size, radius, threshold=0.01, use_agglomerative_clustering=True,
                  switch_values=[], target_switch_value=None, event_start=None, event_origin_point=(None,None), 
-                 event_selection_type=EventSelectionType.RANDOM, number_of_affected=None, include_affected=True):
+                 event_selection_type=EventSelectionType.RANDOM, number_of_affected=None, include_affected=True, contribution_threshold=0):
         self.metric = metric
         self.positions = positions
         self.orientations = orientations
@@ -33,6 +33,7 @@ class EvaluatorDependentInformation:
         self.event_selection_type = event_selection_type
         self.number_of_affected = number_of_affected
         self.include_affected = include_affected
+        self.contribution_threshold = contribution_threshold
 
     def evaluateAndVisualize(self, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=(None,None), xlim=None, ylim=None, savePath=None, show=False):
         """
@@ -98,7 +99,8 @@ class EvaluatorDependentInformation:
                                                           eventSelectionType=self.event_selection_type,
                                                           numberOfAffected=self.number_of_affected,
                                                           eventOriginPoint=self.event_origin_point,
-                                                          includeAffected=self.include_affected)    
+                                                          includeAffected=self.include_affected,
+                                                          threshold=self.contribution_threshold)    
         return data
                 
 

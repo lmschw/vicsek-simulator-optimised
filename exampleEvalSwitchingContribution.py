@@ -37,6 +37,7 @@ eval = EvaluatorDependentInformation(metric=TimeDependentMetrics.DISTRIBUTION_NE
                                      switch_values=switchValues,
                                      target_switch_value=target_switch_value,
                                      event_origin_point=(domainSize[0]/2, domainSize[1]/2),
-                                     include_affected=True)
+                                     include_affected=True,
+                                     contribution_threshold=0.2)
 
 eval.evaluateAndVisualize(show=True)
