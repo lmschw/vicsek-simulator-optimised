@@ -12,7 +12,7 @@ from evaluators.EvaluatorDependentInformation import EvaluatorDependentInformati
 switchType = SwitchType.NEIGHBOUR_SELECTION_MECHANISM
 target_switch_value = NeighbourSelectionMechanism.NEAREST
 datafileLocation = ""
-filename = "test_event_tmax=50_50_1.json"
+filename = "test_event_tmax=1000_50_1.json"
 #modelParams, simulationData, switchValues = ssm.loadModelFromCsv(f"{datafileLocation}{filename}.csv", f"{datafileLocation}{filename}_modelParams.csv", switchTypes=[switchType])
 modelParams, simulationData, switchValues = ssm.loadModel(filename, switchTypes=[switchType], loadSwitchValues=True)
 
@@ -36,6 +36,7 @@ eval = EvaluatorDependentInformation(metric=TimeDependentMetrics.DISTRIBUTION_NE
                                      radius=radius,
                                      switch_values=switchValues,
                                      target_switch_value=target_switch_value,
-                                     event_origin_point=(domainSize[0]/2, domainSize[1]/2))
+                                     event_origin_point=(domainSize[0]/2, domainSize[1]/2),
+                                     include_affected=True)
 
 eval.evaluateAndVisualize(show=True)

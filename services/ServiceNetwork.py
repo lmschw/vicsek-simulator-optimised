@@ -99,7 +99,7 @@ def computeContributionRateByTargetSwitchValue(positions, orientations, switchVa
                                                              numberOfAffected=numberOfAffected)
     
 
-def computeIndividualContributions(positions, orientations, switchValues, targetSwitchValue, domainSize, radius, eventSelectionType, eventOriginPoint, numberOfAffected=None):
+def computeIndividualContributions(positions, orientations, switchValues, targetSwitchValue, domainSize, radius, eventSelectionType, eventOriginPoint, numberOfAffected=None, includeAffected=True):
     """
     The switching decision is made based on the local order.
     Local order is computed on the basis of the orientations of all neighbours.
@@ -146,7 +146,7 @@ def computeIndividualContributions(positions, orientations, switchValues, target
                 tgt = np.sum(tgt_mask*contributions) / np.count_nonzero(contributions)
                 non_tgt = np.sum(non_tgt_mask*contributions) / np.count_nonzero(contributions)
                 for j in range(len(tgt_mask)):
-                    if tgt_mask[j]:
+                    if tgt_mask[j] and (includeAffected or not affected[j]):
                         G.add_edge(f"{j}", f"{i}")
                         edge_labels[(f"{j}", f"{i}")] = t
                 tgts.append(tgt)
