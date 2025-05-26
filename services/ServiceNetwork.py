@@ -141,16 +141,16 @@ def computeIndividualContributions(positions, orientations, switchValues, target
                 G.add_nodes_from([f"{i}"])
                 infected_at[i] = t
                 contributions = projected_contributions(orients[i])
-                tgt_mask = np.where(neighbours[i] & ((switchValues[t] == np.full(len(switchValues[t]), targetSwitchValue)) | affected), True, False)
+                tgt_mask = np.where(neighbours[i] & ((switchValues[t] == np.full(len(switchValues[t]), targetSwitchValue)) | (affected * np.full(affected.shape, includeAffected))), True, False)
                 non_tgt_mask = np.where(neighbours[i] & np.invert(tgt_mask), True, False)
                 tgt = np.sum(tgt_mask*contributions) / np.count_nonzero(contributions)
                 non_tgt = np.sum(non_tgt_mask*contributions) / np.count_nonzero(contributions)
                 for j in range(len(tgt_mask)):
-                    if tgt_mask[j] and (includeAffected or not affected[j]) and np.absolute(contributions[j]) > threshold:
+                    if tgt_mask[j] and np.absolute(contributions[j]) > threshold:
                         G.add_edge(f"{j}", f"{i}")
                         edge_labels[(f"{j}", f"{i}")] = t
                     elif np.absolute(contributions[j]) < threshold:
-                        print(t, contributions[j])
+                        print(t, j, contributions[j])
                 tgts.append(tgt)
                 if tgt > non_tgt:
                     influenced_t += 1
