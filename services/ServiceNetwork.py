@@ -101,6 +101,7 @@ def computeIndividualContributions(positions, orientations, switchValues, target
     tgts = []
     G = nx.DiGraph()
     edge_labels = {}
+    switches = {i: [] for i in range(len(orientations[0]))}
     for t in range(len(positions)):
         influenced_t = 0
         noninfluenced_t = 0
@@ -118,6 +119,7 @@ def computeIndividualContributions(positions, orientations, switchValues, target
         orients = neighbours[:,:,np.newaxis]*orientations[np.newaxis,t,:]
         for i in range(len(orients)):
             if switchValues[t-1][i] != targetSwitchValue.value and switchValues[t][i] == targetSwitchValue.value:
+                switches[i].append(t)
                 G.add_nodes_from([f"{i}"])
                 contributions = projected_contributions(orients[i])
                 tgt_mask = np.where(neighbours[i] & ((switchValues[t] == np.full(len(switchValues[t]), targetSwitchValue)) | (affected * np.full(affected.shape, includeAffected))), True, False)
@@ -142,6 +144,7 @@ def computeIndividualContributions(positions, orientations, switchValues, target
             influenced += influenced_t
             noninfluenced += noninfluenced_t
     print(f"overall: infl: {influenced}, noninfl: {noninfluenced}, mintgt={np.min(tgts)}, avgtgt={np.average(tgts)}, maxtgt={np.max(tgts)}")
+    print(switches)
     return (G, edge_labels)
 
 def projected_contributions(vectors):
