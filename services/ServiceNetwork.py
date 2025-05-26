@@ -86,19 +86,6 @@ def measureInformationTransferSpeedViaInformationTransferDistance(switchValues, 
 
     return result.slope, fullySpread
 
-
-def computeContributionRateByTargetSwitchValue(positions, orientations, switchValues, targetSwitchValue, domainSize, radius, eventSelectionType, eventOriginPoint, numberOfAffected=None):
-    individualContributions = computeIndividualContributions(positions=positions, 
-                                                             orientations=orientations, 
-                                                             switchValues=switchValues,
-                                                             targetSwitchValue=targetSwitchValue,
-                                                             domainSize=domainSize,
-                                                             radius=radius,
-                                                             eventSelectionType=eventSelectionType,
-                                                             eventOriginPoint=eventOriginPoint,
-                                                             numberOfAffected=numberOfAffected)
-    
-
 def computeIndividualContributions(positions, orientations, switchValues, targetSwitchValue, domainSize, radius, eventSelectionType, eventOriginPoint, numberOfAffected=None, includeAffected=True, threshold=0):
     """
     The switching decision is made based on the local order.
@@ -114,7 +101,6 @@ def computeIndividualContributions(positions, orientations, switchValues, target
     tgts = []
     G = nx.DiGraph()
     edge_labels = {}
-    infected_at = {}
     for t in range(len(positions)):
         influenced_t = 0
         noninfluenced_t = 0
@@ -129,17 +115,10 @@ def computeIndividualContributions(positions, orientations, switchValues, target
                                      domainSize=domainSize,
                                      radius=radius,
                                      numberOfAffected=numberOfAffected)
-        for i in range(len(affected)):
-            if affected[i]:
-                infected_at[i] = t
         orients = neighbours[:,:,np.newaxis]*orientations[np.newaxis,t,:]
         for i in range(len(orients)):
-            #if t > 20 and t < 120:
-            if switchValues[t-1][i] == targetSwitchValue.value and i not in infected_at.keys():
-                infected_at[i] = t-1 
             if switchValues[t-1][i] != targetSwitchValue.value and switchValues[t][i] == targetSwitchValue.value:
                 G.add_nodes_from([f"{i}"])
-                infected_at[i] = t
                 contributions = projected_contributions(orients[i])
                 tgt_mask = np.where(neighbours[i] & ((switchValues[t] == np.full(len(switchValues[t]), targetSwitchValue)) | (affected * np.full(affected.shape, includeAffected))), True, False)
                 non_tgt_mask = np.where(neighbours[i] & np.invert(tgt_mask), True, False)
@@ -158,8 +137,6 @@ def computeIndividualContributions(positions, orientations, switchValues, target
                     noninfluenced_t += 1
                 total = tgt + non_tgt
                 print(f"affected: {affected[i]}, switched: {switchValues[t-1][i] != targetSwitchValue and switchValues[t][i] == targetSwitchValue}, lo: {ste.computeLocalOrders(orientations[t], neighbours)[i]} tgt: {tgt/total}, nontgt: {non_tgt/total}")
-            elif switchValues[t-1][i] == targetSwitchValue.value and switchValues[t][i] != targetSwitchValue.value and i in infected_at.keys():
-                del infected_at[i]
         if influenced_t != 0 or noninfluenced_t != 0:
             print(f"{t}: infl: {influenced_t}, ninfl: {noninfluenced_t}")
             influenced += influenced_t
