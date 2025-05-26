@@ -52,7 +52,7 @@ def visualize(metric, data, xLabel=None, yLabel=None, subtitle=None, colourBackg
                                 savePath=savePath, 
                                 show=show) 
         case TimeDependentMetrics.DISTRIBUTION_NETWORK:
-            visualize_tree(data=data, savePath=savePath, show=show)
+            visualize_network(data=data, savePath=savePath, show=show)
 
 def visualize_bars(data, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=[], varianceData=None, xlim=None, ylim=None, alpha=None, savePath=None, show=False):
     plt.bar(x=data.keys(), height=data.values())
@@ -164,6 +164,27 @@ def visualize_tree(data, savePath, show=False):
     # Visualize the trie
     # nx.draw_networkx_nodes(G, pos)
     # nx.draw_networkx_edges(G, pos, alpha=0.5, width=6)
+    nx.draw(G, pos, with_labels=True)
+    nx.draw_networkx_edge_labels(
+        G, pos,
+        edge_labels=edge_labels,
+    )
+    # Customize axes
+    ax = plt.gca()
+    ax.margins(0.11)
+    plt.tight_layout()
+    plt.axis("off")
+    if savePath != None:
+        plt.savefig(savePath)
+    if show:
+        plt.show()
+
+
+def visualize_network(data, savePath, show=False):
+    G, edge_labels = data
+    print("Starting visualisation...")
+
+    pos = nx.spring_layout(G)
     nx.draw(G, pos, with_labels=True)
     nx.draw_networkx_edge_labels(
         G, pos,
