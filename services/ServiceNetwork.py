@@ -114,6 +114,7 @@ def computeIndividualContributions(positions, orientations, switchValues, target
     tgts = []
     G = nx.DiGraph()
     edge_labels = {}
+    infected_at = {}
     for t in range(len(positions)):
         influenced_t = 0
         noninfluenced_t = 0
@@ -128,13 +129,17 @@ def computeIndividualContributions(positions, orientations, switchValues, target
                                      domainSize=domainSize,
                                      radius=radius,
                                      numberOfAffected=numberOfAffected)
-        
+        for i in range(len(affected)):
+            if affected[i]:
+                infected_at[i] = t
         orients = neighbours[:,:,np.newaxis]*orientations[np.newaxis,t,:]
-        for i in range(1, len(orients)):
+        for i in range(len(orients)):
             #if t > 20 and t < 120:
+            if switchValues[t-1][i] == targetSwitchValue.value and i not in infected_at.keys():
+                infected_at[i] = t-1 
             if switchValues[t-1][i] != targetSwitchValue.value and switchValues[t][i] == targetSwitchValue.value:
                 G.add_nodes_from([f"{i}-{t}"])
-
+                infected_at[i] = t
                 contributions = projected_contributions(orients[i])
                 tgt_mask = np.where(neighbours[i] & ((switchValues[t] == np.full(len(switchValues[t]), targetSwitchValue)) | affected), True, False)
                 non_tgt_mask = np.where(neighbours[i] & np.invert(tgt_mask), True, False)
@@ -142,8 +147,8 @@ def computeIndividualContributions(positions, orientations, switchValues, target
                 non_tgt = np.sum(non_tgt_mask*contributions) / np.count_nonzero(contributions)
                 for j in range(len(tgt_mask)):
                     if tgt_mask[j]:
-                        G.add_edge(f"{j}-{t-1}", f"{i}-{t}")
-                        edge_labels[(f"{j}-{t-1}", f"{i}-{t}")] = contributions[j]
+                        G.add_edge(f"{j}-{infected_at[j]}", f"{i}-{t}")
+                        edge_labels[(f"{j}-{infected_at[j]}", f"{i}-{t}")] = t
                 tgts.append(tgt)
                 if tgt > non_tgt:
                     influenced_t += 1
@@ -151,6 +156,8 @@ def computeIndividualContributions(positions, orientations, switchValues, target
                     noninfluenced_t += 1
                 total = tgt + non_tgt
                 print(f"affected: {affected[i]}, switched: {switchValues[t-1][i] != targetSwitchValue and switchValues[t][i] == targetSwitchValue}, lo: {ste.computeLocalOrders(orientations[t], neighbours)[i]} tgt: {tgt/total}, nontgt: {non_tgt/total}")
+            elif switchValues[t-1][i] == targetSwitchValue.value and switchValues[t][i] != targetSwitchValue.value and i in infected_at.keys():
+                del infected_at[i]
         if influenced_t != 0 or noninfluenced_t != 0:
             print(f"{t}: infl: {influenced_t}, ninfl: {noninfluenced_t}")
             influenced += influenced_t
