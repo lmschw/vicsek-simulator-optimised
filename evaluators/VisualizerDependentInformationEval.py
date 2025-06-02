@@ -59,6 +59,7 @@ def visualize(metric, data, xLabel=None, yLabel=None, subtitle=None, colourBackg
 def visualize_lines(data, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=[], varianceData=None, xlim=None, ylim=None, alpha=None, savePath=None, show=False):
     plt.plot(data[1])
     plt.plot(data[2])
+    plt.plot(data[3])
     ax = plt.gca()
     # reset axis to start at (0.0)
     xlim = ax.get_xlim()

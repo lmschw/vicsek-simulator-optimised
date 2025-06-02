@@ -149,6 +149,7 @@ def computeInformationSpreadProbabilities(positions, orientations, switchValues,
     probs = []
     probs_switched = []
     probs_nonswitched = []
+    los = []
     for t in range(len(positions)):
         probabilities = []
         probabilities_switch = []
@@ -224,6 +225,7 @@ def computeInformationSpreadProbabilities(positions, orientations, switchValues,
             switch_probabilities_nonswitch.append(np.average(probabilities_nonswitch))
         else:
             switch_probabilities_nonswitch.append(0)
+        los.append(np.average(localOrders))
     print(f"overall: infl: {influenced}, noninfl: {noninfluenced}, mintgt={np.min(tgts)}, avgtgt={np.average(tgts)}, maxtgt={np.max(tgts)}")
     print(f"tgt ratio: min: {np.min(target_ratios)}, avg:{np.average(target_ratios)}, max: {np.max(target_ratios)}, std: {np.std(target_ratios)}")
     print(f"tgt switched ratio: min: {np.min(target_switch_ratios)}, avg:{np.average(target_switch_ratios)}, max: {np.max(target_switch_ratios)}, std: {np.std(target_switch_ratios)}")
@@ -239,7 +241,7 @@ def computeInformationSpreadProbabilities(positions, orientations, switchValues,
     print(f"switch prob switched: min={np.min(switch_probabilities_switch)},avg={np.average(switch_probabilities_switch)},max={np.max(switch_probabilities_switch)}")
     print(f"switch prob switched: min={np.min(switch_probabilities_nonswitch)},avg={np.average(switch_probabilities_nonswitch)},max={np.max(switch_probabilities_nonswitch)}")
 
-    return (switch_probabilities, switch_probabilities_switch, switch_probabilities_nonswitch)
+    return (switch_probabilities, switch_probabilities_switch, switch_probabilities_nonswitch, los)
 
 def projected_contributions(vectors):
     """Compute projected contribution of each agent."""
