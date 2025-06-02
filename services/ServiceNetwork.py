@@ -102,12 +102,15 @@ def computeIndividualContributions(positions, orientations, switchValues, target
     G = nx.DiGraph()
     edge_labels = {}
     switches = {i: [] for i in range(len(orientations[0]))}
-    tgt_ratios = []
-    tgt_switch_ratios = []
-    tgt_nonswitch_ratios = []
-    tgt_counts = []
-    tgt_switched_counts = []
-    tgt_nonswitch_counts = []
+    target_ratios = []
+    target_switch_ratios = []
+    target_nonswitch_ratios = []
+    target_counts = []
+    target_switched_counts = []
+    target_nonswitch_counts = []
+    probs = []
+    probs_switched = []
+    probs_nonswitched = []
     for t in range(len(positions)):
         influenced_t = 0
         noninfluenced_t = 0
@@ -124,48 +127,63 @@ def computeIndividualContributions(positions, orientations, switchValues, target
                                      numberOfAffected=numberOfAffected)
         orients = neighbours[:,:,np.newaxis]*orientations[np.newaxis,t,:]
 
+        localOrders = ste.computeLocalOrders(orientations[t], neighbours)
+
         for i in range(len(orients)):
             contributions = projected_contributions(orients[i])
-            tgt_mask = np.where(neighbours[i] & ((switchValues[t] == np.full(len(switchValues[t]), targetSwitchValue)) | (affected * np.full(affected.shape, includeAffected))), True, False)
-            non_tgt_mask = np.where(neighbours[i] & np.invert(tgt_mask), True, False)
-            tgt = np.sum(tgt_mask*contributions) / np.count_nonzero(contributions)
-            non_tgt = np.sum(non_tgt_mask*contributions) / np.count_nonzero(contributions)
-            tgt_ratios.append(np.absolute(tgt)/(np.absolute(tgt) + np.absolute(non_tgt)))
-            tgt_counts.append(np.count_nonzero(tgt_mask)/len(tgt_mask))
+            target_mask = np.where(neighbours[i] & ((switchValues[t] == np.full(len(switchValues[t]), targetSwitchValue)) | (affected * np.full(affected.shape, includeAffected))), True, False)
+            non_target_mask = np.where(neighbours[i] & np.invert(target_mask), True, False)
+            target_contribution = np.sum(target_mask*contributions) / np.count_nonzero(contributions)
+            non_target_contribution = np.sum(non_target_mask*contributions) / np.count_nonzero(contributions)
+            target_ratios.append(np.absolute(target_contribution)/(np.absolute(target_contribution) + np.absolute(non_target_contribution)))
+            target_counts.append(np.count_nonzero(target_mask)/len(target_mask))
+            local_order = localOrders[i]
+            contribution_localorder_ratio = target_contribution/local_order
+            absolute_contribution_ratio = np.absolute(target_contribution)/(np.absolute(target_contribution) + np.absolute(non_target_contribution))
+            target_contributors_count_ratio = np.count_nonzero(target_mask)/len(target_mask)
+            target_adoption_probability = 2*absolute_contribution_ratio*target_contributors_count_ratio
+            print(f"{i} through all: lo:{local_order}, tgt:{target_contribution}, c:{contribution_localorder_ratio}, d={absolute_contribution_ratio}, cr:{target_contributors_count_ratio}, ccr={contribution_localorder_ratio*target_contributors_count_ratio}, dcr={absolute_contribution_ratio**target_contributors_count_ratio}")
+            probs.append(target_adoption_probability)
             if switchValues[t-1][i] != targetSwitchValue.value and switchValues[t][i] == targetSwitchValue.value:
-                tgt_switch_ratios.append(np.absolute(tgt)/(np.absolute(tgt) + np.absolute(non_tgt)))
-                tgt_switched_counts.append(np.count_nonzero(tgt_mask)/len(tgt_mask))
+                target_switch_ratios.append(np.absolute(target_contribution)/(np.absolute(target_contribution) + np.absolute(non_target_contribution)))
+                target_switched_counts.append(np.count_nonzero(target_mask)/len(target_mask))
                 switches[i].append(t)
                 G.add_nodes_from([f"{i}"])
-
-                for j in range(len(tgt_mask)):
-                    if tgt_mask[j] and np.absolute(contributions[j]) > threshold:
+                probs_switched.append(target_adoption_probability)
+                for j in range(len(target_mask)):
+                    if target_mask[j] and np.absolute(contributions[j]) > threshold:
+                        print(f"{i} through {j}: c={contributions[j]}, cr={np.count_nonzero(target_mask)/len(target_mask)}, ccr={contributions[j]*(np.count_nonzero(target_mask)/len(target_mask))}")
                         G.add_edge(f"{j}", f"{i}")
                         edge_labels[(f"{j}", f"{i}")] = t
                     elif np.absolute(contributions[j]) < threshold:
                         print(t, j, contributions[j])
-                tgts.append(tgt)
-                if tgt > non_tgt:
+                tgts.append(target_contribution)
+                if target_contribution > non_target_contribution:
                     influenced_t += 1
                 else:
                     noninfluenced_t += 1
-                total = tgt + non_tgt
-                print(f"affected: {affected[i]}, switched: {switchValues[t-1][i] != targetSwitchValue and switchValues[t][i] == targetSwitchValue}, lo: {ste.computeLocalOrders(orientations[t], neighbours)[i]} tgt: {tgt/total}, nontgt: {non_tgt/total}")
+                total = target_contribution + non_target_contribution
+                print(f"affected: {affected[i]}, switched: {switchValues[t-1][i] != targetSwitchValue and switchValues[t][i] == targetSwitchValue}, lo: {ste.computeLocalOrders(orientations[t], neighbours)[i]} tgt: {target_contribution/total}, nontgt: {non_target_contribution/total}")
             elif switchValues[t-1][i] == targetSwitchValue.value and switchValues[t][i] != targetSwitchValue.value:
-                tgt_nonswitch_ratios.append(np.absolute(tgt)/(np.absolute(tgt) + np.absolute(non_tgt)))
-                tgt_nonswitch_counts.append(np.count_nonzero(tgt_mask)/len(tgt_mask))
+                target_nonswitch_ratios.append(np.absolute(target_contribution)/(np.absolute(target_contribution) + np.absolute(non_target_contribution)))
+                target_nonswitch_counts.append(np.count_nonzero(target_mask)/len(target_mask))
+                probs_nonswitched.append(target_adoption_probability)
         if influenced_t != 0 or noninfluenced_t != 0:
             print(f"{t}: infl: {influenced_t}, ninfl: {noninfluenced_t}")
             influenced += influenced_t
             noninfluenced += noninfluenced_t
     print(f"overall: infl: {influenced}, noninfl: {noninfluenced}, mintgt={np.min(tgts)}, avgtgt={np.average(tgts)}, maxtgt={np.max(tgts)}")
     print(switches)
-    print(f"tgt ratio: min: {np.min(tgt_ratios)}, avg:{np.average(tgt_ratios)}, max: {np.max(tgt_ratios)}, std: {np.std(tgt_ratios)}")
-    print(f"tgt switched ratio: min: {np.min(tgt_switch_ratios)}, avg:{np.average(tgt_switch_ratios)}, max: {np.max(tgt_switch_ratios)}, std: {np.std(tgt_switch_ratios)}")
-    print(f"tgt no switch ratio: min: {np.min(tgt_nonswitch_ratios)}, avg:{np.average(tgt_nonswitch_ratios)}, max: {np.max(tgt_nonswitch_ratios)}, std: {np.std(tgt_nonswitch_ratios)}")
-    print(f"tgt count ratio: min: {np.min(tgt_counts)}, avg:{np.average(tgt_counts)}, max: {np.max(tgt_counts)}, std: {np.std(tgt_counts)}")
-    print(f"tgt switched count ratio: min: {np.min(tgt_switched_counts)}, avg:{np.average(tgt_switched_counts)}, max: {np.max(tgt_switched_counts)}, std: {np.std(tgt_switched_counts)}")
-    print(f"tgt nonswitch count ratio: min: {np.min(tgt_nonswitch_counts)}, avg:{np.average(tgt_nonswitch_counts)}, max: {np.max(tgt_nonswitch_counts)}, std: {np.std(tgt_nonswitch_counts)}")
+    print(f"tgt ratio: min: {np.min(target_ratios)}, avg:{np.average(target_ratios)}, max: {np.max(target_ratios)}, std: {np.std(target_ratios)}")
+    print(f"tgt switched ratio: min: {np.min(target_switch_ratios)}, avg:{np.average(target_switch_ratios)}, max: {np.max(target_switch_ratios)}, std: {np.std(target_switch_ratios)}")
+    print(f"tgt no switch ratio: min: {np.min(target_nonswitch_ratios)}, avg:{np.average(target_nonswitch_ratios)}, max: {np.max(target_nonswitch_ratios)}, std: {np.std(target_nonswitch_ratios)}")
+    print(f"tgt count ratio: min: {np.min(target_counts)}, avg:{np.average(target_counts)}, max: {np.max(target_counts)}, std: {np.std(target_counts)}")
+    print(f"tgt switched count ratio: min: {np.min(target_switched_counts)}, avg:{np.average(target_switched_counts)}, max: {np.max(target_switched_counts)}, std: {np.std(target_switched_counts)}")
+    print(f"tgt nonswitch count ratio: min: {np.min(target_nonswitch_counts)}, avg:{np.average(target_nonswitch_counts)}, max: {np.max(target_nonswitch_counts)}, std: {np.std(target_nonswitch_counts)}")
+    print(f"p ratio: min: {np.min(probs)}, avg:{np.average(probs)}, max: {np.max(probs)}, std: {np.std(probs)}")
+    print(f"psw ratio: min: {np.min(probs_switched)}, avg:{np.average(probs_switched)}, max: {np.max(probs_switched)}, std: {np.std(probs_switched)}")
+    print(f"pnsw ratio: min: {np.min(probs_nonswitched)}, avg:{np.average(probs_nonswitched)}, max: {np.max(probs_nonswitched)}, std: {np.std(probs_nonswitched)}")
+
 
     return (G, edge_labels)
 
