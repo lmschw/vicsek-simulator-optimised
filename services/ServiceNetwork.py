@@ -133,15 +133,17 @@ def computeIndividualContributions(positions, orientations, switchValues, target
             contributions = projected_contributions(orients[i])
             target_mask = np.where(neighbours[i] & ((switchValues[t] == np.full(len(switchValues[t]), targetSwitchValue)) | (affected * np.full(affected.shape, includeAffected))), True, False)
             non_target_mask = np.where(neighbours[i] & np.invert(target_mask), True, False)
-            target_contribution = np.sum(target_mask*contributions) / np.count_nonzero(contributions)
-            non_target_contribution = np.sum(non_target_mask*contributions) / np.count_nonzero(contributions)
+            target_contribution = np.sum(np.absolute(target_mask*contributions)) / np.count_nonzero(contributions)
+            non_target_contribution = np.sum(np.absolute(non_target_mask*contributions)) / np.count_nonzero(contributions)
             target_ratios.append(np.absolute(target_contribution)/(np.absolute(target_contribution) + np.absolute(non_target_contribution)))
             target_counts.append(np.count_nonzero(target_mask)/len(target_mask))
             local_order = localOrders[i]
             contribution_localorder_ratio = target_contribution/local_order
             absolute_contribution_ratio = np.absolute(target_contribution)/(np.absolute(target_contribution) + np.absolute(non_target_contribution))
             target_contributors_count_ratio = np.count_nonzero(target_mask)/len(target_mask)
-            target_adoption_probability = 2*absolute_contribution_ratio*target_contributors_count_ratio
+            target_adoption_probability = 2*(absolute_contribution_ratio*target_contributors_count_ratio)
+            if target_adoption_probability > 1:
+                target_adoption_probability = 1
             print(f"{i} through all: lo:{local_order}, tgt:{target_contribution}, c:{contribution_localorder_ratio}, d={absolute_contribution_ratio}, cr:{target_contributors_count_ratio}, ccr={contribution_localorder_ratio*target_contributors_count_ratio}, dcr={absolute_contribution_ratio**target_contributors_count_ratio}")
             probs.append(target_adoption_probability)
             if switchValues[t-1][i] != targetSwitchValue.value and switchValues[t][i] == targetSwitchValue.value:
