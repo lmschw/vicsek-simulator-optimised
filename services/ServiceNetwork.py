@@ -86,22 +86,60 @@ def measureInformationTransferSpeedViaInformationTransferDistance(switchValues, 
 
     return result.slope, fullySpread
 
-def computeIndividualContributions(positions, orientations, switchValues, targetSwitchValue, domainSize, radius, eventSelectionType, eventOriginPoint, numberOfAffected=None, includeAffected=True, threshold=0):
+def computeInformationSpreadNetworkBasedOnContributions(positions, orientations, switchValues, targetSwitchValue, domainSize, radius, eventSelectionType, eventOriginPoint, numberOfAffected=None, includeAffected=True, threshold=0):
     """
+    Computes the network based on contributions. 
+
     The switching decision is made based on the local order.
     Local order is computed on the basis of the orientations of all neighbours.
     Each neighbour's orientation contributes to the local order and thus to the decision of the individual.
     We can compute this contribution by projecting it by multiplying its orientation with the combined orientation from the local order.
     We can then compare the sum of the absolute values for each switch value. If the contribution of the target switch value is higher, then we can assume that the information has spread
     """    
-    contributions = {}  
+    G = nx.DiGraph()
+    edge_labels = {}
+    for t in range(len(positions)):
+        neighbours = svh.getNeighboursWithLimitedVision(positions=positions[t], orientations=orientations[t], domainSize=domainSize,
+                                                                            radius=radius, degreesOfVision=np.pi*2)
+            
+        affected = se.selectAffected(eventSelectionType=eventSelectionType,
+                                     totalNumberOfParticles=len(positions[t]),
+                                     positions=positions[t],
+                                     originPoint=eventOriginPoint,
+                                     domainSize=domainSize,
+                                     radius=radius,
+                                     numberOfAffected=numberOfAffected)
+        orients = neighbours[:,:,np.newaxis]*orientations[np.newaxis,t,:]
 
+        for i in range(len(orients)):
+            contributions = projected_contributions(orients[i])
+            if switchValues[t-1][i] != targetSwitchValue.value and switchValues[t][i] == targetSwitchValue.value:
+                target_mask = np.where(neighbours[i] & ((switchValues[t] == np.full(len(switchValues[t]), targetSwitchValue)) | (affected * np.full(affected.shape, includeAffected))), True, False)
+                G.add_nodes_from([f"{i}"])
+                for j in range(len(target_mask)):
+                    if target_mask[j] and np.absolute(contributions[j]) > threshold:
+                        G.add_edge(f"{j}", f"{i}")
+                        edge_labels[(f"{j}", f"{i}")] = t
+
+    return (G, edge_labels)
+
+def computeInformationSpreadProbabilities(positions, orientations, switchValues, targetSwitchValue, domainSize, radius, eventSelectionType, eventOriginPoint, numberOfAffected=None, includeAffected=True, threshold=0):
+    """
+    Computes and returns the switching probability for every individual at every timestep as well as the min, average and max probability 
+    and the standard deviation to switch for target value.
+
+    The switching decision is made based on the local order.
+    Local order is computed on the basis of the orientations of all neighbours.
+    Each neighbour's orientation contributes to the local order and thus to the decision of the individual.
+    We can compute this contribution by projecting it by multiplying its orientation with the combined orientation from the local order.
+    We can then compare the sum of the absolute values for each switch value. If the contribution of the target switch value is higher, then we can assume that the information has spread
+    """    
+    switch_probabilities = []
+    switch_probabilities_switch = []
+    switch_probabilities_nonswitch = []
     influenced = 0
     noninfluenced = 0
     tgts = []
-    G = nx.DiGraph()
-    edge_labels = {}
-    switches = {i: [] for i in range(len(orientations[0]))}
     target_ratios = []
     target_switch_ratios = []
     target_nonswitch_ratios = []
@@ -112,9 +150,11 @@ def computeIndividualContributions(positions, orientations, switchValues, target
     probs_switched = []
     probs_nonswitched = []
     for t in range(len(positions)):
+        probabilities = []
+        probabilities_switch = []
+        probabilities_nonswitch = []
         influenced_t = 0
         noninfluenced_t = 0
-        #neighbours = svh.getNeighbours(positions=positions[t], domainSize=domainSize, radius=radius)
         neighbours = svh.getNeighboursWithLimitedVision(positions=positions[t], orientations=orientations[t], domainSize=domainSize,
                                                                             radius=radius, degreesOfVision=np.pi*2)
             
@@ -144,19 +184,17 @@ def computeIndividualContributions(positions, orientations, switchValues, target
             target_adoption_probability = 2*(absolute_contribution_ratio*target_contributors_count_ratio)
             if target_adoption_probability > 1:
                 target_adoption_probability = 1
+            probabilities.append(target_adoption_probability)
             print(f"{i} through all: lo:{local_order}, tgt:{target_contribution}, c:{contribution_localorder_ratio}, d={absolute_contribution_ratio}, cr:{target_contributors_count_ratio}, ccr={contribution_localorder_ratio*target_contributors_count_ratio}, dcr={absolute_contribution_ratio**target_contributors_count_ratio}")
             probs.append(target_adoption_probability)
             if switchValues[t-1][i] != targetSwitchValue.value and switchValues[t][i] == targetSwitchValue.value:
+                probabilities_switch.append(target_adoption_probability)
                 target_switch_ratios.append(np.absolute(target_contribution)/(np.absolute(target_contribution) + np.absolute(non_target_contribution)))
                 target_switched_counts.append(np.count_nonzero(target_mask)/len(target_mask))
-                switches[i].append(t)
-                G.add_nodes_from([f"{i}"])
                 probs_switched.append(target_adoption_probability)
                 for j in range(len(target_mask)):
                     if target_mask[j] and np.absolute(contributions[j]) > threshold:
                         print(f"{i} through {j}: c={contributions[j]}, cr={np.count_nonzero(target_mask)/len(target_mask)}, ccr={contributions[j]*(np.count_nonzero(target_mask)/len(target_mask))}")
-                        G.add_edge(f"{j}", f"{i}")
-                        edge_labels[(f"{j}", f"{i}")] = t
                     elif np.absolute(contributions[j]) < threshold:
                         print(t, j, contributions[j])
                 tgts.append(target_contribution)
@@ -170,12 +208,23 @@ def computeIndividualContributions(positions, orientations, switchValues, target
                 target_nonswitch_ratios.append(np.absolute(target_contribution)/(np.absolute(target_contribution) + np.absolute(non_target_contribution)))
                 target_nonswitch_counts.append(np.count_nonzero(target_mask)/len(target_mask))
                 probs_nonswitched.append(target_adoption_probability)
+                probabilities_nonswitch.append(target_adoption_probability)
+            else:
+                probabilities_nonswitch.append(target_adoption_probability)
         if influenced_t != 0 or noninfluenced_t != 0:
             print(f"{t}: infl: {influenced_t}, ninfl: {noninfluenced_t}")
             influenced += influenced_t
             noninfluenced += noninfluenced_t
+        switch_probabilities.append(np.average(probabilities))
+        if len(probabilities_switch) > 0:
+            switch_probabilities_switch.append(np.average(probabilities_switch))
+        else:
+            switch_probabilities_switch.append(0)
+        if len(probabilities_nonswitch):
+            switch_probabilities_nonswitch.append(np.average(probabilities_nonswitch))
+        else:
+            switch_probabilities_nonswitch.append(0)
     print(f"overall: infl: {influenced}, noninfl: {noninfluenced}, mintgt={np.min(tgts)}, avgtgt={np.average(tgts)}, maxtgt={np.max(tgts)}")
-    print(switches)
     print(f"tgt ratio: min: {np.min(target_ratios)}, avg:{np.average(target_ratios)}, max: {np.max(target_ratios)}, std: {np.std(target_ratios)}")
     print(f"tgt switched ratio: min: {np.min(target_switch_ratios)}, avg:{np.average(target_switch_ratios)}, max: {np.max(target_switch_ratios)}, std: {np.std(target_switch_ratios)}")
     print(f"tgt no switch ratio: min: {np.min(target_nonswitch_ratios)}, avg:{np.average(target_nonswitch_ratios)}, max: {np.max(target_nonswitch_ratios)}, std: {np.std(target_nonswitch_ratios)}")
@@ -186,8 +235,11 @@ def computeIndividualContributions(positions, orientations, switchValues, target
     print(f"psw ratio: min: {np.min(probs_switched)}, avg:{np.average(probs_switched)}, max: {np.max(probs_switched)}, std: {np.std(probs_switched)}")
     print(f"pnsw ratio: min: {np.min(probs_nonswitched)}, avg:{np.average(probs_nonswitched)}, max: {np.max(probs_nonswitched)}, std: {np.std(probs_nonswitched)}")
 
+    print(f"switch prob: min={np.min(switch_probabilities)},avg={np.average(switch_probabilities)},max={np.max(switch_probabilities)}") 
+    print(f"switch prob switched: min={np.min(switch_probabilities_switch)},avg={np.average(switch_probabilities_switch)},max={np.max(switch_probabilities_switch)}")
+    print(f"switch prob switched: min={np.min(switch_probabilities_nonswitch)},avg={np.average(switch_probabilities_nonswitch)},max={np.max(switch_probabilities_nonswitch)}")
 
-    return (G, edge_labels)
+    return (switch_probabilities, switch_probabilities_switch, switch_probabilities_nonswitch)
 
 def projected_contributions(vectors):
     """Compute projected contribution of each agent."""

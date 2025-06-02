@@ -25,7 +25,8 @@ class TimeDependentMetrics(Enum):
     CLUSTER_DURATION_PER_STARTING_TIMESTEP = "clusterdurationstart", "cluster duration per starting timestep"
     CLUSTER_TREE = "clustertree", "cluster tree",
     TIME_TO_SWITCH = "timetoswitch", "time to switch",
-    DISTRIBUTION_NETWORK = "distnetw", "distribution network"
+    DISTRIBUTION_NETWORK = "distnetw", "distribution network",
+    SWITCH_PROBABILITY_DISTRIBUTION = "swprobdist", "switch probability distribution"
 
     def __init__(self, val, label):
         self.val = val

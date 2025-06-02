@@ -90,7 +90,19 @@ class EvaluatorDependentInformation:
                                                                     event_radius=self.radius,
                                                                     domain_size=self.domain_size)
             case TimeDependentMetrics.DISTRIBUTION_NETWORK:
-                data = snw.computeIndividualContributions(positions=self.positions,
+                data = snw.computeInformationSpreadNetworkBasedOnContributions(positions=self.positions,
+                                                          orientations=self.orientations,
+                                                          switchValues=self.switch_values,
+                                                          targetSwitchValue=self.target_switch_value,
+                                                          domainSize=self.domain_size,
+                                                          radius=self.radius,
+                                                          eventSelectionType=self.event_selection_type,
+                                                          numberOfAffected=self.number_of_affected,
+                                                          eventOriginPoint=self.event_origin_point,
+                                                          includeAffected=self.include_affected,
+                                                          threshold=self.contribution_threshold)    
+            case TimeDependentMetrics.SWITCH_PROBABILITY_DISTRIBUTION:
+                data = snw.computeInformationSpreadProbabilities(positions=self.positions,
                                                           orientations=self.orientations,
                                                           switchValues=self.switch_values,
                                                           targetSwitchValue=self.target_switch_value,

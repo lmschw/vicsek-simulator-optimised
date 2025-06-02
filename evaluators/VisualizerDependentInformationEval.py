@@ -53,6 +53,37 @@ def visualize(metric, data, xLabel=None, yLabel=None, subtitle=None, colourBackg
                                 show=show) 
         case TimeDependentMetrics.DISTRIBUTION_NETWORK:
             visualize_network(data=data, savePath=savePath, show=show)
+        case TimeDependentMetrics.SWITCH_PROBABILITY_DISTRIBUTION:
+            visualize_lines(data=data, savePath=savePath, show=show)
+
+def visualize_lines(data, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=[], varianceData=None, xlim=None, ylim=None, alpha=None, savePath=None, show=False):
+    plt.plot(data[1])
+    plt.plot(data[2])
+    ax = plt.gca()
+    # reset axis to start at (0.0)
+    xlim = ax.get_xlim()
+    ax.set_xlim((0, xlim[1]))
+    ylim = ax.get_ylim()
+    ax.set_ylim((0, ylim[1]))
+
+    if xLabel != None:
+        plt.xlabel(xLabel)
+    if yLabel != None:
+        plt.ylabel(yLabel)
+    if subtitle != None:
+        plt.title(f"""{subtitle}""")
+    elif alpha:
+        plt.title(f"""{r'$\alpha$'} = {alpha}""")
+    if len(colourBackgroundForTimesteps) > 0:
+        ax = plt.gca()
+        ylim = ax.get_ylim()
+        y = np.arange(ylim[0], ylim[1], 0.01)
+        ax.fill_betweenx(y, colourBackgroundForTimesteps[0], colourBackgroundForTimesteps[1], facecolor='green', alpha=0.2)
+    if savePath != None:
+        plt.savefig(savePath)
+    if show:
+        plt.show()
+    plt.close()
 
 def visualize_bars(data, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=[], varianceData=None, xlim=None, ylim=None, alpha=None, savePath=None, show=False):
     plt.bar(x=data.keys(), height=data.values())

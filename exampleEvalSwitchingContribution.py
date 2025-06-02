@@ -29,7 +29,7 @@ snw.computeContributionRateByTargetSwitchValue(positions=positions, orientations
                                                eventSelectionType=EventSelectionType.RANDOM, eventOriginPoint=(domainSize[0]/2, domainSize[1]/2))
 """
 
-eval = EvaluatorDependentInformation(metric=TimeDependentMetrics.DISTRIBUTION_NETWORK,
+eval = EvaluatorDependentInformation(metric=TimeDependentMetrics.SWITCH_PROBABILITY_DISTRIBUTION,
                                      positions=positions,
                                      orientations=orientations,
                                      domain_size=domainSize,
@@ -38,6 +38,6 @@ eval = EvaluatorDependentInformation(metric=TimeDependentMetrics.DISTRIBUTION_NE
                                      target_switch_value=target_switch_value,
                                      event_origin_point=(domainSize[0]/2, domainSize[1]/2),
                                      include_affected=True,
-                                     contribution_threshold=0.2)
+                                     contribution_threshold=0)
 
 eval.evaluateAndVisualize(show=True)
