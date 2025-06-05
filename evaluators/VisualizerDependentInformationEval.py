@@ -98,11 +98,6 @@ def visualize_lines(data, xLabel=None, yLabel=None, subtitle=None, colourBackgro
 def visualize_bars(data, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=[], varianceData=None, xlim=None, ylim=None, alpha=None, savePath=None, show=False):
     plt.bar(x=data.keys(), height=data.values())
     ax = plt.gca()
-    # reset axis to start at (0.0)
-    xlim = ax.get_xlim()
-    ax.set_xlim((0, xlim[1]))
-    ylim = ax.get_ylim()
-    ax.set_ylim((0, ylim[1]))
 
     if xLabel != None:
         plt.xlabel(xLabel)
