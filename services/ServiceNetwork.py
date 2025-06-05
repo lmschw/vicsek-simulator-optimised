@@ -98,6 +98,9 @@ def computeInformationSpreadNetworkBasedOnContributions(positions, orientations,
     """    
     G = nx.DiGraph()
     edge_labels = {}
+    contributions_dict = {}
+    affected_timesteps = {i: [] for i in range(len(positions[0]))}
+    switches = {i: [] for i in range(len(positions[0]))}
     for t in range(len(positions)):
         neighbours = svh.getNeighboursWithLimitedVision(positions=positions[t], orientations=orientations[t], domainSize=domainSize,
                                                                             radius=radius, degreesOfVision=np.pi*2)
@@ -112,16 +115,96 @@ def computeInformationSpreadNetworkBasedOnContributions(positions, orientations,
         orients = neighbours[:,:,np.newaxis]*orientations[np.newaxis,t,:]
 
         for i in range(len(orients)):
+            if affected[i]:
+                affected_timesteps[i].append(t)
             contributions = projected_contributions(orients[i])
             if switchValues[t-1][i] != targetSwitchValue.value and switchValues[t][i] == targetSwitchValue.value:
+                switches[i].append(t)
                 target_mask = np.where(neighbours[i] & ((switchValues[t] == np.full(len(switchValues[t]), targetSwitchValue)) | (affected * np.full(affected.shape, includeAffected))), True, False)
                 G.add_nodes_from([f"{i}"])
                 for j in range(len(target_mask)):
                     if target_mask[j] and np.absolute(contributions[j]) > threshold:
                         G.add_edge(f"{j}", f"{i}")
                         edge_labels[(f"{j}", f"{i}")] = t
+                        if (f"{t}", f"{i}") not in contributions_dict.keys():
+                            contributions_dict[(f"{t}", f"{i}")] = []
+                        contributions_dict[(f"{t}", f"{i}")].append((j, contributions[j]))
 
-    return (G, edge_labels)
+    return (G, edge_labels), contributions_dict, affected_timesteps, switches
+
+
+def findPathLengthsAndStrengths(contributions, affected, i, t):
+    lengths = []
+    strengths = []
+    if t in affected[i] or t < 0:
+        return [0], [1]
+    
+    nt = t-1
+    
+    if not (f"{t}", f"{i}") in contributions.keys():
+        return findPathLengthsAndStrengths(contributions, affected, i, nt)
+    
+    feeders = contributions[(f"{t}", f"{i}")]
+    for feeder in feeders:
+        j, cont = feeder
+        l, s =  findPathLengthsAndStrengths(contributions, affected, j, nt)
+        for ln in l:
+            lengths.append(ln + 1)
+        for st in s:
+            strengths.append(np.absolute(st * cont))
+    return lengths, strengths
+
+def computeInformationHopDistanceAndStrength(positions, orientations, switchValues, targetSwitchValue, domainSize, radius, 
+                                             eventSelectionType, eventOriginPoint, numberOfAffected=None, includeAffected=True, 
+                                             threshold=0, return_max_lengths=True, return_all=False, strength_decimals=1):
+    _, contributions, affected, switches = computeInformationSpreadNetworkBasedOnContributions(positions=positions,
+                                                                                                  orientations=orientations,
+                                                                                                  switchValues=switchValues,
+                                                                                                  targetSwitchValue=targetSwitchValue,
+                                                                                                  domainSize=domainSize,
+                                                                                                  radius=radius,
+                                                                                                  eventSelectionType=eventSelectionType,
+                                                                                                  eventOriginPoint=eventOriginPoint,
+                                                                                                  numberOfAffected=numberOfAffected,
+                                                                                                  includeAffected=includeAffected,
+                                                                                                  threshold=threshold)
+    hop_durations = {0: 0}
+    hop_path_strengths = {0: 0}
+    for i, switch_times in switches.items():
+        for t in switch_times:
+            if t in affected[i]:
+                hop_durations[0] += 1
+                hop_path_strengths[0] += 1
+            else:
+                lengths, strengths = findPathLengthsAndStrengths(contributions, affected, i, t)
+                if return_all:
+                    for l in lengths:
+                        if l in hop_durations.keys():
+                            hop_durations[l] += 1
+                        else:
+                            hop_durations[l] = 1
+                    for st in strengths:
+                        s = np.round(st, strength_decimals)
+                        if s in hop_path_strengths.keys():
+                            hop_path_strengths[s] += 1
+                        else:
+                            hop_path_strengths[s] = 1
+                else: 
+                    if return_max_lengths:
+                        idx = np.argmax(lengths)
+                    else:
+                        idx = np.argmax(strengths)
+                    if lengths[idx] in hop_durations.keys():
+                        hop_durations[lengths[idx]] += 1
+                    else:
+                        hop_durations[lengths[idx]] = 1
+                    s = np.round(strengths[idx], strength_decimals)
+                    if s in hop_path_strengths.keys():
+                        hop_path_strengths[s] += 1
+                    else:
+                        hop_path_strengths[s] = 1
+
+    return hop_durations, hop_path_strengths
 
 def computeInformationSpreadProbabilities(positions, orientations, switchValues, targetSwitchValue, domainSize, radius, eventSelectionType, eventOriginPoint, numberOfAffected=None, includeAffected=True, threshold=0):
     """
