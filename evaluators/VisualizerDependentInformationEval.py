@@ -64,6 +64,15 @@ def visualize(metric, data, xLabel=None, yLabel=None, subtitle=None, colourBackg
                                 xlim=xlim, ylim=ylim,
                                 savePath=savePath, 
                                 show=show) 
+        case TimeDependentMetrics.NETWORK_HOP_STRENGTH:
+            visualize_bars(data=data, 
+                                xLabel=xLabel, yLabel=yLabel, 
+                                subtitle=subtitle, 
+                                colourBackgroundForTimesteps=colourBackgroundForTimesteps, 
+                                varianceData=varianceData, 
+                                xlim=xlim, ylim=ylim,
+                                savePath=savePath, 
+                                show=show) 
 
 def visualize_lines(data, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=[], varianceData=None, xlim=None, ylim=None, alpha=None, savePath=None, show=False):
     plt.plot(data[1])
