@@ -55,6 +55,15 @@ def visualize(metric, data, xLabel=None, yLabel=None, subtitle=None, colourBackg
             visualize_network(data=data, savePath=savePath, show=show)
         case TimeDependentMetrics.SWITCH_PROBABILITY_DISTRIBUTION:
             visualize_lines(data=data, savePath=savePath, show=show)
+        case TimeDependentMetrics.NETWORK_HOP_DISTANCE:
+            visualize_bars(data=data, 
+                                xLabel=xLabel, yLabel=yLabel, 
+                                subtitle=subtitle, 
+                                colourBackgroundForTimesteps=colourBackgroundForTimesteps, 
+                                varianceData=varianceData, 
+                                xlim=xlim, ylim=ylim,
+                                savePath=savePath, 
+                                show=show) 
 
 def visualize_lines(data, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=[], varianceData=None, xlim=None, ylim=None, alpha=None, savePath=None, show=False):
     plt.plot(data[1])

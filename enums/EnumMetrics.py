@@ -26,7 +26,8 @@ class TimeDependentMetrics(Enum):
     CLUSTER_TREE = "clustertree", "cluster tree",
     TIME_TO_SWITCH = "timetoswitch", "time to switch",
     DISTRIBUTION_NETWORK = "distnetw", "distribution network",
-    SWITCH_PROBABILITY_DISTRIBUTION = "swprobdist", "switch probability distribution"
+    SWITCH_PROBABILITY_DISTRIBUTION = "swprobdist", "switch probability distribution",
+    NETWORK_HOP_DISTANCE = "ntwkhopdist", "network hop distance"
 
     def __init__(self, val, label):
         self.val = val
