@@ -136,8 +136,11 @@ def computeInformationSpreadNetworkBasedOnContributions(positions, orientations,
 def findPathLengthsAndStrengths(contributions, affected, i, t):
     lengths = []
     strengths = []
-    if t in affected[i] or t < 0:
+    if (t in affected[i] and not (f"{t}", f"{i}") in contributions.keys()) or t < 0:
         return [0], [1]
+    elif t in affected[i]:
+        lengths.append(0)
+        strengths.append(1)
     
     nt = t-1
     
@@ -168,10 +171,12 @@ def computeInformationHopDistanceAndStrength(positions, orientations, switchValu
                                                                                                   numberOfAffected=numberOfAffected,
                                                                                                   includeAffected=includeAffected,
                                                                                                   threshold=threshold)
+    print("created the network")
     hop_durations = {0: 0}
     hop_path_strengths = {0: 0}
     for i, switch_times in switches.items():
         for t in switch_times:
+            print(i, t)
             if t in affected[i]:
                 hop_durations[0] += 1
                 hop_path_strengths[0] += 1
