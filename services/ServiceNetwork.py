@@ -178,13 +178,15 @@ def computeInformationHopDistanceAndStrength(positions, orientations, switchValu
             else:
                 lengths, strengths = findPathLengthsAndStrengths(contributions, affected, i, t)
                 if return_all:
-                    for l in lengths:
+                    if len(lengths) != len(strengths):
+                        print(f"WARNING: unequal number of lengths ({len(lengths)}) and strengths ({len(strengths)})")
+                    for idx in range(len(lengths)):
+                        l = lengths[idx]
                         if l in hop_durations.keys():
                             hop_durations[l] += 1
                         else:
                             hop_durations[l] = 1
-                    for st in strengths:
-                        s = np.round(st, strength_decimals)
+                        s = np.round(strengths[idx], strength_decimals)
                         if s in hop_path_strengths.keys():
                             hop_path_strengths[s] += 1
                         else:
