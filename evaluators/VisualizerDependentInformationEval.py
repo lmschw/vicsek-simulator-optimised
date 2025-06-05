@@ -3,6 +3,7 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 import networkx as nx
+from collections import OrderedDict
 
 import services.ServiceSavedModel as ssm
 import services.ServiceClusters as scl
@@ -65,6 +66,7 @@ def visualize(metric, data, xLabel=None, yLabel=None, subtitle=None, colourBackg
                                 savePath=savePath, 
                                 show=show) 
         case TimeDependentMetrics.NETWORK_HOP_STRENGTH:
+            print(data)
             visualize_bars(data=data, 
                                 xLabel=xLabel, yLabel=yLabel, 
                                 subtitle=subtitle, 
@@ -105,8 +107,17 @@ def visualize_lines(data, xLabel=None, yLabel=None, subtitle=None, colourBackgro
     plt.close()
 
 def visualize_bars(data, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=[], varianceData=None, xlim=None, ylim=None, alpha=None, savePath=None, show=False):
-    plt.bar(x=data.keys(), height=data.values())
+    print(data.keys())
+
+    d = OrderedDict(sorted(data.items()))
+    
+    plt.bar(x=d.keys(), height=d.values())
     ax = plt.gca()
+    # reset axis to start at (0.0)
+    # xlim = ax.get_xlim()
+    # ax.set_xlim((0, xlim[1]))
+    # ylim = ax.get_ylim()
+    # ax.set_ylim((0, ylim[1]))
 
     if xLabel != None:
         plt.xlabel(xLabel)
