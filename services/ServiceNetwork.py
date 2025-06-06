@@ -159,7 +159,7 @@ def findPathLengthsAndStrengths(contributions, affected, i, t):
 
 def computeInformationHopDistanceAndStrength(positions, orientations, switchValues, targetSwitchValue, domainSize, radius, 
                                              eventSelectionType, eventOriginPoint, numberOfAffected=None, includeAffected=True, 
-                                             threshold=0, return_max_lengths=True, return_all=False, strength_decimals=1):
+                                             threshold=0, return_max_lengths=False, return_all=False, strength_decimals=1):
     _, contributions, affected, switches = computeInformationSpreadNetworkBasedOnContributions(positions=positions,
                                                                                                   orientations=orientations,
                                                                                                   switchValues=switchValues,
@@ -174,12 +174,14 @@ def computeInformationHopDistanceAndStrength(positions, orientations, switchValu
     print("created the network")
     hop_durations = {0: 0}
     hop_path_strengths = {0: 0}
+    durations_strengths = {0: []}
     for i, switch_times in switches.items():
         for t in switch_times:
             print(i, t)
             if t in affected[i]:
                 hop_durations[0] += 1
                 hop_path_strengths[0] += 1
+                durations_strengths[0].append(1)
             else:
                 lengths, strengths = findPathLengthsAndStrengths(contributions, affected, i, t)
                 if return_all:
@@ -196,6 +198,9 @@ def computeInformationHopDistanceAndStrength(positions, orientations, switchValu
                             hop_path_strengths[s] += 1
                         else:
                             hop_path_strengths[s] = 1
+                        if l not in durations_strengths.keys():
+                            durations_strengths[l] = []
+                        durations_strengths[l].append(s)
                 else: 
                     if return_max_lengths:
                         idx = np.argmax(lengths)
@@ -210,8 +215,14 @@ def computeInformationHopDistanceAndStrength(positions, orientations, switchValu
                         hop_path_strengths[s] += 1
                     else:
                         hop_path_strengths[s] = 1
+                    if lengths[idx] not in durations_strengths.keys():
+                        durations_strengths[lengths[idx]] = []
+                    durations_strengths[lengths[idx]].append(s)
 
-    return hop_durations, hop_path_strengths
+    for k,v in durations_strengths.items():
+        durations_strengths[k] = np.average(v)
+
+    return hop_durations, hop_path_strengths, durations_strengths
 
 def computeInformationSpreadProbabilities(positions, orientations, switchValues, targetSwitchValue, domainSize, radius, eventSelectionType, eventOriginPoint, numberOfAffected=None, includeAffected=True, threshold=0):
     """

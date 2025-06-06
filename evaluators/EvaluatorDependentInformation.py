@@ -114,7 +114,7 @@ class EvaluatorDependentInformation:
                                                           includeAffected=self.include_affected,
                                                           threshold=self.contribution_threshold)
             case TimeDependentMetrics.NETWORK_HOP_DISTANCE:
-                data, _ = snw.computeInformationHopDistanceAndStrength(positions=self.positions,
+                data, _, _ = snw.computeInformationHopDistanceAndStrength(positions=self.positions,
                                                           orientations=self.orientations,
                                                           switchValues=self.switch_values,
                                                           targetSwitchValue=self.target_switch_value,
@@ -126,7 +126,19 @@ class EvaluatorDependentInformation:
                                                           includeAffected=self.include_affected,
                                                           threshold=self.contribution_threshold)  
             case TimeDependentMetrics.NETWORK_HOP_STRENGTH:
-                _, data = snw.computeInformationHopDistanceAndStrength(positions=self.positions,
+                _, data, _ = snw.computeInformationHopDistanceAndStrength(positions=self.positions,
+                                                          orientations=self.orientations,
+                                                          switchValues=self.switch_values,
+                                                          targetSwitchValue=self.target_switch_value,
+                                                          domainSize=self.domain_size,
+                                                          radius=self.radius,
+                                                          eventSelectionType=self.event_selection_type,
+                                                          numberOfAffected=self.number_of_affected,
+                                                          eventOriginPoint=self.event_origin_point,
+                                                          includeAffected=self.include_affected,
+                                                          threshold=self.contribution_threshold)  
+            case TimeDependentMetrics.NETWORK_DISTANCE_STRENGTH:
+                _, _, data = snw.computeInformationHopDistanceAndStrength(positions=self.positions,
                                                           orientations=self.orientations,
                                                           switchValues=self.switch_values,
                                                           targetSwitchValue=self.target_switch_value,

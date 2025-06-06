@@ -28,7 +28,8 @@ class TimeDependentMetrics(Enum):
     DISTRIBUTION_NETWORK = "distnetw", "distribution network",
     SWITCH_PROBABILITY_DISTRIBUTION = "swprobdist", "switch probability distribution",
     NETWORK_HOP_DISTANCE = "ntwkhopdist", "network hop distance",
-    NETWORK_HOP_STRENGTH = "ntwkhopstr", "network hop strength"
+    NETWORK_HOP_STRENGTH = "ntwkhopstr", "network hop strength",
+    NETWORK_DISTANCE_STRENGTH = "ntwkdiststr", "network distance strength"
 
     def __init__(self, val, label):
         self.val = val

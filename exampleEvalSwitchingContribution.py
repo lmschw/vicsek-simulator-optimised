@@ -29,7 +29,7 @@ snw.computeContributionRateByTargetSwitchValue(positions=positions, orientations
                                                eventSelectionType=EventSelectionType.RANDOM, eventOriginPoint=(domainSize[0]/2, domainSize[1]/2))
 """
 
-eval = EvaluatorDependentInformation(metric=TimeDependentMetrics.NETWORK_HOP_STRENGTH,
+eval = EvaluatorDependentInformation(metric=TimeDependentMetrics.NETWORK_DISTANCE_STRENGTH,
                                      positions=positions,
                                      orientations=orientations,
                                      domain_size=domainSize,

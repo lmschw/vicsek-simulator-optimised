@@ -22,6 +22,7 @@ BACKGROUND_COLOURS = BACKGROUND_COLOURS_50_PERCENT_LIGHTER
 DOT_FACTOR = 10
 
 def visualize(metric, data, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=[], varianceData=None, xlim=None, ylim=None, savePath=None, show=False):
+    print(data)
     match metric:
         case TimeDependentMetrics.CLUSTER_DURATION:
             visualize_bars(data=data, 
@@ -66,7 +67,6 @@ def visualize(metric, data, xLabel=None, yLabel=None, subtitle=None, colourBackg
                                 savePath=savePath, 
                                 show=show) 
         case TimeDependentMetrics.NETWORK_HOP_STRENGTH:
-            print(data)
             visualize_bars(data=data, 
                                 xLabel=xLabel, yLabel=yLabel, 
                                 subtitle=subtitle, 
@@ -75,6 +75,16 @@ def visualize(metric, data, xLabel=None, yLabel=None, subtitle=None, colourBackg
                                 xlim=xlim, ylim=ylim,
                                 savePath=savePath, 
                                 show=show) 
+        case TimeDependentMetrics.NETWORK_DISTANCE_STRENGTH:
+            visualize_bars(data=data, 
+                                xLabel=xLabel, yLabel=yLabel, 
+                                subtitle=subtitle, 
+                                colourBackgroundForTimesteps=colourBackgroundForTimesteps, 
+                                varianceData=varianceData, 
+                                xlim=xlim, ylim=ylim,
+                                savePath=savePath, 
+                                show=show) 
+
 
 def visualize_lines(data, xLabel=None, yLabel=None, subtitle=None, colourBackgroundForTimesteps=[], varianceData=None, xlim=None, ylim=None, alpha=None, savePath=None, show=False):
     plt.plot(data[1])
