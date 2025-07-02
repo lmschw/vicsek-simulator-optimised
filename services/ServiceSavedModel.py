@@ -374,7 +374,13 @@ def extract_values(df, column, key):
     return list(df[column].apply(lambda x: pd.Series(extract_value(x, key))).to_dict()[0].values())
 
 def extract_value(d, key):
-    return d[key]
+    if key in d.keys():
+        return d[key]
+    elif len(d.keys()) == 1:
+        print("switch type key was not found. single key present and selected as alternative")
+        return d[list(d.keys())[0]]
+    else:
+        raise Exception("The switch type key was not found in the data")
 
 
 """
