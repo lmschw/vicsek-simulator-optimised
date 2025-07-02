@@ -28,4 +28,4 @@ evaluator = EvaluatorDependentInformation(metric=metric,
                                           switch_values=switch_values,
                                           target_switch_value=target_switch_value)
 
-evaluator.evaluateAndVisualize(xLabel="start timestep", yLabel="duration", savePath=save_path, show=False)
+evaluator.evaluateAndVisualize(xLabel="start timestep", yLabel="duration", savePath=save_path, show=True)

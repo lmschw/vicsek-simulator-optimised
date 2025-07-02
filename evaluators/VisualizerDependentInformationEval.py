@@ -179,12 +179,16 @@ def visualize_dots_time_to_switch(data, xLabel=None, yLabel=None, subtitle=None,
         x.append(k)
         y.append(data[k])
         s.append(DOT_FACTOR)
+
+    ratio_social = data[-1]/np.sum(list(data.values()))
+    ratio_text = f"{np.round(ratio_social*100, 2)}% socially transmitted"
+    print(ratio_text)
     visualize_dots(x=x,
                     y=y,
                     s=s,
                     xLabel=xLabel,
                     yLabel=yLabel,
-                    subtitle=subtitle,
+                    subtitle=f"{subtitle}\n{ratio_text}",
                     colourBackgroundForTimesteps=colourBackgroundForTimesteps,
                     varianceData=varianceData,
                     xlim=xlim,
