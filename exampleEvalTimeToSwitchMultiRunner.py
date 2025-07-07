@@ -5,6 +5,7 @@ from enums.EnumMetrics import TimeDependentMetrics
 from enums.EnumSwitchType import SwitchType
 from enums.EnumNeighbourSelectionMechanism import NeighbourSelectionMechanism
 from enums.EnumEventEffect import EventEffect   
+from enums.EnumEventSelectionType import EventSelectionType
 from evaluators.EvaluatorMultiDependentInformation import EvaluatorMultiDependentInformation
 import services.ServiceSavedModel as ssm
 import services.ServiceGeneral as sg
@@ -21,60 +22,66 @@ def eval(density, n, radius, eventEffect, type, nsm=None, k=None, combo=None, ev
     sg.logWithTime(f"d={density}, r={radius}, nsm={nsm}, k={k}, combo={combo}, eventEffect={eventEffect.val}, metric={metric.name}, type={type}")
     modelParams = []
     simulationData = []
-    colours = []
     switchTypes = []
 
-    for initialStateString in ["ordered", "random"]:
-        if type in ["nsmsw", "ksw"]:
-            orderValue, disorderValue = combo
-        if type == "nsmsw": 
-            if initialStateString == "ordered":
-                nsm = orderValue
-            else:
-                nsm = disorderValue
-        elif type == "ksw": 
-            if initialStateString == "ordered":
-                k = orderValue
-            else:
-                k = disorderValue
-        
-        if type == "nosw":
-            baseFilename = f"{baseDataLocation}local/switchingInactive/local_1e_nosw_{initialStateString}_st={nsm.value}__d={density}_n={n}_r={radius}_k={k}_noise=1_drn={duration}_{e1Start}-{eventEffect.val}"
-        elif type == "nsmsw":
-            baseFilename = f"{baseDataLocation}{levelDataLocation}"
-        elif type == "ksw":
-            baseFilename = f"{baseDataLocation}{levelDataLocation}local_1e_switchType=K_{initialStateString}_st={k}_o={orderValue}_do={disorderValue}_d={density}_n={n}_r={radius}_nsm={nsm.value}_noise={noisePercentage}_drn={duration}_{e1Start}-{eventEffect.val}"
+    
+    if eventEffect == EventEffect.ALIGN_TO_FIXED_ANGLE:
+        initialStateString = "random"
+    elif eventEffect == EventEffect.AWAY_FROM_ORIGIN or eventEffect == EventEffect.RANDOM:
+        initialStateString = "ordered"
 
-        filenames = sg.createListOfFilenamesForI(baseFilename=baseFilename, minI=iStart, maxI=iStop, fileTypeString="json")
-        if type not in ["nosw", "global"]:
-            modelParamsDensity, simulationDataDensity, coloursDensity, switchTypeValues = ssm.loadModels(filenames, loadSwitchValues=True)
-            switchTypes.append(switchTypeValues)
+    if type in ["nsmsw", "ksw"]:
+        orderValue, disorderValue = combo
+    if type == "nsmsw": 
+        if initialStateString == "ordered":
+            nsm = orderValue
         else:
-            modelParamsDensity, simulationDataDensity, coloursDensity = ssm.loadModels(filenames, loadSwitchValues=False, fromCsv=True)
-        modelParams.append(modelParamsDensity)
-        simulationData.append(simulationDataDensity)
-        colours.append(coloursDensity)
+            nsm = disorderValue
+    elif type == "ksw": 
+        if initialStateString == "ordered":
+            k = orderValue
+        else:
+            k = disorderValue
+    
+    if type == "nsmsw":
+        baseFilename = f"{baseDataLocation}local_nsmsw_1ev_{initialStateString}_st={nsm.value}_d={density}_n={n}_r={radius}_nsmCombo={nsmCombo[1].value}-{nsmCombo[0].value}_k={k}_noise={noisePercentage}_speed={speed}_ee={eventEffect.val}"
+    elif type == "ksw":
+        baseFilename = f"{baseDataLocation}local_ksw_1ev_{initialStateString}_st={k}_d={density}_n={n}_r={radius}_nsm={nsm.value}_kCombo={kCombo[1]}-{kCombo[0]}_ee={eventEffect.val}_noise={noisePercentage}_speed={speed}"
 
 #paths.append(f"density-vs-noise_ORDER_mode-comparision_n={n}_k=1_radius=10_density={density}_noise={noisePercentage}%_hierarchical_clustering_threshold=0.01.png")
 #createMultiPlotFromImages(title, numX, numY, rowLabels, colLabels, paths
 # 
 #      
-    if type == "nosw":
-        save_path = f"{metric.val}_d={density}_n={n}_r={radius}_nosw_nsm={nsm.value}_k={k}_ee={eventEffect.val}."
-    elif type == "nsmsw":
-        save_path = f"{metric.val}_d={density}_n={n}_r={radius}_swt=MODE_o={orderValue.value}_do={disorderValue.value}_k={k}_ee={eventEffect.val}"
+    if type == "nsmsw":
+        switch_type = SwitchType.NEIGHBOUR_SELECTION_MECHANISM
+        save_path = f"{metric.val}_d={density}_n={n}_r={radius}_swt=MODE_o={orderValue.value}_do={disorderValue.value}_k={k}_ee={eventEffect.val}_{initialStateString}"
     elif type == "ksw":
-        save_path = f"{metric.val}_d={density}_n={n}_r={radius}_swt=K_o={orderValue}_do={disorderValue}_nsm={nsm.value}_ee={eventEffect.val}"
+        switch_type = SwitchType.K
+        save_path = f"{metric.val}_d={density}_n={n}_r={radius}_swt=K_o={orderValue}_do={disorderValue}_nsm={nsm.value}_ee={eventEffect.val}_{initialStateString}"
     
+    match eventEffect:
+        case EventEffect.ALIGN_TO_FIXED_ANGLE:
+            target_switch_value = orderValue
+        case EventEffect.AWAY_FROM_ORIGIN:
+            target_switch_value = disorderValue
+        case EventEffect.RANDOM:
+            target_switch_value = disorderValue
+
     evaluator = EvaluatorMultiDependentInformation(metric=metric,
-                                                    base_paths=[save_path],
+                                                    base_paths=[baseFilename],
                                                     min_i=iMin,
                                                     max_i=iMax,
-                                                    from_csv=from_csv,
-                                                    domain_size=domainSize,
-                                                    radius=radius,
                                                     threshold=threshold,
-                                                    use_agglomerative_clustering=use_agglomerative_clustering)
+                                                    use_agglomerative_clustering=use_agglomerative_clustering,
+                                                    switch_type=switch_type,
+                                                    from_csv=from_csv,
+                                                    target_switch_value=target_switch_value,
+                                                    event_start=e1Start,
+                                                    event_origin_point=(domainSize[0] / 2, domainSize[1] / 2),
+                                                    event_selection_type=event_selection_type,
+                                                    number_of_affected=number_of_affected,
+                                                    include_affected=include_affected,
+                                                    evaluationTimestepInterval=evalInterval)
 
     evaluator.evaluateAndVisualize(xLabel="time steps since last event exposure", yLabel="number occurrences", savePath=save_path, show=False) 
     endEval = time.time()
@@ -130,11 +137,11 @@ eventEffects = [EventEffect.ALIGN_TO_FIXED_ANGLE,
                 EventEffect.AWAY_FROM_ORIGIN,
                 EventEffect.RANDOM]
 
-saveLocation = f"results/randomly_moving_predator/"
+saveLocation = f"results_070725/"
 iStart = 1
 iStop = 11
 
-baseDataLocation = "J:/randomly_moving_predator/"
+baseDataLocation = "j:/noise_old_code/"
 
 densities = [0.09]
 radii = [10]
@@ -151,10 +158,14 @@ ks = [1, 5]
 
 # K VS. START
 
-iMin = 1
-iMax = 11
+iMin = 11
+iMax = 15
 from_csv = False
 use_agglo = True
+event_selection_type = EventSelectionType.RANDOM
+number_of_affected = None
+include_affected = True
+
 
 startTime = time.time()
 
@@ -164,12 +175,6 @@ tmax = 15000
 for density in densities:
     n = int(sp.getNumberOfParticlesForConstantDensity(density, domainSize))
     for radius in radii:
-        for nsm in [NeighbourSelectionMechanism.NEAREST, NeighbourSelectionMechanism.FARTHEST,
-                    NeighbourSelectionMechanism.LEAST_ORIENTATION_DIFFERENCE]:
-            for k in ks:
-                for eventEffect in eventEffects:
-                    eval(density=density, n=n, radius=radius, eventEffect=eventEffect, type="nosw", k=k, combo=None, evalInterval=interval, tmax=tmax, iMin=iMin, iMax=iMax, from_csv=from_csv, use_agglomerative_clustering=use_agglo)
-         
         for nsmCombo in [[NeighbourSelectionMechanism.FARTHEST, NeighbourSelectionMechanism.NEAREST]]:
             for k in ks:
                 for eventEffect in eventEffects:
