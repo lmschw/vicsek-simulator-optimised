@@ -54,10 +54,10 @@ def eval(density, n, radius, eventEffect, type, nsm=None, k=None, combo=None, ev
 #      
     if type == "nsmsw":
         switch_type = SwitchType.NEIGHBOUR_SELECTION_MECHANISM
-        save_path = f"{metric.val}_d={density}_n={n}_r={radius}_swt=MODE_o={orderValue.value}_do={disorderValue.value}_k={k}_ee={eventEffect.val}_{initialStateString}"
+        save_path = f"{saveLocation}{metric.val}_d={density}_n={n}_r={radius}_swt=MODE_o={orderValue.value}_do={disorderValue.value}_k={k}_ee={eventEffect.val}_{initialStateString}"
     elif type == "ksw":
         switch_type = SwitchType.K
-        save_path = f"{metric.val}_d={density}_n={n}_r={radius}_swt=K_o={orderValue}_do={disorderValue}_nsm={nsm.value}_ee={eventEffect.val}_{initialStateString}"
+        save_path = f"{saveLocation}{metric.val}_d={density}_n={n}_r={radius}_swt=K_o={orderValue}_do={disorderValue}_nsm={nsm.value}_ee={eventEffect.val}_{initialStateString}"
     
     match eventEffect:
         case EventEffect.ALIGN_TO_FIXED_ANGLE:
