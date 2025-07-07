@@ -7,6 +7,7 @@ import evaluators.VisualizerDependentInformationEval as vde
 import services.ServiceSavedModel as ssm
 from evaluators.EvaluatorDependentInformation import EvaluatorDependentInformation
 from enums.EnumMetrics import Metrics
+from enums.EnumEventSelectionType import EventSelectionType
 
 # matplotlib default colours with corresponding colours that are 65% and 50% lighter
 COLOURS = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
@@ -23,7 +24,8 @@ class EvaluatorMultiDependentInformation(object):
 
     def __init__(self, metric, base_paths, min_i, max_i, threshold=0.01, use_agglomerative_clustering=True,
                  switch_type=None, from_csv=False, target_switch_value=None, event_start=None, 
-                 event_origin_point=(None,None), evaluationTimestepInterval=1):
+                 event_origin_point=(None,None), event_selection_type=EventSelectionType.RANDOM,
+                 number_of_affected=None, include_affected=True, evaluationTimestepInterval=1):
         self.metric = metric
         self.base_paths = base_paths
         self.min_i = min_i
@@ -35,6 +37,9 @@ class EvaluatorMultiDependentInformation(object):
         self.target_switch_value = target_switch_value
         self.event_start = event_start
         self.event_origin_point = event_origin_point
+        self.event_selection_type = event_selection_type
+        self.number_of_affected = number_of_affected
+        self.include_affected = include_affected
         self.evaluationTimestepInterval = evaluationTimestepInterval
 
     def evaluate(self):
@@ -62,14 +67,28 @@ class EvaluatorMultiDependentInformation(object):
                         model_params, simulation_data = ssm.loadModelFromCsv(path, path_model_params)
                     switch_values = []
                 else:
-                    path = f"{base_path}_{individualRun}.json"
+                    path = f"{base_path}_{individualRun}.json.json"
                     if self.switch_type:
                         model_params, simulation_data, switch_values = ssm.loadModel(path=path, switchTypes=[self.switch_type], loadSwitchValues=True)
                     else:
                         model_params, simulation_data = ssm.loadModel(path=path)
                         switch_values = []
                 _, positions, orientations = simulation_data
-                evaluator = EvaluatorDependentInformation(self.metric, positions, orientations, model_params["domainSize"], model_params["radius"], self.threshold, self.use_agglomerative_clustering, switch_values, self.target_switch_value, self.event_start, self.event_origin_point)
+                evaluator = EvaluatorDependentInformation(metric=self.metric,
+                                                          positions=positions,
+                                                          orientations=orientations,
+                                                          domain_size= model_params['domainSize'],
+                                                          radius=model_params['radius'],
+                                                          threshold=self.threshold,
+                                                          use_agglomerative_clustering=self.use_agglomerative_clustering,
+                                                          switch_values= switch_values,
+                                                          target_switch_value=self.target_switch_value,
+                                                          event_start=self.event_start,
+                                                          event_origin_point=self.event_origin_point,
+                                                          event_selection_type=self.event_selection_type,
+                                                          number_of_affected=self.number_of_affected,
+                                                          include_affected=self.include_affected,
+                                                          contribution_threshold=self.threshold)
                 result = evaluator.evaluate()
                 results.append(result)
             
@@ -80,6 +99,13 @@ class EvaluatorMultiDependentInformation(object):
             for k in range(len(ddi.keys())):
                 if ddi[k] == []:
                     continue
+                # if ddi[k].isinstance(dict):
+                #     for key, value in ddi[k].items():
+                #         if isinstance(value, list):
+                #             dd[key].append(np.average(value))
+                #         else:
+                #             dd[key].append(value)
+                # else:
                 dd[k].append(np.average(ddi[k]))
                 varianceDataModel.append(np.array(ddi[k]))
             varianceData.append(varianceDataModel)
