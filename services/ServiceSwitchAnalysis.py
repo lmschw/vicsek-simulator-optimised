@@ -18,9 +18,9 @@ def compute_time_between_exposure_and_switch(positions, switch_values, target_sw
                         switched_after_by_id[i] = [t-exposed_at[i]]
                 else:
                     if i in switched_after_by_id:
-                        switched_after_by_id[i].append(-1)
+                        switched_after_by_id[i].append(15000)
                     else:
-                        switched_after_by_id[i] = [-1]
+                        switched_after_by_id[i] = [15000]  # If not exposed, set to a large value (e.g., 15000)
     switched_after_by_time = {}
     for k in switched_after_by_id.keys():
         for v in switched_after_by_id[k]:
