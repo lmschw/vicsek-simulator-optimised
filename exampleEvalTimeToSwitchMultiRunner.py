@@ -139,7 +139,7 @@ eventEffects = [EventEffect.ALIGN_TO_FIXED_ANGLE,
 
 saveLocation = f"results_070725/"
 iStart = 1
-iStop = 11
+iStop = 101
 
 baseDataLocation = "j:/noise_old_code/"
 
@@ -158,8 +158,8 @@ ks = [1, 5]
 
 # K VS. START
 
-iMin = 11
-iMax = 15
+iMin = 1
+iMax = 101
 from_csv = False
 use_agglo = True
 event_selection_type = EventSelectionType.RANDOM
