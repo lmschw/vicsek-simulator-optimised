@@ -180,7 +180,10 @@ def visualize_dots_time_to_switch(data, xLabel=None, yLabel=None, subtitle=None,
         y.append(data[k])
         s.append(DOT_FACTOR)
 
-    ratio_social = data[-1]/np.sum(list(data.values()))
+    if -1 in data.keys():
+        ratio_social = data[-1]/np.sum(list(data.values()))
+    else:
+        ratio_social = 0.0
     ratio_text = f"{np.round(ratio_social*100, 2)}% socially transmitted"
     print(ratio_text)
     visualize_dots(x=x,
@@ -214,7 +217,8 @@ def visualize_dots(x, y, s, xLabel=None, yLabel=None, subtitle=None, colourBackg
         y = np.arange(ylim[0], ylim[1], 0.01)
         ax.fill_betweenx(y, colourBackgroundForTimesteps[0], colourBackgroundForTimesteps[1], facecolor='green', alpha=0.2)
     if savePath != None:
-        plt.savefig(savePath)
+        plt.savefig(f"{savePath}.svg")
+        plt.savefig(f"{savePath}.pdf")
     if show:
         plt.show()
     plt.close()
