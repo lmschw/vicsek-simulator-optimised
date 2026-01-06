@@ -55,15 +55,6 @@ class SwarmSimulation:
         self.iteration_print_frequency = iteration_print_frequency
         self.curr_agents = None
         self.centroid_trajectory = []
-        self.fly_lengths = []
-        self.collective_fly_lengths = []
-        self.n_leaders = 0
-        self.historic_leaders = 0
-        self.flights_completed = 0
-        self.leaders_demoted = 0
-        self.states = []
-        self.centroid_trajectory = []
-        self.stabilities = np.array([])
         self.states = []
         self.initialize()
 
