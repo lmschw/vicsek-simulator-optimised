@@ -11,6 +11,8 @@ from shapely.ops import nearest_points
 import services.ServiceVicsekHelper as svh
 import services.ServiceOrientations as sor
 
+from enums.EnumNeighbourSelectionMechanism import NeighbourSelectionMechanism as nsm
+
 
 # AE Constants
 EPSILON = 12
@@ -35,11 +37,16 @@ DT = 0.05
 DES_DIST = SIGMA * 2**(1/2)
 
 class SwarmSimulation:
-    def __init__(self, num_agents=7, num_steps = 1000, env_size = 25, degrees_of_vision=2*np.pi, visualize=True, follow=True, graph_freq=5):
+    def __init__(self, num_agents=7, num_steps=1000, env_size=25, degrees_of_vision=2*np.pi, radius=np.inf,
+                 neighbour_selection_mechanism=nsm.NEAREST, k=np.inf,
+                 visualize=True, follow=True, graph_freq=5):
         self.num_agents = num_agents
         self.num_steps = num_steps
         self.env_size = env_size
         self.degrees_of_vision = degrees_of_vision
+        self.radius = radius
+        self.nsm = neighbour_selection_mechanism
+        self.k = k
         self.visualize = visualize
         self.follow = follow
         self.graph_freq = graph_freq
@@ -96,6 +103,9 @@ class SwarmSimulation:
         num_agents = len(pos_xs)
         self.num_agents = num_agents
 
+        # making sure we're not picking more neighbours than we could conceivable have
+        if self.k == np.inf:
+            self.k = self.num_agents
 
         self.curr_agents = np.column_stack([pos_xs, pos_ys, pos_hs])
 
@@ -129,13 +139,6 @@ class SwarmSimulation:
 
         plt.pause(0.000001)
 
-    def get_neighbour_mask(self):
-        positions = self.curr_agents[:2].T
-        orientations = sor.computeUvCoordinatesForList(self.curr_agents[2])
-        neighbours = svh.getNeighboursWithLimitedVision(positions=positions, orientations=orientations, domainSize=[np.inf, np.inf],
-                                                                radius=self.radius, degreesOfVision=self.degrees_of_vision)
-
-
     def compute_distances_and_angles(self):
         """
         Computes and returns the distances and its x and y elements for all pairs of agents
@@ -166,12 +169,18 @@ class SwarmSimulation:
         return distances, angles
     
     def get_neighbours(self, distances):
-        indices = np.argsort(distances)[:,:1]
-        neighbours = np.full((self.num_agents, self.num_agents), False)
-        mask = self.__createBooleanMaskFromPickedNeighbourIndices(indices, 1)
-        return mask
+        positions = self.curr_agents[:,:2]
+        orientations = sor.computeUvCoordinatesForList(self.curr_agents[:,2])
+        is_neighbours = svh.getNeighboursWithLimitedVision(positions=positions, orientations=orientations, domainSize=[np.inf, np.inf],
+                                                                radius=self.radius, degreesOfVision=self.degrees_of_vision)
+
+        match self.nsm:
+            case nsm.NEAREST:
+                indices = np.argsort(distances)[:,:self.k]
+        mask = self.create_boolean_mask(indices, self.k)
+        return mask * is_neighbours
     
-    def __createBooleanMaskFromPickedNeighbourIndices(self, picked, kMax):
+    def create_boolean_mask(self, picked, kMax):
         if len(picked) == 0 or len(picked[0]) == 0:
             return np.full((self.num_agents, self.num_agents), False)
         # create the boolean mask
