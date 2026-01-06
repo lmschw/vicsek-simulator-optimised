@@ -177,6 +177,9 @@ class SwarmSimulation:
         match self.nsm:
             case nsm.NEAREST:
                 indices = np.argsort(distances)[:,:self.k]
+            case nsm.FARTHEST:
+                indices = np.argsort(-distances)[:,:self.k]
+
         mask = self.create_boolean_mask(indices, self.k)
         return mask * is_neighbours
     

@@ -13,8 +13,8 @@ degrees_of_vision = 2*np.pi
 radius = np.inf
 
 # neighbour selection parameters
-nsm = NeighbourSelectionMechanism.NEAREST
-k = 5
+nsm = NeighbourSelectionMechanism.FARTHEST
+k = 1
 
 # visualisation parameters
 graph_freq = 10
