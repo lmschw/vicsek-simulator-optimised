@@ -184,6 +184,8 @@ class SwarmSimulation:
                 indices = np.argsort(orientation_diffs)[:,:self.k]
             case nsm.HIGHEST_ORIENTATION_DIFFERENCE:
                 indices = np.argsort(-orientation_diffs)[:,:self.k]
+            case nsm.ALL:
+                indices = np.argsort(distances)
 
         mask = self.create_boolean_mask(indices, self.k)
         return mask * is_neighbours
