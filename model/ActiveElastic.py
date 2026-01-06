@@ -8,7 +8,7 @@ from datetime import datetime
 from shapely.geometry import LineString, Point
 from shapely.ops import nearest_points
 
-import services.ServiceVicsekHelper as svh
+import services.ServiceAEHelper as saeh
 import services.ServiceOrientations as sor
 
 from enums.EnumNeighbourSelectionMechanism import NeighbourSelectionMechanism as nsm
@@ -171,7 +171,7 @@ class SwarmSimulation:
     def get_neighbours(self, distances):
         positions = self.curr_agents[:,:2]
         orientations = sor.computeUvCoordinatesForList(self.curr_agents[:,2])
-        is_neighbours = svh.getNeighboursWithLimitedVision(positions=positions, orientations=orientations, domainSize=[np.inf, np.inf],
+        is_neighbours = saeh.getNeighboursWithLimitedVision(positions=positions, orientations=orientations,
                                                                 radius=self.radius, degreesOfVision=self.degrees_of_vision)
 
         match self.nsm:

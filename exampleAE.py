@@ -14,7 +14,7 @@ radius = np.inf
 
 # neighbour selection parameters
 nsm = NeighbourSelectionMechanism.NEAREST
-k = 1
+k = 5
 
 # visualisation parameters
 graph_freq = 10
