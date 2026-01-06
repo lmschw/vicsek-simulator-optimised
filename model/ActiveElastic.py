@@ -13,7 +13,6 @@ import services.ServiceOrientations as sor
 
 from enums.EnumNeighbourSelectionMechanism import NeighbourSelectionMechanism as nsm
 
-
 # AE Constants
 EPSILON = 12
 SIGMA = 0.7
@@ -35,6 +34,8 @@ SENSE_RANGE = 2.0
 B_SENSE_RANGE = 0.5
 DT = 0.05
 DES_DIST = SIGMA * 2**(1/2)
+
+SPACING = 0.8
 
 class SwarmSimulation:
     def __init__(self, num_agents=7, num_steps=1000, env_size=25, degrees_of_vision=2*np.pi, radius=np.inf,
@@ -74,32 +75,29 @@ class SwarmSimulation:
             self.ax.set_xlim(-self.env_size, self.env_size)
             self.ax.set_ylim(-self.env_size, self.env_size)
 
+        # making sure we're not picking more neighbours than we could conceivable have
+        if self.k == np.inf:
+            self.k = self.num_agents
+
 
     def init_agents(self, n_agents):
         rng = np.random
         n_points_x = n_agents
         n_points_y = n_agents
-        spacing = 0.8
+        
         init_x = 0
         init_y = 0
 
-        x_values = np.linspace(init_x, init_x + (n_points_x - 1) * spacing, n_points_x)
-        y_values = np.linspace(init_y, init_y + (n_points_y - 1) * spacing, n_points_y)
+        x_values = np.linspace(init_x, init_x + (n_points_x - 1) * SPACING, n_points_x)
+        y_values = np.linspace(init_y, init_y + (n_points_y - 1) * SPACING, n_points_y)
         xx, yy = np.meshgrid(x_values, y_values)
 
-        pos_xs = xx.ravel() + (rng.random(n_points_x * n_points_y) * spacing * 0.5) - spacing * 0.25
-        pos_ys = yy.ravel() + (rng.random(n_points_x * n_points_y) * spacing * 0.5) - spacing * 0.25
-        pos_hs = (rng.random(n_points_x * n_points_x) * 3.1415926 * 2) - 3.1415926
+        pos_xs = xx.ravel() + (rng.random(n_points_x * n_points_y) * SPACING * 0.5) - SPACING * 0.25
+        pos_ys = yy.ravel() + (rng.random(n_points_x * n_points_y) * SPACING * 0.5) - SPACING * 0.25
+        pos_hs = (rng.random(n_points_x * n_points_x) * np.pi * 2) - np.pi
 
-        # pos_xs = np.array([-3, -2, -2, -2.1])
-        # pos_ys = np.array([-2.5, -2, -3, -2.4])
-        # pos_hs = np.array([0.5, 0.5, 0.5, 0.5])
         num_agents = len(pos_xs)
         self.num_agents = num_agents
-
-        # making sure we're not picking more neighbours than we could conceivable have
-        if self.k == np.inf:
-            self.k = self.num_agents
 
         self.curr_agents = np.column_stack([pos_xs, pos_ys, pos_hs])
 
@@ -155,10 +153,10 @@ class SwarmSimulation:
         if self.debug_prints:
             print(f"Dists: {distances}")
         
-
         # Calculate angles in the local frame of reference
         headings = self.curr_agents[:, 2]
         angles = np.arctan2(y_diffs, x_diffs) - headings[:, np.newaxis]
+        #if self.debug_prints:
         # print(f"Angles: {angles}")
 
         return distances, angles
@@ -211,14 +209,8 @@ class SwarmSimulation:
         forces = -EPSILON * (2 * (self.sigmas[:, np.newaxis] ** 4 / dists ** 5) - (self.sigmas[:, np.newaxis] ** 2 / dists ** 3))
         forces[dists == np.inf] = 0.0
 
-        """
-        forces = -EPSILON * (2 * (self.sigmas[:, np.newaxis] ** 4 / distances ** 5) - (self.sigmas[:, np.newaxis] ** 2 / distances ** 3))
-        forces[distances == np.inf] = 0.0
-        neighbours = self.get_neighbours(distances)
-        forces[neighbours == False] = 0.0
-        """
+        #if self.debug_prints:
         # print(f"Forces: {forces}")
-
 
         p_x = np.sum(np.multiply(forces, np.cos(angles)), axis=1)
         p_y = np.sum(np.multiply(forces, np.sin(angles)), axis=1)
@@ -247,13 +239,6 @@ class SwarmSimulation:
         h_y = alignment_mags * np.sin(alignment_angs - headings)
 
         return h_x, h_y
-    
-    def get_gi_elements(self, distances, angles):
-        """
-        Calculates the x and y components of the goal direction vector
-
-        """  
-        pass
 
     def compute_fi(self):
         """
@@ -269,9 +254,10 @@ class SwarmSimulation:
 
         f_x = ALPHA * p_x + BETA * h_x 
         f_y = ALPHA * p_y + BETA * h_y 
+
+        #if self.debug_prints:
         # print(f"Fx: {f_x}")
         # print(f"Fy: {f_y}")
-        
 
         return f_x, f_y
     
@@ -292,7 +278,7 @@ class SwarmSimulation:
     
     def update_agents(self):
         """
-        Updates agents duhh
+        Updates agents
 
         """  
         # Calculate forces
@@ -329,32 +315,14 @@ class SwarmSimulation:
             if not (self.current_step % self.graph_freq) and self.visualize and self.current_step > 0:
                 self.graph_agents()
 
-
-
-    # --------------------------------------------------------------------- Utils ---------------------------------------------------------------------
-
     def wrap_to_pi(self, x):
         """
         Wrapes the angles to [-pi, pi]
 
         """
-        x = x % (3.1415926 * 2)
-        x = (x + (3.1415926 * 2)) % (3.1415926 * 2)
+        x = x % (np.pi * 2)
+        x = (x + (np.pi * 2)) % (np.pi * 2)
 
-        x[x > 3.1415926] = x[x > 3.1415926] - (3.1415926 * 2)
+        x[x > np.pi] = x[x > np.pi] - (np.pi * 2)
 
         return x
-        
-
-if __name__ == "__main__":
-    n_agents = 3
-    n_steps = 10000
-    env_size = 100
-    graph_freq = 10
-    visualize = True
-    follow = True
-    
-    sim = SwarmSimulation(n_agents, n_steps, env_size, visualize, follow, graph_freq)
-    sim.run()
-
-
