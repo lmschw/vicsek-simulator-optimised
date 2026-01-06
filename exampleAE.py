@@ -13,13 +13,17 @@ degrees_of_vision = 2*np.pi
 radius = np.inf
 
 # neighbour selection parameters
-nsm = NeighbourSelectionMechanism.RANDOM
-k = 9
+nsm = NeighbourSelectionMechanism.NEAREST
+k = 5
 
 # visualisation parameters
 graph_freq = 10
 visualize = True
 follow = True
+
+# debugging
+debug_prints = False
+iteration_print_frequency = 500
 
 sim = ae.SwarmSimulation(num_agents=n_agents, 
                          num_steps=n_steps, 
@@ -30,5 +34,8 @@ sim = ae.SwarmSimulation(num_agents=n_agents,
                          k=k,
                          visualize=visualize, 
                          follow=follow, 
-                         graph_freq=graph_freq)
+                         graph_freq=graph_freq,
+                         debug_prints=debug_prints,
+                         iteration_print_frequency=iteration_print_frequency)
 sim.run()
+print("Done")

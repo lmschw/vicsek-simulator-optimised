@@ -39,7 +39,8 @@ DES_DIST = SIGMA * 2**(1/2)
 class SwarmSimulation:
     def __init__(self, num_agents=7, num_steps=1000, env_size=25, degrees_of_vision=2*np.pi, radius=np.inf,
                  neighbour_selection_mechanism=nsm.NEAREST, k=np.inf,
-                 visualize=True, follow=True, graph_freq=5):
+                 visualize=True, follow=True, graph_freq=5, debug_prints=False,
+                 iteration_print_frequency=None):
         self.num_agents = num_agents
         self.num_steps = num_steps
         self.env_size = env_size
@@ -50,6 +51,8 @@ class SwarmSimulation:
         self.visualize = visualize
         self.follow = follow
         self.graph_freq = graph_freq
+        self.debug_prints = debug_prints
+        self.iteration_print_frequency = iteration_print_frequency
         self.curr_agents = None
         self.centroid_trajectory = []
         self.fly_lengths = []
@@ -158,7 +161,8 @@ class SwarmSimulation:
         distances = np.sqrt(np.multiply(x_diffs, x_diffs) + np.multiply(y_diffs, y_diffs))  
         distances[distances > SENSE_RANGE] = np.inf
         #distances[distances == 0.0] = np.inf
-        print(f"Dists: {distances}")
+        if self.debug_prints:
+            print(f"Dists: {distances}")
         
 
         # Calculate angles in the local frame of reference
@@ -328,7 +332,7 @@ class SwarmSimulation:
             centroid_x, centroid_y = np.mean(self.curr_agents[:, 0]), np.mean(self.curr_agents[:, 1])
             self.centroid_trajectory.append((centroid_x, centroid_y))
 
-            if not (self.current_step % 250):
+            if self.iteration_print_frequency and not (self.current_step % self.iteration_print_frequency):
                 print(f"------------------------ Iteration {self.current_step} ------------------------")
 
             if not (self.current_step % self.graph_freq) and self.visualize and self.current_step > 0:
