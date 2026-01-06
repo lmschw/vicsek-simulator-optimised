@@ -174,11 +174,14 @@ class SwarmSimulation:
         is_neighbours = saeh.getNeighboursWithLimitedVision(positions=positions, orientations=orientations,
                                                                 radius=self.radius, degreesOfVision=self.degrees_of_vision)
 
+        orientation_diffs = saeh.getOrientationDifferences(orientations)
         match self.nsm:
             case nsm.NEAREST:
                 indices = np.argsort(distances)[:,:self.k]
             case nsm.FARTHEST:
                 indices = np.argsort(-distances)[:,:self.k]
+            case nsm.LEAST_ORIENTATION_DIFFERENCE:
+                indices = np.argsort(orientation_diffs)[:,:self.k]
 
         mask = self.create_boolean_mask(indices, self.k)
         return mask * is_neighbours
