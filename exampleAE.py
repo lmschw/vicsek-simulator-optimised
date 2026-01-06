@@ -13,7 +13,7 @@ degrees_of_vision = 2*np.pi
 radius = np.inf
 
 # neighbour selection parameters
-nsm = NeighbourSelectionMechanism.ALL
+nsm = NeighbourSelectionMechanism.RANDOM
 k = 9
 
 # visualisation parameters

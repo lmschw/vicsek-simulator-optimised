@@ -186,6 +186,11 @@ class SwarmSimulation:
                 indices = np.argsort(-orientation_diffs)[:,:self.k]
             case nsm.ALL:
                 indices = np.argsort(distances)
+            case nsm.RANDOM:
+                indices = np.argsort(distances)
+                rng = np.random.default_rng()
+                rng.shuffle(indices, axis=1)
+                indices = indices[:,:self.k]
 
         mask = self.create_boolean_mask(indices, self.k)
         return mask * is_neighbours
