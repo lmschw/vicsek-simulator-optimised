@@ -150,7 +150,7 @@ class SwarmSimulation:
                     "k": self.k,
                     "radius": self.radius,
                     "neighbourSelectionMechanism": self.nsm.name,
-                    "domainSize": self.env_size,
+                    "domainSize": [self.env_size,self.env_size],
                     "tmax": self.num_steps,
                     "dt": DT,
                     "degreesOfVision": self.degrees_of_vision,
@@ -345,7 +345,6 @@ class SwarmSimulation:
 
             # Update simulation
             self.update_agents()
-            self.current_step +=1
 
             # Update experiment data
             self.states.append(self.curr_agents.copy())
@@ -368,3 +367,5 @@ class SwarmSimulation:
                                         path=self.save_path,
                                         switchValues=switchValues,
                                         switchTypes=[])
+
+            self.current_step +=1
