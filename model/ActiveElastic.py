@@ -10,6 +10,7 @@ from shapely.ops import nearest_points
 
 import services.ServiceAEHelper as saeh
 import services.ServiceOrientations as sor
+import services.ServiceSavedModel as ssm
 
 from enums.EnumNeighbourSelectionMechanism import NeighbourSelectionMechanism as nsm
 
@@ -57,6 +58,7 @@ class SwarmSimulation:
         self.savefile_name = savefile_name
         self.save_frequency = save_frequency
         self.results_dir = results_dir
+        self.save_path = f"{results_dir}/{savefile_name}"
         self.curr_agents = None
         self.centroid_trajectory = []
         self.states = []
@@ -133,6 +135,27 @@ class SwarmSimulation:
             self.ax.set_ylim(-self.env_size, self.env_size)
 
         plt.pause(0.000001)
+
+    def get_parameter_summary(self):
+        """
+        Creates a summary of all the model parameters ready for use for conversion to JSON or strings.
+
+        Parameters:
+            - asString (bool, default False) [optional]: if the summary should be returned as a dictionary or as a single string
+        
+        Returns:
+            A dictionary or a single string containing all model parameters.
+        """
+        summary = {"n": self.num_agents,
+                    "k": self.k,
+                    "radius": self.radius,
+                    "neighbourSelectionMechanism": self.nsm.name,
+                    "domainSize": self.env_size,
+                    "tmax": self.num_steps,
+                    "dt": DT,
+                    "degreesOfVision": self.degrees_of_vision,
+                    }
+        return summary 
 
     def wrap_to_pi(self, x):
         """
@@ -313,6 +336,11 @@ class SwarmSimulation:
         self.curr_agents[:, 2] = self.wrap_to_pi(self.curr_agents[:, 2] + w * DT)
 
     def run(self):
+
+        if self.savefile_name and self.save_frequency:
+            ssm.logModelParams(path=f"{self.results_dir}/{self.savefile_name}_modelParams", modelParamsDict=self.get_parameter_summary())
+            ssm.initialiseCsvFileHeaders(path=f"{self.results_dir}/{self.savefile_name}")
+
         while self.current_step < self.num_steps / DT:
 
             # Update simulation
@@ -331,21 +359,12 @@ class SwarmSimulation:
                 self.graph_agents()
 
 
-            if self.savefile_name and self.save_frequency:
-                data_to_save = {
-                    "num_agents": self.num_agents,
-                    "num_steps": self.num_steps,
-                    'env_size': self.env_size,
-                    'degrees_of_vision': self.degrees_of_vision,
-                    'radius': self.radius,
-                    'neighbour_selection_mechanism': self.nsm.name,
-                    'k': self.k,
-                    'states': self.states
-                }
-
-                run_filename = f"{self.savefile_name}.pickle"
-                file_path = os.path.join(self.results_dir, run_filename)
-                with open(file_path, 'wb') as f:
-                    pickle.dump(data_to_save, f)
-
-                print(f"Saved results to {file_path}") 
+            if self.savefile_name and self.save_frequency and self.current_step % self.save_frequency == 0:
+                switchValues = {'nsms': [], 'ks': [], 'speeds': [], 'activationTimeDelays': []}
+                ssm.saveModelTimestep(timestep=self.current_step, 
+                                        positions=self.curr_agents[:,:2], 
+                                        orientations=sor.computeUvCoordinatesForList(self.curr_agents[:,2]),
+                                        colours=np.full(self.num_agents, 'b'),
+                                        path=self.save_path,
+                                        switchValues=switchValues,
+                                        switchTypes=[])

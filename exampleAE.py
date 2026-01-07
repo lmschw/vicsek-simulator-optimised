@@ -29,7 +29,7 @@ iteration_print_frequency = 500
 
 # saving
 savefile_name=f"ae_{nsm.name}_k={k}_n={n_agents}_steps={n_steps}_dov={np.round(degrees_of_vision,2)}_r={radius}"
-save_frequency=1000 
+save_frequency=1 
 results_dir = os.path.join(os.path.dirname(__file__), "results")
 os.makedirs(results_dir, exist_ok=True)
 
@@ -48,7 +48,6 @@ sim = ae.SwarmSimulation(num_agents=n_agents,
                          savefile_name=savefile_name,
                          save_frequency=save_frequency,
                          results_dir=results_dir)
-#sim.run()
+sim.run()
 
-data = ssm.load_pickle_data("results/NEAREST_k=5_n=3_steps=100_dov=6.28_r=inf.pickle")
 print("Done")
