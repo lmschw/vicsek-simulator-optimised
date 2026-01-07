@@ -41,7 +41,7 @@ class SwarmSimulation:
     def __init__(self, num_agents=7, num_steps=1000, env_size=25, degrees_of_vision=2*np.pi, radius=np.inf,
                  neighbour_selection_mechanism=nsm.NEAREST, k=np.inf,
                  visualize=True, follow=True, graph_freq=5, debug_prints=False,
-                 iteration_print_frequency=None):
+                 iteration_print_frequency=None, savefile_name=None, save_frequency=1, results_dir=None):
         self.num_agents = num_agents
         self.num_steps = num_steps
         self.env_size = env_size
@@ -54,6 +54,9 @@ class SwarmSimulation:
         self.graph_freq = graph_freq
         self.debug_prints = debug_prints
         self.iteration_print_frequency = iteration_print_frequency
+        self.savefile_name = savefile_name
+        self.save_frequency = save_frequency
+        self.results_dir = results_dir
         self.curr_agents = None
         self.centroid_trajectory = []
         self.states = []
@@ -130,6 +133,18 @@ class SwarmSimulation:
             self.ax.set_ylim(-self.env_size, self.env_size)
 
         plt.pause(0.000001)
+
+    def wrap_to_pi(self, x):
+        """
+        Wrapes the angles to [-pi, pi]
+
+        """
+        x = x % (np.pi * 2)
+        x = (x + (np.pi * 2)) % (np.pi * 2)
+
+        x[x > np.pi] = x[x > np.pi] - (np.pi * 2)
+
+        return x
 
     def compute_distances_and_angles(self):
         """
@@ -315,14 +330,22 @@ class SwarmSimulation:
             if not (self.current_step % self.graph_freq) and self.visualize and self.current_step > 0:
                 self.graph_agents()
 
-    def wrap_to_pi(self, x):
-        """
-        Wrapes the angles to [-pi, pi]
 
-        """
-        x = x % (np.pi * 2)
-        x = (x + (np.pi * 2)) % (np.pi * 2)
+            if self.savefile_name and self.save_frequency:
+                data_to_save = {
+                    "num_agents": self.num_agents,
+                    "num_steps": self.num_steps,
+                    'env_size': self.env_size,
+                    'degrees_of_vision': self.degrees_of_vision,
+                    'radius': self.radius,
+                    'neighbour_selection_mechanism': self.nsm.name,
+                    'k': self.k,
+                    'states': self.states
+                }
 
-        x[x > np.pi] = x[x > np.pi] - (np.pi * 2)
+                run_filename = f"{self.savefile_name}.pickle"
+                file_path = os.path.join(self.results_dir, run_filename)
+                with open(file_path, 'wb') as f:
+                    pickle.dump(data_to_save, f)
 
-        return x
+                print(f"Saved results to {file_path}") 

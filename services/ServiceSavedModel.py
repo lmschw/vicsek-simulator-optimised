@@ -4,6 +4,7 @@ import codecs, json, csv
 import numpy as np
 import pandas as pd
 import ast 
+import pickle
 
 """
 Service contains static methods to save and load models to/from json files.
@@ -382,15 +383,7 @@ def extract_value(d, key):
     else:
         raise Exception("The switch type key was not found in the data")
 
-
-"""
-def appendCsvRow(path, fieldnames, rowDict):
-    with open(path, 'a', newline='') as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writerow(rowDict)
-"""
-"""
-def appendCsvRow(path, row):
-    with open(path,'a') as fd:
-        fd.write(row)
-"""
+def load_pickle_data(path):
+    with open(path, "rb") as input_file:
+        data = pickle.load(input_file)
+    return data
