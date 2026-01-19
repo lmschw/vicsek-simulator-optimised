@@ -8,6 +8,10 @@ import services.ServiceSavedModel as ssm
 from enums.EnumNeighbourSelectionMechanism import NeighbourSelectionMechanism
 from enums.EnumThresholdEvaluationMethod import ThresholdEvaluationMethod
 from enums.EnumSwitchType import SwitchType
+from enums.EnumEventEffect import EventEffect
+from enums.EnumDistributionType import DistributionType
+from enums.EnumEventSelectionType import EventSelectionType
+from events.ExternalStimulusEventActiveElastic import ExternalStimulusActiveElasticEvent
 
 # environment and simulation parameters
 n_agents = 3
@@ -20,7 +24,7 @@ radius = np.inf
 
 # neighbour selection parameters
 nsm = NeighbourSelectionMechanism.NEAREST
-k = 5
+k = 1
 update_if_no_neighbours = True
 threshold_evaluation_method = ThresholdEvaluationMethod.LOCAL_ORDER
 is_activation_time_delay_relevant_for_events = False
@@ -28,14 +32,25 @@ activation_time_delays = []
 
 # Switch Summary
 nsm_switch = SwitchInformation(switchType=SwitchType.NEIGHBOUR_SELECTION_MECHANISM,
-                                    values=[NeighbourSelectionMechanism.NEAREST, NeighbourSelectionMechanism.NEAREST], 
+                                    values=[NeighbourSelectionMechanism.NEAREST, NeighbourSelectionMechanism.FARTHEST], 
                                     thresholds=[0.1], 
                                     numberPreviousStepsForThreshold=100, 
                                     initialValues=None)
 switch_summary = SwitchSummary([nsm_switch])
 
+event = ExternalStimulusActiveElasticEvent(startTimestep=0,
+                                           duration=1000,
+                                           domainSize=[env_size, env_size],
+                                           eventEffect=EventEffect.ALIGN_TO_FIXED_ANGLE,
+                                           distributionType=DistributionType.LOCAL_SINGLE_SITE,
+                                           areas=[[50, 50, radius]],
+                                           radius=radius,
+                                           eventSelectionType=EventSelectionType.NEAREST_DISTANCE,
+                                           angle=np.pi,
+                                           noisePercentage=1)
+
 # events
-events = []
+events = [event]
 
 # visualisation parameters
 graph_freq = 10

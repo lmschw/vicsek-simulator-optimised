@@ -89,6 +89,11 @@ class SwarmSimulation:
         self.disorder_placeholder = -1
         self.order_placeholder = -2
 
+        # preparing events
+        self.event_last_updated = -1
+        self.event_affected = np.full(self.num_agents, 0)
+        self.event_point = np.array([0,0])
+
         self.init_agents(self.num_agents)
         self.sigmas = np.full(self.num_agents, SIGMA)
         self.current_step = 0
@@ -228,7 +233,7 @@ class SwarmSimulation:
                     "dt": DT,
                     "degreesOfVision": self.degrees_of_vision,
                     "activationTimeDelays": self.activation_time_delays,
-                    "isActivationTimeDelayRelevantForEvents": self.is_activation_time_delay_relevant_for_events,
+                    "is_activation_time_delay_relevant_for_events": self.is_activation_time_delay_relevant_for_events,
                     }
      
         if self.colour_type != None:
@@ -610,7 +615,7 @@ class SwarmSimulation:
         return ns
     
     # TODO: fix event handling for AE
-    def handle_events(self, t, nsms, ks, speeds, activation_time_delays):
+    def handle_events(self):
         """
         Handles all types of events.
 
@@ -626,12 +631,33 @@ class SwarmSimulation:
         """
         positions = self.curr_agents[:,:2]
         orientations = sor.computeUvCoordinatesForList(self.curr_agents[:,2])
-        blocked = np.full(self.num_agents, False)
-        colours = np.full(self.num_agents, 'k')
         if self.events != None:
                 for event in self.events:
-                    orientations, nsms, ks, speeds, blocked, colours = event.check(self.num_agents, t, positions, orientations, nsms, ks, speeds, DT, activation_time_delays, self.isActivationTimeDelayRelevantForEvents, self.colourType)
-        return orientations, nsms, ks, speeds, blocked, colours
+                    self.event_last_updated, self.event_affected, self.blocked, self.event_point = event.check(self.num_agents, 
+                                                                                                                self.current_step, 
+                                                                                                                positions, 
+                                                                                                                orientations, 
+                                                                                                                self.nsms,
+                                                                                                                self.ks,
+                                                                                                                np.full(self.num_agents, 0), 
+                                                                                                                DT, 
+                                                                                                                self.activation_time_delays, 
+                                                                                                                self.is_activation_time_delay_relevant_for_events, 
+                                                                                                                self.colour_type)
+
+    def compute_orientations_event(self):
+        # Vector from agent to center
+        dir_to_center = self.event_point - self.curr_agents[:,:2]
+
+        # Normalize
+        norms = np.linalg.norm(dir_to_center, axis=1, keepdims=True)
+        dir_unit = dir_to_center / (norms + 1e-12)
+
+        o_x = self.event_affected * dir_unit[:, 0]
+        o_y = self.event_affected * dir_unit[:, 1]
+
+        return o_x, o_y
+
 
     def get_pi_elements(self, distances, angles, neighbour_mask):
         """
@@ -641,7 +667,7 @@ class SwarmSimulation:
         distances[distances == np.inf] = 0.0
         dists = neighbour_mask * distances
         dists[dists == 0.0] = np.inf
-        forces = -EPSILON * (2 * (self.sigmas[:, np.newaxis] ** 4 / dists ** 5) - (self.sigmas[:, np.newaxis] ** 2 / dists ** 3))
+        forces = -EPSILON * (2 * (self.sigmas[:, np.newaxis] ** 4 / dists ** 5) - (self.sigmas[:, np.newaxis] ** 2 / dists ** 3)) 
         forces[dists == np.inf] = 0.0
 
         #if self.debug_prints:
@@ -718,6 +744,14 @@ class SwarmSimulation:
         """  
         # Calculate forces
         f_x, f_y = self.compute_fi()
+
+        if self.event_last_updated == self.current_step:
+            o_x, o_y = self.compute_orientations_event()
+            mask = self.event_last_updated != 0.0
+            f_x[mask] = o_x[mask]
+            f_y[mask] = o_y[mask]
+
+
         u, w = self.compute_u_w(f_x, f_y)
 
         # Project to local frame
@@ -739,6 +773,9 @@ class SwarmSimulation:
             ssm.initialiseCsvFileHeaders(path=f"{self.results_dir}/{self.savefile_name}")
 
         while self.current_step < self.num_steps / DT:
+
+            # events
+            self.handle_events()
 
             # Update simulation
             self.update_agents()
