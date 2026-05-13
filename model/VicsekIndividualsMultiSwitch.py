@@ -10,6 +10,7 @@ import services.ServiceOrientations as ServiceOrientations
 import services.ServiceVicsekHelper as ServiceVicsekHelper
 import services.ServiceSavedModel as ServiceSavedModel
 import services.ServiceThresholdEvaluation as ServiceThresholdEvaluation
+import services.ServiceMetric as ServiceMetric
 
 import model.SwitchInformation as SwitchInformation
 
@@ -579,6 +580,7 @@ class VicsekWithNeighbourSelection():
         if self.logPath:
             ServiceSavedModel.logModelParams(path=f"{self.logPath}_modelParams", modelParamsDict=self.getParameterSummary())
             ServiceSavedModel.initialiseCsvFileHeaders(path=self.logPath)
+            ServiceSavedModel.initialiseCsvFileHeaders(path=f"{self.logPath}_globalOrder")
 
         return positions, orientations, nsms, ks, speeds, activationTimeDelays
     
@@ -670,7 +672,10 @@ class VicsekWithNeighbourSelection():
                                                     path=self.logPath,
                                                     switchValues=switchValues,
                                                     switchTypes=self.switchTypes)
-            
+                ServiceSavedModel.saveGlobalOrderTimestep(timestep=t,
+                                                          globalOrder=ServiceMetric.computeGlobalOrder(orientations),
+                                                          path=f"{self.logPath}_globalOrder")
+
             orientations = self.computeNewOrientations(neighbours, positions, orientations, nsms, ks, activationTimeDelays)
 
             positions += self.dt*(orientations.T * speeds).T

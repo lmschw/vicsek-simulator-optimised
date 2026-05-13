@@ -88,6 +88,11 @@ def saveModelTimestep(timestep, positions, orientations, colours, path, switchVa
         for dict in dict_list:
             w.writerow(dict.values())
 
+def saveGlobalOrderTimestep(timestep, globalOrder, path):
+    with open(f"{path}.csv", 'a', newline='') as f:
+        w = csv.writer(f)
+        w.writerow([timestep, globalOrder])
+
 def loadModelFromCsv(filepathData, filePathModelParams, switchTypes=[], loadColours=False):
     dfParams = pd.read_csv(filePathModelParams,index_col=False)
     modelParams = dfParams.to_dict(orient='records')[0]
