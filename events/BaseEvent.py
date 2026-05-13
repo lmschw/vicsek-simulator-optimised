@@ -1,10 +1,14 @@
 
 import numpy as np
+import random
 
 from enums.EnumColourType import ColourType
+from enums.EnumMovementPattern import MovementPattern
 
 import services.ServicePreparation as ServicePreparation
 import services.ServiceVicsekHelper as ServiceVicsekHelper
+import services.ServiceOrientations as ServiceOrientations
+import services.ServiceSavedModel as ServiceSavedModel
 
 class BaseEvent:
     # TODO refactor to allow areas with a radius bigger than the radius of a particle, i.e. remove neighbourCells and determine all affected cells here
@@ -13,8 +17,9 @@ class BaseEvent:
     Representation of an event occurring at a specified time and place within the domain and affecting 
     a specified percentage of particles. After creation, the check()-method takes care of everything.
     """
-    def __init__(self, startTimestep, duration, domainSize, eventEffect, noisePercentage=None, blockValues=False, alterValues=False, 
-                 switchSummary=None):
+    def __init__(self, startTimestep, duration, domainSize, eventEffect, movementPattern=MovementPattern.STATIC, movementSpeed=0,
+                 movementUpdateInterval=1, noisePercentage=None, blockValues=False, alterValues=False, 
+                 switchSummary=None, logPath=None, logInterval=1):
         """
         Creates an event that affects part of the swarm at a given timestep.
 
@@ -34,16 +39,24 @@ class BaseEvent:
         self.startTimestep = startTimestep
         self.duration = duration
         self.eventEffect = eventEffect
+        self.movementPattern = movementPattern
+        self.movementSpeed = movementSpeed
+        self.movementUpdateInterval = movementUpdateInterval
         self.domainSize = np.asarray(domainSize)
         self.noisePercentage = noisePercentage
         self.blockValues = blockValues
         self.alterValues = alterValues
         self.switchSummary = switchSummary
+        self.logPath = logPath
+        self.logInterval = logInterval
         if self.noisePercentage != None:
             self.noise = ServicePreparation.getNoiseAmplitudeValueForPercentage(self.noisePercentage)
         if self.alterValues == True and self.switchSummary == None:
             raise Exception("If the event is supposed to alter the values, a switchSummary needs to be supplied")
         
+        if self.logPath:
+            ServiceSavedModel.initialiseCsvFileHeaders(path=self.logPath, headers=["t", "x", "y", "u", "v"])
+
 
     def getShortPrintVersion(self):
         return f"t{self.startTimestep}d{self.duration}e{self.eventEffect.val}"
@@ -52,6 +65,9 @@ class BaseEvent:
         summary = {"startTimestep": self.startTimestep,
             "duration": self.duration,
             "eventEffect": self.eventEffect.val,
+            "movementPattern": self.movementPattern.val,
+            "movementSpeed": self.movementSpeed,
+            "movementUpdateInterval": self.movementUpdateInterval,
             "domainSize": self.domainSize.tolist(),
             "noisePercentage": self.noisePercentage,
             "blockValues": self.blockValues,
@@ -89,6 +105,9 @@ class BaseEvent:
         if self.checkTimestep(currentTimestep):
             # if currentTimestep == self.startTimestep or currentTimestep == (self.startTimestep + self.duration):
             #     print(f"executing event at timestep {currentTimestep}")
+
+            self.updateAreas(currentTimestep)
+
             alteredOrientations, alteredNsms, alteredKs, alteredSpeeds, blockedUpdate, colours = self.executeEvent(totalNumberOfParticles=totalNumberOfParticles, positions=positions, orientations=orientations, nsms=nsms, ks=ks, speeds=speeds, dt=dt, colourType=colourType)
 
             if isActivationTimeDelayRelevantForEvent:
@@ -101,6 +120,8 @@ class BaseEvent:
                     nsms = alteredNsms
                     ks = alteredKs
                     speeds = alteredSpeeds
+            if self.logPath and (currentTimestep-self.startTimestep) % self.logInterval == 0:
+                ServiceSavedModel.logEvent(currentTimestep, self.areas, self.orientation, self.logPath)
         return orientations, nsms, ks, speeds, blocked, colours
 
     def checkTimestep(self, currentTimestep):
@@ -147,6 +168,30 @@ class BaseEvent:
         # base event does not do anything here
         return orientations, nsms, ks, speeds, np.full(totalNumberOfParticles, False), np.full(totalNumberOfParticles, 'k')
     
+    def updateAreas(self, t):
+        """
+        Updates the area information based on the movementPattern.
+
+        Params:
+            - positions (array of tuples (x,y)): the position of every particle in the domain at the current timestep
+            - orientations (array of tuples (u,v)): the orientation of every particle in the domain at the current timestep
+        
+        Returns:
+            Nothing.
+        """
+        initialPosition = [self.areas[0][0], self.areas[0][1]]
+        match self.movementPattern:
+            case MovementPattern.STATIC:
+                position = initialPosition
+                self.orientation = self.orientation
+            case MovementPattern.RANDOM:
+                if (t-self.startTimestep) % self.movementUpdateInterval == 0:
+                    chosenAngle = random.random() * 2*np.pi
+                    self.orientation = ServiceOrientations.computeUvCoordinates(chosenAngle)
+                position = self.__computeNewPosition(initialPosition, self.orientation)
+
+        self.areas = [(position[0], position[1], self.areas[0][2])]
+    
     def getColours(self, colourType, affected, totalNumberOfParticles):
         """
         Determines the colour of every particle for future video rendering.
@@ -163,3 +208,19 @@ class BaseEvent:
         if colourType == ColourType.AFFECTED:
             colours[affected] = 'r'
         return colours
+    
+    def __computeNewPosition(self, initialPosition, orientation):
+        """
+        Computes the new position of the point of origin based on the initial position and the orientation.
+
+        Params:
+            - initialPosition (tuple (x,y)): the current position of the point of origin
+            - orientation (tuple (u,v)): the orientation of movement
+
+        Returns:
+            The new updated (x,y)-position.
+        """
+        change = (self.movementSpeed*orientation[0], self.movementSpeed*orientation[1])
+        position = [initialPosition[0] + change[0], initialPosition[1] + change[1]]
+        position += -self.domainSize*np.floor(position/self.domainSize)
+        return position

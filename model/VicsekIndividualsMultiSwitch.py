@@ -580,7 +580,7 @@ class VicsekWithNeighbourSelection():
         if self.logPath:
             ServiceSavedModel.logModelParams(path=f"{self.logPath}_modelParams", modelParamsDict=self.getParameterSummary())
             ServiceSavedModel.initialiseCsvFileHeaders(path=self.logPath)
-            ServiceSavedModel.initialiseCsvFileHeaders(path=f"{self.logPath}_globalOrder")
+            ServiceSavedModel.initialiseCsvFileHeaders(path=f"{self.logPath}_globalOrder", headers=["t", "globalOrder"])
 
         return positions, orientations, nsms, ks, speeds, activationTimeDelays
     

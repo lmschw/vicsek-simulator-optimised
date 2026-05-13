@@ -93,6 +93,12 @@ def saveGlobalOrderTimestep(timestep, globalOrder, path):
         w = csv.writer(f)
         w.writerow([timestep, globalOrder])
 
+
+def logEvent(timestep, areas, orientation, path):
+    with open(f"{path}.csv", 'a', newline='') as f:
+        w = csv.writer(f)
+        w.writerow([timestep, areas[0][0], areas[0][1], orientation[0], orientation[1]])
+
 def loadModelFromCsv(filepathData, filePathModelParams, switchTypes=[], loadColours=False):
     dfParams = pd.read_csv(filePathModelParams,index_col=False)
     modelParams = dfParams.to_dict(orient='records')[0]

@@ -8,6 +8,7 @@ from enums.EnumDistributionType import DistributionType
 from enums.EnumEventEffect import EventEffect
 from enums.EnumEventSelectionType import EventSelectionType
 from enums.EnumColourType import ColourType
+from enums.EnumMovementPattern import MovementPattern
 
 import events.BaseEvent as BaseEvent
 
@@ -23,8 +24,9 @@ class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
     Representation of an event occurring at a specified time and place within the domain and affecting 
     a specified percentage of particles. After creation, the check()-method takes care of everything.
     """
-    def __init__(self, startTimestep, duration, domainSize, eventEffect, distributionType, areas=None, radius=None, numberOfAffected=None, eventSelectionType=None, 
-                 angle=None, noisePercentage=None, blockValues=False):
+    def __init__(self, startTimestep, duration, domainSize, eventEffect, distributionType, movementPattern=MovementPattern.STATIC, 
+                 movementSpeed=0, movementUpdateInterval=1, areas=None, radius=None, numberOfAffected=None, eventSelectionType=None, 
+                 angle=None, noisePercentage=None, blockValues=False, logPath=None, logInterval=1):
         """
         Creates an external stimulus event that affects part of the swarm at a given timestep.
 
@@ -42,10 +44,21 @@ class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
         Returns:
             No return.
         """
-        super().__init__(startTimestep=startTimestep, duration=duration, domainSize=domainSize, eventEffect=eventEffect, noisePercentage=noisePercentage, blockValues=blockValues)
+        super().__init__(startTimestep=startTimestep, 
+                         duration=duration, 
+                         domainSize=domainSize, 
+                         eventEffect=eventEffect, 
+                         movementPattern=movementPattern, 
+                         movementSpeed=movementSpeed,
+                         movementUpdateInterval=movementUpdateInterval,
+                         noisePercentage=noisePercentage, 
+                         blockValues=blockValues,
+                         logPath=logPath,
+                         logInterval=logInterval)
         self.angle = angle
         self.distributionType = distributionType
         self.areas = areas
+        self.orientation = ServiceOrientations.computeUvCoordinates(angle)
         self.numberOfAffected = numberOfAffected
         self.eventSelectionType = eventSelectionType
 
@@ -63,9 +76,12 @@ class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
         
         if self.numberOfAffected and self.radius:
             print("Radius is set. The full number of affected particles may not be reached.")
+
+        if self.distributionType == DistributionType.GLOBAL and self.movementPattern != MovementPattern.STATIC:
+            raise Exception("Movement is not possible for global effects")
         
     def getShortPrintVersion(self):
-        return f"t{self.startTimestep}d{self.duration}e{self.eventEffect.val}a{self.angle}dt{self.distributionType.value}a{self.areas}"
+        return f"t{self.startTimestep}d{self.duration}e{self.eventEffect.val}a{self.angle}dt{self.distributionType.value}m{self.movementPattern.value}ms{self.movementSpeed}mu={self.movementUpdateInterval}a{self.areas}"
 
     def getParameterSummary(self):
         summary = super().getParameterSummary()
@@ -95,7 +111,6 @@ class ExternalStimulusOrientationChangeEvent(BaseEvent.BaseEvent):
         Returns:
             The orientations, neighbour selection mechanisms, ks, speeds, blockedness and colour of all particles after the event has been executed.
         """
-
         affected = se.selectAffected(eventSelectionType=self.eventSelectionType,
                                      totalNumberOfParticles=totalNumberOfParticles,
                                      positions=positions,

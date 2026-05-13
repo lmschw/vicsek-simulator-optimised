@@ -28,15 +28,15 @@ noise = ServicePreparation.getNoiseAmplitudeValueForPercentage(noisePercentage)
 domainSize = (50, 50)
 numberPreviousSteps = 100
 speed = 1
-thresholds = [0.1]
 
 eventStartTimestep = 5000
 eventDuration = 1000
 distributionType = DistributionType.LOCAL_SINGLE_SITE
 
-densities = [0.025]
-radii = [10]
+densities = [0.01, 0.06, 0.09]
+radii = [5, 10, 20]
 ks = [1, 5]
+threshold_options = [0.1, 0.2, 0.3, 0.4, 0.5]
 eventEffects = [EventEffect.ALIGN_TO_FIXED_ANGLE,
                 EventEffect.AWAY_FROM_ORIGIN,
                 EventEffect.RANDOM]
@@ -57,6 +57,7 @@ nsmCombos = [[NeighbourSelectionMechanism.NEAREST, NeighbourSelectionMechanism.F
 
 iStart = 1
 iStop = 2
+saveInterval = 1
 
 tstart = time.time()
 baseDataLocation = "data/"
@@ -67,7 +68,6 @@ tstartGlobal = time.time()
 ServiceGeneral.logWithTime("start GLOBAL - no switching, no events")
 tmax = tmaxGlobal
 switchSummary = None
-
 
 for density in densities:
     dStart = time.time()
@@ -82,6 +82,7 @@ for density in densities:
                     stStart = time.time()
                     for i in range(iStart, iStop):
                         iStartTime = time.time()
+                        savePath = f"{baseDataLocation}global_nosw_noev_{startingCondition}_d={density}_n={n}_r={radius}_nsm={nsm.value}_k={k}_{i}"
                         simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
                                                                 radius=radius,
                                                                 noise=noise,
@@ -89,16 +90,15 @@ for density in densities:
                                                                 k=k,
                                                                 neighbourSelectionMechanism=nsm,
                                                                 speed=speed,
-                                                                degreesOfVision=np.pi*2)
+                                                                degreesOfVision=np.pi*2,
+                                                                logPath=savePath,
+                                                                logInterval=saveInterval,
+                                                                returnHistories=False)
                         if startingCondition == "ordered":
                             initialState = ServicePreparation.createOrderedInitialDistributionEquidistancedIndividual(None, domainSize, n)
-                            simulationData, switchTypeValues = simulator.simulate(initialState=initialState, tmax=tmax)
+                            simulator.simulate(initialState=initialState, tmax=tmax)
                         else:
-                            simulationData, switchTypeValues = simulator.simulate(tmax=tmax)
-
-                        savePath = f"{baseDataLocation}global_nosw_noev_{startingCondition}_d={density}_n={n}_r={radius}_nsm={nsm.value}_k={k}_{i}.json"
-                        ServiceSavedModel.saveModel(simulationData=simulationData, path=savePath, 
-                                                    modelParams=simulator.getParameterSummary())
+                            simulator.simulate(tmax=tmax)
                         iEnd = time.time()
                         ServiceGeneral.logWithTime(f"Completed GLOBAL d={density}, r={radius}, nsm={nsm.value}, k={k}, st={startingCondition}, i={i} in {ServiceGeneral.formatTime(iEnd-iStartTime)}")
                     stEnd = time.time()
@@ -116,6 +116,7 @@ tendGlobal = time.time()
 ServiceGeneral.logWithTime(f"completed GLOBAL - nosw, noev: {ServiceGeneral.formatTime(tendGlobal-tstartGlobal)}")
 
 
+saveInterval = 100
 # ----------------------------- LOCAL - no switching with event ---------------------------------------------------------
 tstartLocalNoswEv = time.time()
 ServiceGeneral.logWithTime("start LOCAL - no switching with event")
@@ -131,48 +132,54 @@ for density in densities:
             nsmStart = time.time()
             for k in ks:
                 kStart = time.time()
-                for eventEffect in eventEffects:
-                    eeStart = time.time()
-                    areas = [domainSize[0]/2, domainSize[1]/2, radius]
-                    event = ExternalStimulusOrientationChangeEvent(startTimestep=eventStartTimestep,
-                                                                   duration=eventDuration,
-                                                                   domainSize=domainSize,
-                                                                   eventEffect=eventEffect,
-                                                                   distributionType=distributionType,
-                                                                   areas=[areas],
-                                                                   radius=radius,
-                                                                   angle=np.pi
-                                                                   )
-                    for startingCondition in ["ordered", "random"]:
-                        stStart = time.time()
-                        for i in range(iStart, iStop):
-                            iStartTime = time.time()
-                            ServiceGeneral.logWithTime(f"Starting d={density}, r={radius}, nsm={nsm.value}, k={k}, st={startingCondition}, i={i}")
-                            simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
+                for thresholds in threshold_options:
+                    thresholdStart = time.time()
+                    for eventEffect in eventEffects:
+                        eeStart = time.time()
+                        areas = [domainSize[0]/2, domainSize[1]/2, radius]
+                        event = ExternalStimulusOrientationChangeEvent(startTimestep=eventStartTimestep,
+                                                                    duration=eventDuration,
+                                                                    domainSize=domainSize,
+                                                                    eventEffect=eventEffect,
+                                                                    distributionType=distributionType,
+                                                                    areas=[areas],
                                                                     radius=radius,
-                                                                    noise=noise,
-                                                                    numberOfParticles=n,
-                                                                    k=k,
-                                                                    neighbourSelectionMechanism=nsm,
-                                                                    speed=speed,
-                                                                    switchSummary=switchSummary,
-                                                                    degreesOfVision=np.pi*2,
-                                                                    events=[event])
-                            if startingCondition == "ordered":
-                                initialState = ServicePreparation.createOrderedInitialDistributionEquidistancedIndividual(None, domainSize, n)
-                                simulationData, switchTypeValues = simulator.simulate(initialState=initialState, tmax=tmax)
-                            else:
-                                simulationData, switchTypeValues = simulator.simulate(tmax=tmax)
+                                                                    angle=np.pi
+                                                                    )
+                        for startingCondition in ["ordered", "random"]:
+                            stStart = time.time()
+                            for i in range(iStart, iStop):
+                                iStartTime = time.time()
+                                ServiceGeneral.logWithTime(f"Starting d={density}, r={radius}, nsm={nsm.value}, k={k}, st={startingCondition}, i={i}")
+                                savePath = f"{baseDataLocation}local_nosw_1ev_{startingCondition}_d={density}_n={n}_r={radius}_nsm={nsm.value}_k={k}_th={thresholds}_ee={eventEffect.val}_{i}"
 
-                            savePath = f"{baseDataLocation}local_nosw_1ev_{startingCondition}_d={density}_n={n}_r={radius}_nsm={nsm.value}_k={k}_ee={eventEffect.val}_{i}.json"
-                            ServiceSavedModel.saveModel(simulationData=simulationData, path=savePath, 
-                                                        modelParams=simulator.getParameterSummary())
-                            iEnd = time.time()
-                            ServiceGeneral.logWithTime(f"Completed NOSW d={density}, r={radius}, nsm={nsm.value}, k={k}, ee={eventEffect.val}, st={startingCondition}, i={i} in {ServiceGeneral.formatTime(iEnd-iStartTime)}")
-                        stEnd = time.time()
-                        ServiceGeneral.logWithTime(f"Completed NOSW d={density}, r={radius}, nsm={nsm.value}, k={k}, ee={eventEffect.val}, st={startingCondition} in {ServiceGeneral.formatTime(stEnd-stStart)}")
-                    eeEnd = time.time()
-                    ServiceGeneral.logWithTime(f"Completed NOSW d={density}, r={radius}, nsm={nsm.value}, k={k}, ee={eventEffect.val} in {ServiceGeneral.formatTime(eeEnd-eeStart)}")
+                                simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
+                                                                        radius=radius,
+                                                                        noise=noise,
+                                                                        numberOfParticles=n,
+                                                                        k=k,
+                                                                        neighbourSelectionMechanism=nsm,
+                                                                        speed=speed,
+                                                                        switchSummary=switchSummary,
+                                                                        degreesOfVision=np.pi*2,
+                                                                        events=[event],
+                                                                        logPath=savePath,
+                                                                        logInterval=saveInterval,
+                                                                        returnHistories=False)
+                                if startingCondition == "ordered":
+                                    initialState = ServicePreparation.createOrderedInitialDistributionEquidistancedIndividual(None, domainSize, n)
+                                    simulator.simulate(initialState=initialState, tmax=tmax)
+                                else:
+                                    simulator.simulate(tmax=tmax)
+
+                                iEnd = time.time()
+                                ServiceGeneral.logWithTime(f"Completed NOSW d={density}, r={radius}, nsm={nsm.value}, k={k}, thresholds={thresholds}, ee={eventEffect.val}, st={startingCondition}, i={i} in {ServiceGeneral.formatTime(iEnd-iStartTime)}")
+                            stEnd = time.time()
+                            ServiceGeneral.logWithTime(f"Completed NOSW d={density}, r={radius}, nsm={nsm.value}, k={k}, thresholds={thresholds}, ee={eventEffect.val}, st={startingCondition} in {ServiceGeneral.formatTime(stEnd-stStart)}")
+                        eeEnd = time.time()
+                        ServiceGeneral.logWithTime(f"Completed NOSW d={density}, r={radius}, nsm={nsm.value}, k={k}, thresholds={thresholds}, ee={eventEffect.val} in {ServiceGeneral.formatTime(eeEnd-eeStart)}")
+                    thresholdEnd = time.time()
+                    ServiceGeneral.logWithTime(f"Completed NOSW d={density}, r={radius}, nsm={nsm.value}, k={k}, thresholds={thresholds} in {ServiceGeneral.formatTime(thresholdEnd-thresholdStart)}")
                 kEnd = time.time()
                 ServiceGeneral.logWithTime(f"Completed NOSW d={density}, r={radius}, nsm={nsm.value}, k={k} in {ServiceGeneral.formatTime(kEnd-kStart)}")
             nsmEnd = time.time()
@@ -203,52 +210,55 @@ for density in densities:
                                         thresholds=thresholds,
                                         numberPreviousStepsForThreshold=numberPreviousSteps)
             switchSummary = SwitchSummary([kSwitch])
-
-            for eventEffect in eventEffects:
-                eeStart = time.time()
-                areas = [domainSize[0]/2, domainSize[1]/2, radius]
-                event = ExternalStimulusOrientationChangeEvent(startTimestep=eventStartTimestep,
-                                                                duration=eventDuration,
-                                                                domainSize=domainSize,
-                                                                eventEffect=eventEffect,
-                                                                distributionType=distributionType,
-                                                                areas=[areas],
-                                                                radius=radius,
-                                                                angle=np.pi
-                                                                )
-                for startingCondition in ["ordered", "random"]:
-                    stStart = time.time()
-                    if startingCondition == "ordered":
-                        startValue = kCombo[0]
-                    else:
-                        startValue = kCombo[1]
-                    for i in range(iStart, iStop):
-                        iStartTime = time.time()
-                        simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
-                                                                radius=radius,
-                                                                noise=noise,
-                                                                numberOfParticles=n,
-                                                                k=startValue,
-                                                                neighbourSelectionMechanism=nsm,
-                                                                speed=speed,
-                                                                switchSummary=switchSummary,
-                                                                degreesOfVision=np.pi*2,
-                                                                events=[event])
+            for thresholds in threshold_options:
+                thresholdStart = time.time()
+                for eventEffect in eventEffects:
+                    eeStart = time.time()
+                    areas = [domainSize[0]/2, domainSize[1]/2, radius]
+                    event = ExternalStimulusOrientationChangeEvent(startTimestep=eventStartTimestep,
+                                                                    duration=eventDuration,
+                                                                    domainSize=domainSize,
+                                                                    eventEffect=eventEffect,
+                                                                    distributionType=distributionType,
+                                                                    areas=[areas],
+                                                                    radius=radius,
+                                                                    angle=np.pi
+                                                                    )
+                    for startingCondition in ["ordered", "random"]:
+                        stStart = time.time()
                         if startingCondition == "ordered":
-                            initialState = ServicePreparation.createOrderedInitialDistributionEquidistancedIndividual(None, domainSize, n)
-                            simulationData, switchTypeValues = simulator.simulate(initialState=initialState, tmax=tmax)
+                            startValue = kCombo[0]
                         else:
-                            simulationData, switchTypeValues = simulator.simulate(tmax=tmax)
-
-                        savePath = f"{baseDataLocation}local_ksw_1ev_{startingCondition}_st={startValue}_d={density}_n={n}_r={radius}_nsm={nsm.value}_kCombo={kCombo[0]}-{kCombo[1]}_ee={eventEffect.val}_{i}.json"
-                        ServiceSavedModel.saveModel(simulationData=simulationData, path=savePath, 
-                                                    modelParams=simulator.getParameterSummary())
-                        iEnd = time.time()
-                        ServiceGeneral.logWithTime(f"Completed KSW d={density}, r={radius}, nsm={nsm.value},  ee={eventEffect.val}, st={startingCondition}, i={i} in {ServiceGeneral.formatTime(iEnd-iStartTime)}")
-                    stEnd = time.time()
-                    ServiceGeneral.logWithTime(f"Completed KSW d={density}, r={radius}, nsm={nsm.value}, ee={eventEffect.val}, st={startingCondition} in {ServiceGeneral.formatTime(stEnd-stStart)}")
-                eeEnd = time.time()
-                ServiceGeneral.logWithTime(f"Completed KSW d={density}, r={radius}, nsm={nsm.value},ee={eventEffect.val} in {ServiceGeneral.formatTime(eeEnd-eeStart)}")
+                            startValue = kCombo[1]
+                        for i in range(iStart, iStop):
+                            iStartTime = time.time()
+                            savePath = f"{baseDataLocation}local_ksw_1ev_{startingCondition}_st={startValue}_d={density}_n={n}_r={radius}_nsm={nsm.value}_kCombo={kCombo[0]}-{kCombo[1]}_th={thresholds}_ee={eventEffect.val}_{i}"
+                            simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
+                                                                    radius=radius,
+                                                                    noise=noise,
+                                                                    numberOfParticles=n,
+                                                                    k=startValue,
+                                                                    neighbourSelectionMechanism=nsm,
+                                                                    speed=speed,
+                                                                    switchSummary=switchSummary,
+                                                                    degreesOfVision=np.pi*2,
+                                                                    events=[event],
+                                                                    logPath=savePath,
+                                                                    logInterval=saveInterval,
+                                                                    returnHistories=False)
+                            if startingCondition == "ordered":
+                                initialState = ServicePreparation.createOrderedInitialDistributionEquidistancedIndividual(None, domainSize, n)
+                                simulator.simulate(initialState=initialState, tmax=tmax)
+                            else:
+                                simulator.simulate(tmax=tmax)
+                            iEnd = time.time()
+                            ServiceGeneral.logWithTime(f"Completed KSW d={density}, r={radius}, nsm={nsm.value}, thresholds={thresholds}, ee={eventEffect.val}, st={startingCondition}, i={i} in {ServiceGeneral.formatTime(iEnd-iStartTime)}")
+                        stEnd = time.time()
+                        ServiceGeneral.logWithTime(f"Completed KSW d={density}, r={radius}, nsm={nsm.value}, thresholds={thresholds}, ee={eventEffect.val}, st={startingCondition} in {ServiceGeneral.formatTime(stEnd-stStart)}")
+                    eeEnd = time.time()
+                    ServiceGeneral.logWithTime(f"Completed KSW d={density}, r={radius}, nsm={nsm.value}, thresholds={thresholds},ee={eventEffect.val} in {ServiceGeneral.formatTime(eeEnd-eeStart)}")
+                thresholdEnd = time.time()
+                ServiceGeneral.logWithTime(f"Completed KSW d={density}, r={radius}, nsm={nsm.value}, thresholds={thresholds} in {ServiceGeneral.formatTime(thresholdEnd-thresholdStart)}")
             nsmEnd = time.time()
             ServiceGeneral.logWithTime(f"Completed KSW d={density}, r={radius}, nsm={nsm.value} in {ServiceGeneral.formatTime(nsmEnd-nsmStart)}")
         rEnd = time.time()
@@ -278,53 +288,56 @@ for density in densities:
 
             for k in ks:
                 kStart = time.time()
-
-                for eventEffect in eventEffects:
-                    eeStart = time.time()
-                    areas = [domainSize[0]/2, domainSize[1]/2, radius]
-                    event = ExternalStimulusOrientationChangeEvent(startTimestep=eventStartTimestep,
-                                                                    duration=eventDuration,
-                                                                    domainSize=domainSize,
-                                                                    eventEffect=eventEffect,
-                                                                    distributionType=distributionType,
-                                                                    areas=[areas],
-                                                                    radius=radius,
-                                                                    angle=np.pi
-                                                                    )
-                    
-                    for startingCondition in ["ordered", "random"]:
-                        stStart = time.time()
-                        if startingCondition == "ordered":
-                            startValue = nsmCombo[0]
-                        else:
-                            startValue = nsmCombo[1]
-                        for i in range(iStart, iStop):
-                            iStartTime = time.time()
-                            simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
-                                                                    radius=radius,
-                                                                    noise=noise,
-                                                                    numberOfParticles=n,
-                                                                    k=k,
-                                                                    neighbourSelectionMechanism=startValue,
-                                                                    speed=speed,
-                                                                    switchSummary=switchSummary,
-                                                                    degreesOfVision=np.pi*2,
-                                                                    events=[event])
+                for thresholds in threshold_options:
+                    thresholdStart = time.time()
+                    for eventEffect in eventEffects:
+                        eeStart = time.time()
+                        areas = [domainSize[0]/2, domainSize[1]/2, radius]
+                        event = ExternalStimulusOrientationChangeEvent(startTimestep=eventStartTimestep,
+                                                                        duration=eventDuration,
+                                                                        domainSize=domainSize,
+                                                                        eventEffect=eventEffect,
+                                                                        distributionType=distributionType,
+                                                                        areas=[areas],
+                                                                        radius=radius,
+                                                                        angle=np.pi
+                                                                        )
+                        
+                        for startingCondition in ["ordered", "random"]:
+                            stStart = time.time()
                             if startingCondition == "ordered":
-                                initialState = ServicePreparation.createOrderedInitialDistributionEquidistancedIndividual(None, domainSize, n)
-                                simulationData, switchTypeValues = simulator.simulate(initialState=initialState, tmax=tmax)
+                                startValue = nsmCombo[0]
                             else:
-                                simulationData, switchTypeValues = simulator.simulate(tmax=tmax)
-
-                            savePath = f"{baseDataLocation}local_nsmsw_1ev_{startingCondition}_st={startValue.value}_d={density}_n={n}_r={radius}_nsmCombo={nsmCombo[0].value}-{nsmCombo[1].value}_k={k}_ee={eventEffect.val}_{i}.json"
-                            ServiceSavedModel.saveModel(simulationData=simulationData, path=savePath, 
-                                                        modelParams=simulator.getParameterSummary())
-                            iEnd = time.time()
-                            ServiceGeneral.logWithTime(f"Completed NSMSW d={density}, r={radius}, nsm={nsm.value}, k={k}, ee={eventEffect.val}, st={startingCondition}, i={i} in {ServiceGeneral.formatTime(iEnd-iStartTime)}")
-                        stEnd = time.time()
-                        ServiceGeneral.logWithTime(f"Completed NSMSW d={density}, r={radius}, nsm={nsm.value}, k={k}, ee={eventEffect.val}, st={startingCondition} in {ServiceGeneral.formatTime(stEnd-stStart)}")
-                    eeEnd = time.time()
-                    ServiceGeneral.logWithTime(f"Completed NSMSW d={density}, r={radius}, nsm={nsm.value}, k={k}, ee={eventEffect.val} in {ServiceGeneral.formatTime(eeEnd-eeStart)}")
+                                startValue = nsmCombo[1]
+                            for i in range(iStart, iStop):
+                                iStartTime = time.time()
+                                savePath = f"{baseDataLocation}local_nsmsw_1ev_{startingCondition}_st={startValue.value}_d={density}_n={n}_r={radius}_nsmCombo={nsmCombo[0].value}-{nsmCombo[1].value}_k={k}_th={thresholds}_ee={eventEffect.val}_{i}"
+                                simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
+                                                                        radius=radius,
+                                                                        noise=noise,
+                                                                        numberOfParticles=n,
+                                                                        k=k,
+                                                                        neighbourSelectionMechanism=startValue,
+                                                                        speed=speed,
+                                                                        switchSummary=switchSummary,
+                                                                        degreesOfVision=np.pi*2,
+                                                                        events=[event],
+                                                                        logPath=savePath,
+                                                                        logInterval=saveInterval,
+                                                                        returnHistories=False)
+                                if startingCondition == "ordered":
+                                    initialState = ServicePreparation.createOrderedInitialDistributionEquidistancedIndividual(None, domainSize, n)
+                                    simulator.simulate(initialState=initialState, tmax=tmax)
+                                else:
+                                    simulator.simulate(tmax=tmax)
+                                iEnd = time.time()
+                                ServiceGeneral.logWithTime(f"Completed NSMSW d={density}, r={radius}, nsm={nsm.value}, k={k}, thresholds={thresholds}, ee={eventEffect.val}, st={startingCondition}, i={i} in {ServiceGeneral.formatTime(iEnd-iStartTime)}")
+                            stEnd = time.time()
+                            ServiceGeneral.logWithTime(f"Completed NSMSW d={density}, r={radius}, nsm={nsm.value}, k={k}, thresholds={thresholds}, ee={eventEffect.val}, st={startingCondition} in {ServiceGeneral.formatTime(stEnd-stStart)}")
+                        eeEnd = time.time()
+                        ServiceGeneral.logWithTime(f"Completed NSMSW d={density}, r={radius}, nsm={nsm.value}, k={k}, thresholds={thresholds}, ee={eventEffect.val} in {ServiceGeneral.formatTime(eeEnd-eeStart)}")
+                    thresholdEnd = time.time()
+                    ServiceGeneral.logWithTime(f"Completed NSMSW d={density}, r={radius}, nsm={nsm.value}, k={k}, thresholds={thresholds} in {ServiceGeneral.formatTime(thresholdEnd-thresholdStart)}")
                 kEnd = time.time()
                 ServiceGeneral.logWithTime(f"Completed NSMSW d={density}, r={radius}, nsm={nsm.value}, k={k} in {ServiceGeneral.formatTime(kEnd-kStart)}")
             nsmEnd = time.time()
@@ -356,38 +369,42 @@ for density in densities:
                                         thresholds=thresholds,
                                         numberPreviousStepsForThreshold=numberPreviousSteps)
             switchSummary = SwitchSummary([kSwitch])
+            for thresholds in threshold_options:
+                thresholdStart = time.time()
 
-            for startingCondition in ["ordered", "random"]:
-                stStart = time.time()
-                if startingCondition == "ordered":
-                    startValue = kCombo[0]
-                else:
-                    startValue = kCombo[1]
-                for i in range(iStart, iStop):
-                    iStartTime = time.time()
-                    simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
-                                                            radius=radius,
-                                                            noise=noise,
-                                                            numberOfParticles=n,
-                                                            k=startValue,
-                                                            neighbourSelectionMechanism=nsm,
-                                                            speed=speed,
-                                                            switchSummary=switchSummary,
-                                                            degreesOfVision=np.pi*2,
-                                                            events=[])
+                for startingCondition in ["ordered", "random"]:
+                    stStart = time.time()
                     if startingCondition == "ordered":
-                        initialState = ServicePreparation.createOrderedInitialDistributionEquidistancedIndividual(None, domainSize, n)
-                        simulationData, switchTypeValues = simulator.simulate(initialState=initialState, tmax=tmax)
+                        startValue = kCombo[0]
                     else:
-                        simulationData, switchTypeValues = simulator.simulate(tmax=tmax)
-
-                    savePath = f"{baseDataLocation}local_ksw_noev_{startingCondition}_st={startValue}_d={density}_n={n}_r={radius}_nsm={nsm.value}_kCombo={kCombo[0]}-{kCombo[1]}_{i}.json"
-                    ServiceSavedModel.saveModel(simulationData=simulationData, path=savePath, 
-                                                modelParams=simulator.getParameterSummary())
-                    iEnd = time.time()
-                    ServiceGeneral.logWithTime(f"Completed KSW NOEV d={density}, r={radius}, nsm={nsm.value}, st={startingCondition}, i={i} in {ServiceGeneral.formatTime(iEnd-iStartTime)}")
-                stEnd = time.time()
-                ServiceGeneral.logWithTime(f"Completed KSW NOEV d={density}, r={radius}, nsm={nsm.value}, st={startingCondition} in {ServiceGeneral.formatTime(stEnd-stStart)}")
+                        startValue = kCombo[1]
+                    for i in range(iStart, iStop):
+                        iStartTime = time.time()
+                        savePath = f"{baseDataLocation}local_ksw_noev_{startingCondition}_st={startValue}_d={density}_n={n}_r={radius}_nsm={nsm.value}_kCombo={kCombo[0]}-{kCombo[1]}_th={thresholds}_{i}"
+                        simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
+                                                                radius=radius,
+                                                                noise=noise,
+                                                                numberOfParticles=n,
+                                                                k=startValue,
+                                                                neighbourSelectionMechanism=nsm,
+                                                                speed=speed,
+                                                                switchSummary=switchSummary,
+                                                                degreesOfVision=np.pi*2,
+                                                                events=[],
+                                                                logPath=savePath,
+                                                                logInterval=saveInterval,
+                                                                returnHistories=False)
+                        if startingCondition == "ordered":
+                            initialState = ServicePreparation.createOrderedInitialDistributionEquidistancedIndividual(None, domainSize, n)
+                            simulator.simulate(initialState=initialState, tmax=tmax)
+                        else:
+                            simulator.simulate(tmax=tmax)
+                        iEnd = time.time()
+                        ServiceGeneral.logWithTime(f"Completed KSW NOEV d={density}, r={radius}, nsm={nsm.value}, thresholds={thresholds}, st={startingCondition}, i={i} in {ServiceGeneral.formatTime(iEnd-iStartTime)}")
+                    stEnd = time.time()
+                    ServiceGeneral.logWithTime(f"Completed KSW NOEV d={density}, r={radius}, nsm={nsm.value}, thresholds={thresholds}, st={startingCondition} in {ServiceGeneral.formatTime(stEnd-stStart)}")
+                nsmEnd = time.time()
+                ServiceGeneral.logWithTime(f"Completed KSW NOEV d={density}, r={radius}, nsm={nsm.value}, thresholds={thresholds} in {ServiceGeneral.formatTime(nsmEnd-nsmStart)}")
             nsmEnd = time.time()
             ServiceGeneral.logWithTime(f"Completed KSW NOEV d={density}, r={radius}, nsm={nsm.value} in {ServiceGeneral.formatTime(nsmEnd-nsmStart)}")
         rEnd = time.time()
@@ -417,37 +434,41 @@ for density in densities:
 
             for k in ks:
                 kStart = time.time()
-                for startingCondition in ["ordered", "random"]:
-                    stStart = time.time()
-                    if startingCondition == "ordered":
-                        startValue = nsmCombo[0]
-                    else:
-                        startValue = nsmCombo[1]
-                    for i in range(iStart, iStop):
-                        iStartTime = time.time()
-                        simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
-                                                                radius=radius,
-                                                                noise=noise,
-                                                                numberOfParticles=n,
-                                                                k=k,
-                                                                neighbourSelectionMechanism=startValue,
-                                                                speed=speed,
-                                                                switchSummary=switchSummary,
-                                                                degreesOfVision=np.pi*2,
-                                                                events=[])
+                for thresholds in threshold_options:
+                    thresholdStart = time.time()
+                    for startingCondition in ["ordered", "random"]:
+                        stStart = time.time()
                         if startingCondition == "ordered":
-                            initialState = ServicePreparation.createOrderedInitialDistributionEquidistancedIndividual(None, domainSize, n)
-                            simulationData, switchTypeValues = simulator.simulate(initialState=initialState, tmax=tmax)
+                            startValue = nsmCombo[0]
                         else:
-                            simulationData, switchTypeValues = simulator.simulate(tmax=tmax)
-
-                        savePath = f"{baseDataLocation}local_nsmsw_noev_{startingCondition}_st={startValue.value}_d={density}_n={n}_r={radius}_nsmCombo={nsmCombo[0].value}-{nsmCombo[1]}_k={k}_{i}.json"
-                        ServiceSavedModel.saveModel(simulationData=simulationData, path=savePath, 
-                                                    modelParams=simulator.getParameterSummary())
-                        iEnd = time.time()
-                        ServiceGeneral.logWithTime(f"Completed NSMSW NOEV d={density}, r={radius}, nsm={nsm.value}, k={k}, st={startingCondition}, i={i} in {ServiceGeneral.formatTime(iEnd-iStartTime)}")
-                    stEnd = time.time()
-                    ServiceGeneral.logWithTime(f"Completed NSMSW NOEV d={density}, r={radius}, nsm={nsm.value}, k={k}, st={startingCondition} in {ServiceGeneral.formatTime(stEnd-stStart)}")
+                            startValue = nsmCombo[1]
+                        for i in range(iStart, iStop):
+                            iStartTime = time.time()
+                            savePath = f"{baseDataLocation}local_nsmsw_noev_{startingCondition}_st={startValue.value}_d={density}_n={n}_r={radius}_nsmCombo={nsmCombo[0].value}-{nsmCombo[1]}_k={k}_th={thresholds}_{i}"
+                            simulator = VicsekWithNeighbourSelection(domainSize=domainSize,
+                                                                    radius=radius,
+                                                                    noise=noise,
+                                                                    numberOfParticles=n,
+                                                                    k=k,
+                                                                    neighbourSelectionMechanism=startValue,
+                                                                    speed=speed,
+                                                                    switchSummary=switchSummary,
+                                                                    degreesOfVision=np.pi*2,
+                                                                    events=[],
+                                                                    logPath=savePath,
+                                                                    logInterval=saveInterval,
+                                                                    returnHistories=False)
+                            if startingCondition == "ordered":
+                                initialState = ServicePreparation.createOrderedInitialDistributionEquidistancedIndividual(None, domainSize, n)
+                                simulator.simulate(initialState=initialState, tmax=tmax)
+                            else:
+                                simulator.simulate(tmax=tmax)
+                            iEnd = time.time()
+                            ServiceGeneral.logWithTime(f"Completed NSMSW NOEV d={density}, r={radius}, nsm={nsm.value}, k={k}, thresholds={thresholds}, st={startingCondition}, i={i} in {ServiceGeneral.formatTime(iEnd-iStartTime)}")
+                        stEnd = time.time()
+                        ServiceGeneral.logWithTime(f"Completed NSMSW NOEV d={density}, r={radius}, nsm={nsm.value}, k={k}, thresholds={thresholds}, st={startingCondition} in {ServiceGeneral.formatTime(stEnd-stStart)}")
+                    kEnd = time.time()
+                    ServiceGeneral.logWithTime(f"Completed NSMSW NOEV d={density}, r={radius}, nsm={nsm.value}, k={k}, thresholds={thresholds} in {ServiceGeneral.formatTime(kEnd-kStart)}")
                 kEnd = time.time()
                 ServiceGeneral.logWithTime(f"Completed NSMSW NOEV d={density}, r={radius}, nsm={nsm.value}, k={k} in {ServiceGeneral.formatTime(kEnd-kStart)}")
             nsmEnd = time.time()
