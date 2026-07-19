@@ -301,20 +301,22 @@ class VicsekWithNeighbourSelection():
         mask = self.__createBooleanMaskFromPickedNeighbourIndices(picked, kMax)
         return mask        
             
-    def pickPositionNeighbours(self, positions, neighbours, ks, isMin=True):
+    def pickPositionNeighbours(self, positions, neighbours, ks, isMin=True, posDiff=None):
         """
         Determines which neighbours the individuals should considered based on the neighbour selection mechanism and k with regard to position.
 
         Params:
             - positions (array of floats): the position of every individual at the current timestep
-            - neighbours (array of arrays of booleans): the identity of every neighbour of every 
+            - neighbours (array of arrays of booleans): the identity of every neighbour of every
             - ks (array of ints): which value of k every individual observes
             - isMin (boolean) [optional, default=True]: whether to take the nearest or farthest neighbours
+            - posDiff (array of arrays of floats) [optional]: precomputed position differences, to avoid recomputing them if the caller already has them on hand
 
         Returns:
             An array of arrays of booleans representing the selected neighbours
         """
-        posDiff = ServiceVicsekHelper.getPositionDifferences(positions, self.domainSize)
+        if posDiff is None:
+            posDiff = ServiceVicsekHelper.getPositionDifferences(positions, self.domainSize)
         if isMin == True:
             fillValue = self.maxReplacementValue
         else:
@@ -326,7 +328,7 @@ class VicsekWithNeighbourSelection():
         # select the best candidates
         return self.__getPickedNeighbours(posDiff=posDiff, candidates=candidates, ks=ks, isMin=isMin)
     
-    def pickOrientationNeighbours(self, positions, orientations, neighbours, ks, isMin=True):
+    def pickOrientationNeighbours(self, positions, orientations, neighbours, ks, isMin=True, posDiff=None, orientDiff=None):
         """
         Determines which neighbours the individuals should consider based on the neighbour selection mechanism and k with regard to orientation.
 
@@ -336,12 +338,16 @@ class VicsekWithNeighbourSelection():
             - neighbours (array of arrays of booleans): the identity of every neighbour of every individual
             - ks (array of ints): which value of k every individual observes
             - isMin (boolean) [optional, default=True]: whether to take the least orientionally different or most orientationally different neighbours
+            - posDiff (array of arrays of floats) [optional]: precomputed position differences, to avoid recomputing them if the caller already has them on hand
+            - orientDiff (array of arrays of floats) [optional]: precomputed orientation differences, to avoid recomputing them if the caller already has them on hand
 
         Returns:
             An array of arrays of booleans representing the selected neighbours
         """
-        posDiff = ServiceVicsekHelper.getPositionDifferences(positions, self.domainSize)
-        orientDiff = ServiceVicsekHelper.getOrientationDifferences(orientations, self.domainSize)
+        if posDiff is None:
+            posDiff = ServiceVicsekHelper.getPositionDifferences(positions, self.domainSize)
+        if orientDiff is None:
+            orientDiff = ServiceVicsekHelper.getOrientationDifferences(orientations, self.domainSize)
 
         if isMin == True:
             fillValue = self.maxReplacementValue
@@ -354,7 +360,7 @@ class VicsekWithNeighbourSelection():
         # select the best candidates
         return self.__getPickedNeighbours(posDiff=posDiff, candidates=candidates, ks=ks, isMin=isMin)
     
-    def pickRandomNeighbours(self, positions, neighbours, ks):
+    def pickRandomNeighbours(self, positions, neighbours, ks, posDiff=None):
         """
         Determines which neighbours the individuals should consider based on random selection.
 
@@ -362,12 +368,14 @@ class VicsekWithNeighbourSelection():
             - positions (array of floats): the position of every individual at the current timestep
             - neighbours (array of arrays of booleans): the identity of every neighbour of every individual
             - ks (array of ints): which value of k every individual observes
+            - posDiff (array of arrays of floats) [optional]: precomputed position differences, to avoid recomputing them if the caller already has them on hand
 
         Returns:
             An array of arrays of booleans representing the selected neighbours
         """
         np.fill_diagonal(neighbours, False)
-        posDiff = ServiceVicsekHelper.getPositionDifferences(positions, self.domainSize)
+        if posDiff is None:
+            posDiff = ServiceVicsekHelper.getPositionDifferences(positions, self.domainSize)
         kMax = np.max(ks)
         
         candidateIndices = ServiceVicsekHelper.getIndicesForTrueValues(neighbours, paddingType='repetition')
@@ -387,7 +395,7 @@ class VicsekWithNeighbourSelection():
         np.fill_diagonal(selection, True)
         return selection
 
-    def getPickedNeighboursForNeighbourSelectionMechanism(self, neighbourSelectionMechanism, positions, orientations, neighbours, ks):
+    def getPickedNeighboursForNeighbourSelectionMechanism(self, neighbourSelectionMechanism, positions, orientations, neighbours, ks, posDiff=None, orientDiff=None):
         """
         Determines which neighbours should be considered by each individual.
 
@@ -397,22 +405,29 @@ class VicsekWithNeighbourSelection():
             - orientations (array of floats): the orientation of every individual at the current timestep
             - neighbours (array of arrays of booleans): the identity of every neighbour of every individual
             - ks (array of ints): which value of k every individual observes
+            - posDiff (array of arrays of floats) [optional]: precomputed position differences, to avoid recomputing them if the caller already has them on hand
+            - orientDiff (array of arrays of floats) [optional]: precomputed orientation differences, to avoid recomputing them if the caller already has them on hand
         """
         match neighbourSelectionMechanism:
             case NeighbourSelectionMechanism.NEAREST:
-                pickedNeighbours = self.pickPositionNeighbours(positions, neighbours, ks, isMin=True)
+                pickedNeighbours = self.pickPositionNeighbours(positions, neighbours, ks, isMin=True, posDiff=posDiff)
             case NeighbourSelectionMechanism.FARTHEST:
-                pickedNeighbours = self.pickPositionNeighbours(positions, neighbours, ks, isMin=False)
+                pickedNeighbours = self.pickPositionNeighbours(positions, neighbours, ks, isMin=False, posDiff=posDiff)
             case NeighbourSelectionMechanism.LEAST_ORIENTATION_DIFFERENCE:
-                pickedNeighbours = self.pickOrientationNeighbours(positions, orientations, neighbours, ks, isMin=True)
+                pickedNeighbours = self.pickOrientationNeighbours(positions, orientations, neighbours, ks, isMin=True, posDiff=posDiff, orientDiff=orientDiff)
             case NeighbourSelectionMechanism.HIGHEST_ORIENTATION_DIFFERENCE:
-                pickedNeighbours = self.pickOrientationNeighbours(positions, orientations, neighbours, ks, isMin=False)
+                pickedNeighbours = self.pickOrientationNeighbours(positions, orientations, neighbours, ks, isMin=False, posDiff=posDiff, orientDiff=orientDiff)
             case NeighbourSelectionMechanism.RANDOM:
-                pickedNeighbours = self.pickRandomNeighbours(positions, neighbours, ks)
+                pickedNeighbours = self.pickRandomNeighbours(positions, neighbours, ks, posDiff=posDiff)
             case NeighbourSelectionMechanism.ALL:
                 pickedNeighbours = neighbours
         return pickedNeighbours
-    
+
+    @staticmethod
+    def __needsOrientationDifference(neighbourSelectionMechanism):
+        return neighbourSelectionMechanism in (NeighbourSelectionMechanism.LEAST_ORIENTATION_DIFFERENCE,
+                                                NeighbourSelectionMechanism.HIGHEST_ORIENTATION_DIFFERENCE)
+
     def prepareKs(self, ks):
         if self.switchSummary != None and self.switchSummary.isActive(SwitchType.K):
             ks = ks
@@ -420,9 +435,9 @@ class VicsekWithNeighbourSelection():
             ks = np.array(self.numberOfParticles * [self.k])
         return ks
 
-    def computeNewOrientations(self, neighbours, positions, orientations, nsms, ks, activationTimeDelays):
+    def computeNewOrientations(self, neighbours, positions, orientations, nsms, ks, activationTimeDelays, posDiff=None):
         """
-        Computes the new orientation of every individual based on the neighbour selection mechanisms, ks, time delays and Vicsek-like 
+        Computes the new orientation of every individual based on the neighbour selection mechanisms, ks, time delays and Vicsek-like
         averaging.
         Also sets the colours for ColourType.EXAMPLE.
 
@@ -433,32 +448,48 @@ class VicsekWithNeighbourSelection():
             - nsms (array of NeighbourSelectionMechanism): the neighbour selection mechanism used by every individual at the current timestep
             - ks (array of ints): the number of neighbours k used by every individual at the current timestep
             - activationTimeDelays (array of ints): at what rate updates are possible for every individual at the current timestep
+            - posDiff (array of arrays of floats) [optional]: precomputed position differences, to avoid recomputing them if the caller already has them on hand
 
         Returns:
             An array of floats representing the orientations of all individuals after the current timestep
         """
         ks = self.prepareKs(ks=ks)
 
+        if posDiff is None:
+            posDiff = ServiceVicsekHelper.getPositionDifferences(positions, self.domainSize)
+
         if self.switchSummary != None and self.switchSummary.isActive(SwitchType.NEIGHBOUR_SELECTION_MECHANISM):
             nsmsSwitch = self.switchSummary.getBySwitchType(SwitchType.NEIGHBOUR_SELECTION_MECHANISM)
+            orientDiff = None
+            if self.__needsOrientationDifference(nsmsSwitch.orderSwitchValue) or self.__needsOrientationDifference(nsmsSwitch.disorderSwitchValue):
+                orientDiff = ServiceVicsekHelper.getOrientationDifferences(orientations, self.domainSize)
             neighboursOrder = self.getPickedNeighboursForNeighbourSelectionMechanism(neighbourSelectionMechanism=nsmsSwitch.orderSwitchValue,
                                                                                      positions=positions,
                                                                                      orientations=orientations,
                                                                                      neighbours=neighbours,
-                                                                                     ks=ks)
+                                                                                     ks=ks,
+                                                                                     posDiff=posDiff,
+                                                                                     orientDiff=orientDiff)
             neighboursDisorder = self.getPickedNeighboursForNeighbourSelectionMechanism(neighbourSelectionMechanism=nsmsSwitch.disorderSwitchValue,
                                                                                     positions=positions,
                                                                                     orientations=orientations,
                                                                                     neighbours=neighbours,
-                                                                                    ks=ks)
+                                                                                    ks=ks,
+                                                                                    posDiff=posDiff,
+                                                                                    orientDiff=orientDiff)
             pickedNeighbours = np.where(((nsms == nsmsSwitch.orderSwitchValue.value)), neighboursOrder, neighboursDisorder)
-            
+
         else:
+            orientDiff = None
+            if self.__needsOrientationDifference(self.neighbourSelectionMechanism):
+                orientDiff = ServiceVicsekHelper.getOrientationDifferences(orientations, self.domainSize)
             pickedNeighbours = self.getPickedNeighboursForNeighbourSelectionMechanism(neighbourSelectionMechanism=self.neighbourSelectionMechanism,
-                                                                                      positions=positions, 
-                                                                                      orientations=orientations, 
+                                                                                      positions=positions,
+                                                                                      orientations=orientations,
                                                                                       neighbours=neighbours,
-                                                                                      ks=ks)
+                                                                                      ks=ks,
+                                                                                      posDiff=posDiff,
+                                                                                      orientDiff=orientDiff)
 
         np.fill_diagonal(pickedNeighbours, True)
 
@@ -633,9 +664,13 @@ class VicsekWithNeighbourSelection():
             #     print(f"{t}: {ServiceMetric.computeGlobalOrder(orientations)}")
 
             # all neighbours (including self)
+            # positions do not change again until after computeNewOrientations() below, so the
+            # position-difference matrix computed here can be reused there instead of being
+            # recomputed (potentially multiple times, once per neighbour selection mechanism).
+            posDiff = ServiceVicsekHelper.getPositionDifferences(positions, self.domainSize)
             neighbours = ServiceVicsekHelper.getNeighboursWithLimitedVision(positions=positions, orientations=orientations, domainSize=self.domainSize,
-                                                                            radius=self.radius, degreesOfVision=self.degreesOfVision)
-            
+                                                                            radius=self.radius, degreesOfVision=self.degreesOfVision, posDiff=posDiff)
+
             orientations, nsms, ks, speeds, blocked, self.colours = self.handleEvents(t, positions, orientations, nsms, ks, speeds, activationTimeDelays)
 
 
@@ -676,7 +711,7 @@ class VicsekWithNeighbourSelection():
                                                           globalOrder=ServiceMetric.computeGlobalOrder(orientations),
                                                           path=f"{self.logPath}_globalOrder")
 
-            orientations = self.computeNewOrientations(neighbours, positions, orientations, nsms, ks, activationTimeDelays)
+            orientations = self.computeNewOrientations(neighbours, positions, orientations, nsms, ks, activationTimeDelays, posDiff=posDiff)
 
             positions += self.dt*(orientations.T * speeds).T
             positions += -self.domainSize*np.floor(positions/self.domainSize)

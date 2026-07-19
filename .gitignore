@@ -1,15 +1,2 @@
-.git
-/__pycache__
-__pycache__
-*.pyc
-*.swp
-.DS_Store
-*.mp4
-*.json
-*.png
-*.svg
-*.pdf
-*.csv
-*.jpeg
-*.log
-*.pickle
+# Created by venv; see https://docs.python.org/3/library/venv.html
+*

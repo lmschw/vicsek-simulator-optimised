@@ -42,8 +42,17 @@ def getNeighbours(positions, domainSize, radius):
     rij2 = getPositionDifferences(positions, domainSize)
     return (rij2 <= radius**2)
 
-def getNeighboursWithLimitedVision(positions, orientations, domainSize, radius, degreesOfVision):
-    candidates = getNeighbours(positions=positions, domainSize=domainSize, radius=radius)
+def getNeighboursWithLimitedVision(positions, orientations, domainSize, radius, degreesOfVision, posDiff=None):
+    """
+    posDiff (array of arrays of floats) [optional]: the squared position differences between every
+    pair of individuals, i.e. the result of getPositionDifferences(positions, domainSize). Callers
+    that already have this on hand (e.g. because they need it again right after for neighbour
+    selection) can pass it in to avoid recomputing the same O(n^2) distance matrix twice. If omitted,
+    it is computed internally exactly as before.
+    """
+    if posDiff is None:
+        posDiff = getPositionDifferences(positions, domainSize)
+    candidates = (posDiff <= radius**2)
     minAngles, maxAngles = ServiceVision.determineMinMaxAngleOfVision(orientations=orientations, degreesOfVision=degreesOfVision)
     inFieldOfVision = ServiceVision.isInFieldOfVision(positions=positions, minAngles=minAngles, maxAngles=maxAngles)
 
