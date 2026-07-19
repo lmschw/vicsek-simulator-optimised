@@ -658,8 +658,8 @@ class VicsekWithNeighbourSelection():
             self.exampleId = np.random.choice(self.numberOfParticles, 1)
         for t in range(self.numIntervals):
             self.t = t
-            if t % 5000 == 0:
-                print(f"t={t}/{self.tmax}")
+            # if t % 5000 == 0:
+            #     print(f"t={t}/{self.tmax}")
             # if self.t % 100 == 0:
             #     print(f"{t}: {ServiceMetric.computeGlobalOrder(orientations)}")
 
@@ -677,8 +677,8 @@ class VicsekWithNeighbourSelection():
             if self.switchSummary != None:
                 thresholdEvaluationChoiceValues = ServiceThresholdEvaluation.getThresholdEvaluationValuesForChoice(thresholdEvaluationMethod=self.thresholdEvaluationMethod, positions=positions, orientations=orientations, neighbours=neighbours, domainSize=self.domainSize)
 
-                if t > 1 and t < 5:
-                    print(f"{t}: {thresholdEvaluationChoiceValues}")
+                # if t > 1 and t < 5:
+                #     print(f"{t}: {thresholdEvaluationChoiceValues}")
                 self.thresholdEvaluationChoiceValuesHistory.append(thresholdEvaluationChoiceValues)
             
                 if SwitchType.NEIGHBOUR_SELECTION_MECHANISM in self.switchSummary.switches.keys():
