@@ -100,22 +100,33 @@ def plotSeries(series, xLabel, yLabel, title, outputPathBase, ylim=None, backgro
 # ------------------------------------------------------------------ data evaluation ----------
 
 def loadGlobalOrderSeries(basePath, indices):
+    """
+    Loads the precomputed *_globalOrder.csv files (one globalOrder value per saved timestep, written
+    incrementally while a run is in progress) for the given run indices. A run still being generated
+    - possibly by a simulation sweep running concurrently with this evaluation - will have fewer
+    completed timesteps than a finished one, and its file may be mid-write when read (yielding a torn
+    last row): both are expected, not something to warn about, so runs are truncated to whatever
+    length of data they have in common rather than being dropped.
+    """
     runs = []
-    tvals = None
+    minLength = None
     for i in indices:
         path = f"{basePath}_{i}_globalOrder.csv"
         if not os.path.exists(path):
             continue
-        df = pd.read_csv(path, usecols=["t", "globalOrder"]).sort_values("t")
-        if tvals is None:
-            tvals = df["t"].to_numpy()
-        elif len(df) != len(tvals):
-            ServiceGeneral.logWithTime(f"WARNING: skipping incomplete run {path}")
+        try:
+            df = pd.read_csv(path, usecols=["t", "globalOrder"])
+        except (pd.errors.ParserError, pd.errors.EmptyDataError):
+            continue  # file is mid-write; its data will be picked up once this run has progressed further
+        df = df.dropna(subset=["globalOrder"]).sort_values("t")
+        if df.empty:
             continue
-        runs.append(df["globalOrder"].to_numpy())
+        runs.append(df)
+        minLength = len(df) if minLength is None else min(minLength, len(df))
     if not runs:
         return None
-    arr = np.array(runs)
+    tvals = runs[0]["t"].to_numpy()[:minLength]
+    arr = np.array([df["globalOrder"].to_numpy()[:minLength] for df in runs])
     return tvals, arr.mean(axis=0), arr.std(axis=0)
 
 
@@ -149,17 +160,19 @@ def evaluateMetricSeries(basePath, indices, metric, evalInterval, switchType=Non
 # ------------------------------------------------------------------ per-combination plots ----
 
 def processCombo(runIndex, outputRoot, comboType, basePathOrdered, basePathRandom, paramSuffix, evalInterval,
-                  switchType=None, switchTypeOptions=None, valueLabels=None, eventShading=None):
+                  switchType=None, switchTypeOptions=None, valueLabels=None, eventShading=None,
+                  minI=None, maxI=None, plotClusters=False):
     """
     Produces (and saves as png/svg/pdf) up to three plots for one parameter combination: order over
     time (from the precomputed globalOrder.csv files), switch value percentage over time (only if
-    switchType is given) and number of clusters over time. All three show mean +/- standard deviation
-    across every run sharing the same base path (i.e. differing only in run index i).
+    switchType is given) and, if plotClusters is True, number of clusters over time. All three show
+    mean +/- standard deviation across every run sharing the same base path (i.e. differing only in
+    run index i, optionally restricted to the [minI, maxI] range).
 
     Returns True if at least one plot was produced (i.e. any data was found for this combination).
     """
-    indicesOrdered = getIndices(runIndex, basePathOrdered)
-    indicesRandom = getIndices(runIndex, basePathRandom)
+    indicesOrdered = [i for i in getIndices(runIndex, basePathOrdered) if (minI is None or i >= minI) and (maxI is None or i <= maxI)]
+    indicesRandom = [i for i in getIndices(runIndex, basePathRandom) if (minI is None or i >= minI) and (maxI is None or i <= maxI)]
     if not indicesOrdered and not indicesRandom:
         return False
 
@@ -204,22 +217,24 @@ def processCombo(runIndex, outputRoot, comboType, basePathOrdered, basePathRando
                        ylim=(0, 100.1), backgroundSpan=eventShading)
             producedAny = True
 
-    # 3) number of (spatial + orientation) clusters over time
-    seriesCluster = []
-    for label, basePath, indices in runs:
-        if not indices:
-            continue
-        result = evaluateMetricSeries(basePath, indices, Metrics.CLUSTER_NUMBER_WITH_RADIUS, evalInterval)
-        if result is None:
-            continue
-        t, mean, std = result
-        seriesCluster.append({"label": label, "t": t, "mean": mean, "std": std})
-    if seriesCluster:
-        plotSeries(seriesCluster, "timestep", "number of clusters",
-                   f"number of clusters over time\n{comboType}: {paramSuffix}",
-                   f"{outputRoot}/{comboType}/cluster_count_{paramSuffix}",
-                   backgroundSpan=eventShading)
-        producedAny = True
+    # 3) number of (spatial + orientation) clusters over time - skipped by default, since it requires
+    # loading full position/orientation data and is by far the slowest of the three plots
+    if plotClusters:
+        seriesCluster = []
+        for label, basePath, indices in runs:
+            if not indices:
+                continue
+            result = evaluateMetricSeries(basePath, indices, Metrics.CLUSTER_NUMBER_WITH_RADIUS, evalInterval)
+            if result is None:
+                continue
+            t, mean, std = result
+            seriesCluster.append({"label": label, "t": t, "mean": mean, "std": std})
+        if seriesCluster:
+            plotSeries(seriesCluster, "timestep", "number of clusters",
+                       f"number of clusters over time\n{comboType}: {paramSuffix}",
+                       f"{outputRoot}/{comboType}/cluster_count_{paramSuffix}",
+                       backgroundSpan=eventShading)
+            producedAny = True
 
     return producedAny
 
@@ -232,6 +247,12 @@ def buildArgParser(sectionNames):
                          help="which combination sections to evaluate (default: all)")
     parser.add_argument("--limit", type=int, default=None,
                          help="only process the first N combinations with data per section (for a quick test run)")
+    parser.add_argument("--min-i", type=int, default=None,
+                         help="only use runs with index i >= this value (default: no lower bound)")
+    parser.add_argument("--max-i", type=int, default=None,
+                         help="only use runs with index i <= this value (default: no upper bound)")
+    parser.add_argument("--plot-clusters", action="store_true", default=False,
+                         help="also produce the number-of-clusters plot (default: off - it is by far the slowest of the three plots)")
     return parser
 
 
@@ -266,6 +287,9 @@ def runSections(baseDataLocation, outputRoot, sectionGenerators, args):
                     switchTypeOptions=combo.get("switchTypeOptions"),
                     valueLabels=combo.get("valueLabels"),
                     eventShading=combo.get("eventShading"),
+                    minI=args.min_i,
+                    maxI=args.max_i,
+                    plotClusters=args.plot_clusters,
                 )
                 if didPlot:
                     processed += 1
