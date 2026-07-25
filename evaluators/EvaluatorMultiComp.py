@@ -76,7 +76,7 @@ class EvaluatorMultiAvgComp(object):
                 else:
                     if self.from_csv:
                         params, simulationData, switchTypes = ssm.loadModelFromCsv(filepathData=f"{self.basePaths[model]}_{individualRun}.csv",
-                                                                                   filePathModelParams=f"{self.basePaths[model]}_{individualRun}.csv",
+                                                                                   filePathModelParams=f"{self.basePaths[model]}_{individualRun}_modelParams.csv",
                                                                                    switchTypes=[self.switchType])
                     else:
                         params, simulationData, switchTypes = ssm.loadModel(path=f"{self.basePaths[model]}_{individualRun}.json",
@@ -112,23 +112,27 @@ class EvaluatorMultiAvgComp(object):
             results = self.getResults(model)
             
             ddi = defaultdict(list)
-            for d in results: 
+            for d in results:
                 for key, value in d.items():
                     ddi[key].append(value)
+            # ddi's keys are the actual simulation timesteps present in the loaded data (which are
+            # not necessarily 0, interval, 2*interval, ... - e.g. data logged every 100 steps), so the
+            # m-th evaluated timestep has to be looked up rather than recomputed as m*interval.
+            ddiKeys = list(ddi.keys())
             if self.metric == Metrics.DUAL_OVERLAY_ORDER_AND_PERCENTAGE:
                 for m in range(len(ddi)):
-                    idx = m * self.evaluationTimestepInterval
+                    idx = ddiKeys[m]
                     dd[idx].append(ddi[idx][0][0])
                     dd[idx].append(ddi[idx][0][1])
             elif self.metric == Metrics.MIN_AVG_MAX_NUMBER_NEIGHBOURS:
                 for m in range(len(ddi)):
-                    idx = m * self.evaluationTimestepInterval
+                    idx = ddiKeys[m]
                     dd[idx].append(ddi[idx][0][0])
                     dd[idx].append(ddi[idx][0][1])
                     dd[idx].append(ddi[idx][0][2])
             else:
                 for m in range(len(ddi)):
-                    idx = m * self.evaluationTimestepInterval
+                    idx = ddiKeys[m]
                     if self.metric == Metrics.CLUSTER_SIZE:
                         for i in range(len(ddi[idx])):
                             ddi[idx][i] = np.max(ddi[idx][i])
@@ -138,8 +142,10 @@ class EvaluatorMultiAvgComp(object):
                         quantile75 = np.quantile(ddi[idx], 0.75)
                         varianceDataModel.append([quantile25, quantile75])
                     else:
-                        dd[idx].append(np.average(ddi[idx]))
-                        varianceDataModel.append(np.array(ddi[idx]))
+                        meanValue = np.average(ddi[idx])
+                        stdValue = np.std(ddi[idx])
+                        dd[idx].append(meanValue)
+                        varianceDataModel.append([meanValue - stdValue, meanValue + stdValue])
             varianceData.append(varianceDataModel)
         return dd, varianceData
 

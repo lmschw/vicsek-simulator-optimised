@@ -22,7 +22,7 @@ class VicsekWithNeighbourSelection():
                  speed=dv.DEFAULT_SPEED, switchSummary=None, events=None, degreesOfVision=dv.DEFAULT_DEGREES_OF_VISION, 
                  activationTimeDelays=[], isActivationTimeDelayRelevantForEvents=False, colourType=None, 
                  thresholdEvaluationMethod=ThresholdEvaluationMethod.LOCAL_ORDER, updateIfNoNeighbours=True, returnHistories=True,
-                 logPath=None, logInterval=1):
+                 logPath=None, logInterval=1, thresholdEvaluationNeighbourSubsetSize=None):
         """
         Params:
             - domainSize (tuple of floats): the size of the domain
@@ -57,6 +57,7 @@ class VicsekWithNeighbourSelection():
         self.colourType = colourType
         self.thresholdEvaluationMethod = thresholdEvaluationMethod
         self.updateIfNoNeighbours = updateIfNoNeighbours
+        self.thresholdEvaluationNeighbourSubsetSize = thresholdEvaluationNeighbourSubsetSize
         self.returnHistories = returnHistories
         self.logPath = logPath
         self.logInterval = logInterval
@@ -675,7 +676,7 @@ class VicsekWithNeighbourSelection():
 
 
             if self.switchSummary != None:
-                thresholdEvaluationChoiceValues = ServiceThresholdEvaluation.getThresholdEvaluationValuesForChoice(thresholdEvaluationMethod=self.thresholdEvaluationMethod, positions=positions, orientations=orientations, neighbours=neighbours, domainSize=self.domainSize)
+                thresholdEvaluationChoiceValues = ServiceThresholdEvaluation.getThresholdEvaluationValuesForChoice(thresholdEvaluationMethod=self.thresholdEvaluationMethod, positions=positions, orientations=orientations, neighbours=neighbours, domainSize=self.domainSize, neighbourSubsetSize=self.thresholdEvaluationNeighbourSubsetSize)
 
                 # if t > 1 and t < 5:
                 #     print(f"{t}: {thresholdEvaluationChoiceValues}")

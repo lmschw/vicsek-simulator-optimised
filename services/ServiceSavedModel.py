@@ -1,6 +1,6 @@
 #import csv
 
-import codecs, json, csv
+import codecs, json, csv, re
 import numpy as np
 import pandas as pd
 import ast 
@@ -114,18 +114,19 @@ def loadModelFromCsv(filepathData, filePathModelParams, switchTypes=[], loadColo
     orientations = []
     colours = []
     switchValues = {k.switchTypeValueKey :[] for k in switchTypes}
-    #tmax = df['t'].max()
-    for t in df['t']:
-        if t not in times:
-            times.append(t)
-            dfT = df[df['t'] == t]
-            positions.append(np.column_stack((dfT['x'], dfT['y'])))
-            orientations.append(np.column_stack((dfT['u'], dfT['v'])))
-            if loadColours:
-                colours.append(dfT['colour'].to_list())
-            if len(switchTypes) > 0:
-                for switchType in switchTypes:
-                    switchValues[switchType.switchTypeValueKey].append(extract_values(dfT, 'switchValue', switchType.switchTypeValueKey))
+    # groupby is a single vectorised pass over the data - repeatedly testing "t not in times" (an
+    # O(number of distinct timesteps) list scan) and refiltering the whole dataframe per timestep
+    # (as a naive per-row loop would) makes loading scale quadratically and is far too slow for
+    # files with many timesteps/particles.
+    for t, dfT in df.groupby('t', sort=True):
+        times.append(t)
+        positions.append(np.column_stack((dfT['x'].to_numpy(), dfT['y'].to_numpy())))
+        orientations.append(np.column_stack((dfT['u'].to_numpy(), dfT['v'].to_numpy())))
+        if loadColours:
+            colours.append(dfT['colour'].to_list())
+        if len(switchTypes) > 0:
+            for switchType in switchTypes:
+                switchValues[switchType.switchTypeValueKey].append(extract_values(dfT, 'switchValue', switchType.switchTypeValueKey))
     if len(switchTypes) > 0:
         if loadColours:
             return modelParams, (np.array(times), np.array(positions), np.array(orientations)), switchValues, np.array(colours)
@@ -376,6 +377,10 @@ def __loadJson(path):
 
 def to_dict(x):
     try:
+        # switch values that are Enum members (e.g. NeighbourSelectionMechanism) are written to CSV
+        # via str(dict), which renders them as "<ClassName.MEMBER: 'value'>" - not valid Python literal
+        # syntax. Collapse those down to just the quoted value so ast.literal_eval can parse the dict.
+        x = re.sub(r"<\w+(?:\.\w+)+: (.+?)>", r"\1", x)
         y = ast.literal_eval(x)
         if type(y) == dict:
             return y
