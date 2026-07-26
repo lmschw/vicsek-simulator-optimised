@@ -161,13 +161,20 @@ def evaluateMetricSeries(basePath, indices, metric, evalInterval, switchType=Non
 
 def processCombo(runIndex, outputRoot, comboType, basePathOrdered, basePathRandom, paramSuffix, evalInterval,
                   switchType=None, switchTypeOptions=None, valueLabels=None, eventShading=None,
-                  minI=None, maxI=None, plotClusters=False):
+                  minI=None, maxI=None, clusterMode="exclude"):
     """
     Produces (and saves as png/svg/pdf) up to three plots for one parameter combination: order over
     time (from the precomputed globalOrder.csv files), switch value percentage over time (only if
-    switchType is given) and, if plotClusters is True, number of clusters over time. All three show
-    mean +/- standard deviation across every run sharing the same base path (i.e. differing only in
-    run index i, optionally restricted to the [minI, maxI] range).
+    switchType is given) and number of clusters over time. All three show mean +/- standard deviation
+    across every run sharing the same base path (i.e. differing only in run index i, optionally
+    restricted to the [minI, maxI] range).
+
+    clusterMode controls which plots are produced, since the cluster plot is by far the slowest of
+    the three (it requires loading full position/orientation data rather than the small precomputed
+    files the other two use):
+        - "exclude" (default): order + switch percentage, no cluster plot
+        - "only": cluster plot only, skipping order and switch percentage
+        - "include": all three plots
 
     Returns True if at least one plot was produced (i.e. any data was found for this combination).
     """
@@ -180,46 +187,46 @@ def processCombo(runIndex, outputRoot, comboType, basePathOrdered, basePathRando
             ("random start", basePathRandom, indicesRandom)]
     producedAny = False
 
-    # 1) order over time, straight from the precomputed globalOrder.csv files
-    seriesOrder = []
-    for label, basePath, indices in runs:
-        if not indices:
-            continue
-        result = loadGlobalOrderSeries(basePath, indices)
-        if result is None:
-            continue
-        t, mean, std = result
-        seriesOrder.append({"label": label, "t": t, "mean": mean, "std": std})
-    if seriesOrder:
-        plotSeries(seriesOrder, "timestep", "order",
-                   f"order over time\n{comboType}: {paramSuffix}",
-                   f"{outputRoot}/{comboType}/order_{paramSuffix}",
-                   ylim=(0, 1.1), backgroundSpan=eventShading)
-        producedAny = True
-
-    # 2) switch value percentage over time (only for combinations that actually switch)
-    if switchType is not None:
-        seriesSwitch = []
+    if clusterMode != "only":
+        # 1) order over time, straight from the precomputed globalOrder.csv files
+        seriesOrder = []
         for label, basePath, indices in runs:
             if not indices:
                 continue
-            result = evaluateMetricSeries(basePath, indices, Metrics.ORDER_VALUE_PERCENTAGE, evalInterval,
-                                           switchType=switchType, switchTypeOptions=switchTypeOptions)
+            result = loadGlobalOrderSeries(basePath, indices)
             if result is None:
                 continue
             t, mean, std = result
-            seriesSwitch.append({"label": f"{label} - {valueLabels[0]}", "t": t, "mean": mean, "std": std})
-            seriesSwitch.append({"label": f"{label} - {valueLabels[1]}", "t": t, "mean": 100 - mean, "std": std})
-        if seriesSwitch:
-            plotSeries(seriesSwitch, "timestep", "% of swarm",
-                       f"switch value percentage over time\n{comboType}: {paramSuffix}",
-                       f"{outputRoot}/{comboType}/switch_percentage_{paramSuffix}",
-                       ylim=(0, 100.1), backgroundSpan=eventShading)
+            seriesOrder.append({"label": label, "t": t, "mean": mean, "std": std})
+        if seriesOrder:
+            plotSeries(seriesOrder, "timestep", "order",
+                       f"order over time\n{comboType}: {paramSuffix}",
+                       f"{outputRoot}/{comboType}/order_{paramSuffix}",
+                       ylim=(0, 1.1), backgroundSpan=eventShading)
             producedAny = True
 
-    # 3) number of (spatial + orientation) clusters over time - skipped by default, since it requires
-    # loading full position/orientation data and is by far the slowest of the three plots
-    if plotClusters:
+        # 2) switch value percentage over time (only for combinations that actually switch)
+        if switchType is not None:
+            seriesSwitch = []
+            for label, basePath, indices in runs:
+                if not indices:
+                    continue
+                result = evaluateMetricSeries(basePath, indices, Metrics.ORDER_VALUE_PERCENTAGE, evalInterval,
+                                               switchType=switchType, switchTypeOptions=switchTypeOptions)
+                if result is None:
+                    continue
+                t, mean, std = result
+                seriesSwitch.append({"label": f"{label} - {valueLabels[0]}", "t": t, "mean": mean, "std": std})
+                seriesSwitch.append({"label": f"{label} - {valueLabels[1]}", "t": t, "mean": 100 - mean, "std": std})
+            if seriesSwitch:
+                plotSeries(seriesSwitch, "timestep", "% of swarm",
+                           f"switch value percentage over time\n{comboType}: {paramSuffix}",
+                           f"{outputRoot}/{comboType}/switch_percentage_{paramSuffix}",
+                           ylim=(0, 100.1), backgroundSpan=eventShading)
+                producedAny = True
+
+    # 3) number of (spatial + orientation) clusters over time
+    if clusterMode in ("only", "include"):
         seriesCluster = []
         for label, basePath, indices in runs:
             if not indices:
@@ -251,8 +258,10 @@ def buildArgParser(sectionNames):
                          help="only use runs with index i >= this value (default: no lower bound)")
     parser.add_argument("--max-i", type=int, default=None,
                          help="only use runs with index i <= this value (default: no upper bound)")
-    parser.add_argument("--plot-clusters", action="store_true", default=False,
-                         help="also produce the number-of-clusters plot (default: off - it is by far the slowest of the three plots)")
+    parser.add_argument("--clusters", choices=["exclude", "only", "include"], default="exclude",
+                         help="whether to produce the number-of-clusters plot, which is by far the slowest of the three: "
+                              "\"exclude\" (default) produces order + switch percentage only, \"only\" produces just the "
+                              "cluster plot, \"include\" produces all three")
     return parser
 
 
@@ -289,7 +298,7 @@ def runSections(baseDataLocation, outputRoot, sectionGenerators, args):
                     eventShading=combo.get("eventShading"),
                     minI=args.min_i,
                     maxI=args.max_i,
-                    plotClusters=args.plot_clusters,
+                    clusterMode=args.clusters,
                 )
                 if didPlot:
                     processed += 1
