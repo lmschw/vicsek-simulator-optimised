@@ -205,7 +205,10 @@ def processCombo(runIndex, outputRoot, comboType, basePathOrdered, basePathRando
                        ylim=(0, 1.1), backgroundSpan=eventShading)
             producedAny = True
 
-        # 2) switch value percentage over time (only for combinations that actually switch)
+        # 2) switch value percentage over time (only for combinations that actually switch). Mirrors
+        # the order plot exactly: one line per starting condition, no more - the two switch values
+        # are complements of each other (100 - x), so plotting both per starting condition would
+        # just be redundant clutter, not extra information.
         if switchType is not None:
             seriesSwitch = []
             for label, basePath, indices in runs:
@@ -216,10 +219,9 @@ def processCombo(runIndex, outputRoot, comboType, basePathOrdered, basePathRando
                 if result is None:
                     continue
                 t, mean, std = result
-                seriesSwitch.append({"label": f"{label} - {valueLabels[0]}", "t": t, "mean": mean, "std": std})
-                seriesSwitch.append({"label": f"{label} - {valueLabels[1]}", "t": t, "mean": 100 - mean, "std": std})
+                seriesSwitch.append({"label": label, "t": t, "mean": mean, "std": std})
             if seriesSwitch:
-                plotSeries(seriesSwitch, "timestep", "% of swarm",
+                plotSeries(seriesSwitch, "timestep", f"% of swarm using {valueLabels[0]}",
                            f"switch value percentage over time\n{comboType}: {paramSuffix}",
                            f"{outputRoot}/{comboType}/switch_percentage_{paramSuffix}",
                            ylim=(0, 100.1), backgroundSpan=eventShading)

@@ -47,7 +47,7 @@ def logModelParams(path, modelParamsDict):
         w.writerow(modelParamsDict.keys())
         w.writerow(modelParamsDict.values())
 
-def initialiseCsvFileHeaders(path, headers=['t', 'i', 'x', 'y', 'u', 'v', 'colour'], addSwitchTypeHeader=True):
+def initialiseCsvFileHeaders(path, headers=None, addSwitchTypeHeader=True):
     """
     Appends the headers to the csv file.
 
@@ -58,6 +58,13 @@ def initialiseCsvFileHeaders(path, headers=['t', 'i', 'x', 'y', 'u', 'v', 'colou
     Returns:
         Nothing.
     """
+    # headers used to default to a mutable list literal, which Python only evaluates once at
+    # function-definition time - every call that relied on the default was therefore appending
+    # 'switchValue' to the *same* list object, so a long-lived worker process that starts many
+    # simulations ended up with headers hundreds of columns wide (and, empirically, wide enough to
+    # trip a pandas C-parser buffer overflow bug when the file is later read back).
+    if headers is None:
+        headers = ['t', 'i', 'x', 'y', 'u', 'v', 'colour']
     if addSwitchTypeHeader:
         headers.append('switchValue')
     with open(f"{path}.csv", 'w', newline='') as f:
@@ -67,11 +74,16 @@ def initialiseCsvFileHeaders(path, headers=['t', 'i', 'x', 'y', 'u', 'v', 'colou
 def createSwitchValueDict(switchTypes, switchValues, i):
     switchValueDict = {}
     for switchType in switchTypes:
-        switchValueDict[switchType.switchTypeValueKey] = switchValues[switchType.switchTypeValueKey][i]
+        switchValueDict[switchType.switchTypeValueKey] = transformSwitchValue(switchValues[switchType.switchTypeValueKey][i])
     return switchValueDict
 
 def transformSwitchValue(switchValue):
-    if isinstance(switchValue, int) or isinstance(switchValue, float):
+    # writes a plain Python literal to CSV rather than an internal repr like "np.int64(5)" or
+    # "<NeighbourSelectionMechanism.FARTHEST: 'F'>", both of which ast.literal_eval can't parse
+    # back on load (to_dict() below works around already-written files that have this problem).
+    if isinstance(switchValue, np.generic):
+        return switchValue.item()
+    if isinstance(switchValue, (int, float, str)):
         return switchValue
     return switchValue.value
 
@@ -99,16 +111,41 @@ def logEvent(timestep, areas, orientation, path):
         w = csv.writer(f)
         w.writerow([timestep, areas[0][0], areas[0][1], orientation[0], orientation[1]])
 
+def readDataCsvRobust(filepath, usecols=None, converters=None):
+    """
+    Some already-written data files have a header hundreds of columns wide (a since-fixed duplicate-
+    column bug in initialiseCsvFileHeaders() caused by long-lived worker processes accumulating
+    'switchValue' headers across many simulation runs), which reliably trips a buffer-overflow bug
+    in pandas' C parser. The pure-Python parser handles those files correctly and, restricted to the
+    columns actually needed, is still fast - so it's used as a fallback rather than the default.
+    """
+    try:
+        return pd.read_csv(filepath, index_col=False, usecols=usecols, converters=converters)
+    except pd.errors.ParserError:
+        # the python engine mishandles converters combined with (deduplicated) duplicate column
+        # names - it applies the converter to every raw column sharing that name rather than just
+        # the one usecols resolved to, which then blows up NA-sanitisation on the resulting dict
+        # values. Read the raw column instead and apply the converters afterwards to sidestep that.
+        df = pd.read_csv(filepath, index_col=False, usecols=usecols, engine='python')
+        for column, converter in (converters or {}).items():
+            if column in df.columns:
+                df[column] = df[column].apply(converter)
+        return df
+
 def loadModelFromCsv(filepathData, filePathModelParams, switchTypes=[], loadColours=False):
     dfParams = pd.read_csv(filePathModelParams,index_col=False)
     modelParams = dfParams.to_dict(orient='records')[0]
     domainSize = modelParams['domainSize'].split(',')
     modelParams['domainSize'] = [float(domainSize[0][1:]), float(domainSize[1][:-1])]
 
+    usecols = ['t', 'i', 'x', 'y', 'u', 'v']
+    if loadColours:
+        usecols.append('colour')
     if len(switchTypes) > 0:
-        df = pd.read_csv(filepathData, index_col=False, converters = {'switchValue': to_dict})
+        usecols.append('switchValue')
+        df = readDataCsvRobust(filepathData, usecols=usecols, converters={'switchValue': to_dict})
     else:
-        df = pd.read_csv(filepathData,index_col=False)
+        df = readDataCsvRobust(filepathData, usecols=usecols)
     times = []
     positions = []
     orientations = []
@@ -381,6 +418,10 @@ def to_dict(x):
         # via str(dict), which renders them as "<ClassName.MEMBER: 'value'>" - not valid Python literal
         # syntax. Collapse those down to just the quoted value so ast.literal_eval can parse the dict.
         x = re.sub(r"<\w+(?:\.\w+)+: (.+?)>", r"\1", x)
+        # numpy >= 2.0 changed the repr of its scalar types from a bare value to e.g. "np.int64(5)"
+        # or "np.float64(0.3)", which is a function call rather than a literal - collapse those down
+        # to the bare value too, for the same reason as above.
+        x = re.sub(r"np\.\w+\(([^()]+)\)", r"\1", x)
         y = ast.literal_eval(x)
         if type(y) == dict:
             return y

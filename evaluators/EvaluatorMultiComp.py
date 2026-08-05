@@ -63,25 +63,38 @@ class EvaluatorMultiAvgComp(object):
             #print(f"step {individualRun}/{len(self.simulationData[model])}")
                 if self.switchTypeValues == None or self.switchTypeValues == []:
                     evaluator = Evaluator.Evaluator(self.modelParams[model][individualRun], self.metric, self.simulationData[model][individualRun], self.evaluationTimestepInterval, self.threshold)
-                else:    
-                    evaluator = Evaluator.Evaluator(self.modelParams[model][individualRun], self.metric, self.simulationData[model][individualRun], self.evaluationTimestepInterval, self.threshold, self.switchTypeValues[model][individualRun], self.switchType, self.switchTypeOptions)
-            else:
-                if self.switchTypeValues == None or self.switchTypeValues == []:
-                    switchTypes = [None]
-                    if self.from_csv:
-                        params, simulationData = ssm.loadModelFromCsv(filepathData=f"{self.basePaths[model]}_{individualRun}.csv", 
-                                                                      filePathModelParams=f"{self.basePaths[model]}_{individualRun}_modelParams.csv")
-                    else:
-                        params, simulationData = ssm.loadModel(path=f"{self.basePaths[model]}_{individualRun}.json")
                 else:
-                    if self.from_csv:
-                        params, simulationData, switchTypes = ssm.loadModelFromCsv(filepathData=f"{self.basePaths[model]}_{individualRun}.csv",
-                                                                                   filePathModelParams=f"{self.basePaths[model]}_{individualRun}_modelParams.csv",
-                                                                                   switchTypes=[self.switchType])
+                    # self.switchTypeValues[model] is {switchTypeValueKey: [perTimestepList for each run]}
+                    # (see ServiceSavedModel.loadModels' switchValArr) - the switchTypeValueKey lookup was
+                    # missing here, so this indexed straight into the dict with an int run index instead.
+                    evaluator = Evaluator.Evaluator(self.modelParams[model][individualRun], self.metric, self.simulationData[model][individualRun], self.evaluationTimestepInterval, self.threshold, self.switchTypeValues[model][self.switchType.switchTypeValueKey][individualRun], self.switchType, self.switchTypeOptions)
+            else:
+                # from_csv reads may race a simulation run that is still actively writing to this
+                # exact file (e.g. an evaluation started while the data-generating sweep is still
+                # in progress), which can surface as a pandas tokenizing error on a torn row, or as
+                # a switch-value cell that fails to parse (ServiceSavedModel.to_dict() returns None
+                # for it) and then blows up downstream with an AttributeError. Either way this run's
+                # data just isn't complete yet - skip it rather than losing every other run for this
+                # combination too, it will be picked up correctly once fully written.
+                try:
+                    if self.switchTypeValues == None or self.switchTypeValues == []:
+                        switchTypes = [None]
+                        if self.from_csv:
+                            params, simulationData = ssm.loadModelFromCsv(filepathData=f"{self.basePaths[model]}_{individualRun}.csv",
+                                                                          filePathModelParams=f"{self.basePaths[model]}_{individualRun}_modelParams.csv")
+                        else:
+                            params, simulationData = ssm.loadModel(path=f"{self.basePaths[model]}_{individualRun}.json")
                     else:
-                        params, simulationData, switchTypes = ssm.loadModel(path=f"{self.basePaths[model]}_{individualRun}.json",
-                                                                            switchTypes=[self.switchType],
-                                                                            loadSwitchValues=True)
+                        if self.from_csv:
+                            params, simulationData, switchTypes = ssm.loadModelFromCsv(filepathData=f"{self.basePaths[model]}_{individualRun}.csv",
+                                                                                       filePathModelParams=f"{self.basePaths[model]}_{individualRun}_modelParams.csv",
+                                                                                       switchTypes=[self.switchType])
+                        else:
+                            params, simulationData, switchTypes = ssm.loadModel(path=f"{self.basePaths[model]}_{individualRun}.json",
+                                                                                switchTypes=[self.switchType],
+                                                                                loadSwitchValues=True)
+                except Exception:
+                    continue
                 evaluator = Evaluator.Evaluator(modelParams=params, metric=self.metric, simulationData=simulationData,
                                                 evaluationTimestepInterval=self.evaluationTimestepInterval,
                                                 threshold=self.threshold, switchTypeValues=switchTypes, switchType=self.switchType,

@@ -73,8 +73,10 @@ class Evaluator(object):
                 if any(ele is None for ele in self.switchTypeValues):
                     valuesPerTimeStep[self.time[i]] = ServiceMetric.evaluateSingleTimestep(positions=self.positions[i], orientations=self.orientations[i], metric=self.metric, domainSize=self.domainSize, radius=self.radius, threshold=self.threshold)
                 else:
-                    #switchVals = {k: v[i] for k,v in self.switchTypeValues.items()}
-                    switchVals = self.switchTypeValues[i]
+                    # self.switchTypeValues is {switchTypeValueKey: perTimestepList} for this one run
+                    # (see ServiceSavedModel.loadModelFromCsv/loadModel) - it needs the switchType's key
+                    # before it can be indexed by timestep, rather than being indexed directly.
+                    switchVals = self.switchTypeValues[self.switchType.switchTypeValueKey][i]
                     valuesPerTimeStep[self.time[i]] = ServiceMetric.evaluateSingleTimestep(positions=self.positions[i], orientations=self.orientations[i], metric=self.metric, domainSize=self.domainSize, radius=self.radius, threshold=self.threshold, switchTypeValues=switchVals, switchType=self.switchType, switchTypeOptions=self.switchTypeOptions)
 
         #print("Evaluation completed.")
