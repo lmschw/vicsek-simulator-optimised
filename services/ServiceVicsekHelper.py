@@ -9,12 +9,17 @@ def getDifferences(array, domainSize):
 
     Params:
         - array (array of floats): the values to be compared
+        - domainSize (array of floats): kept for API compatibility. No longer used: this
+          deliberately does NOT apply the minimum image convention (periodic wraparound), so
+          that neighbour-finding here matches the original (non-optimised) simulator, which
+          treats the domain as walled for distance purposes even though positions themselves
+          wrap around it. See the reference simulator's ServiceMetric.isNeighbour and
+          determineNeighbouringCells, neither of which account for wraparound either.
 
     Returns:
         An array of arrays of floats containing the difference between each pair of values.
     """
-    rij=array[:,np.newaxis,:]-array   
-    rij = rij - domainSize*np.rint(rij/domainSize) #minimum image convention
+    rij=array[:,np.newaxis,:]-array
     return np.sum(rij**2,axis=2)
 
 def getOrientationDifferences(orientations, domainSize):
@@ -53,10 +58,19 @@ def getNeighboursWithLimitedVision(positions, orientations, domainSize, radius, 
     if posDiff is None:
         posDiff = getPositionDifferences(positions, domainSize)
     candidates = (posDiff <= radius**2)
-    minAngles, maxAngles = ServiceVision.determineMinMaxAngleOfVision(orientations=orientations, degreesOfVision=degreesOfVision)
-    inFieldOfVision = ServiceVision.isInFieldOfVision(positions=positions, minAngles=minAngles, maxAngles=maxAngles)
-
-    combined = candidates & inFieldOfVision
+    if degreesOfVision >= 2*np.pi:
+        # full circle: every candidate is in view, so skip the min/max-angle vision check entirely.
+        # Computing it anyway is not just wasted work: determineMinMaxAngleOfVision derives minAngle
+        # and maxAngle from the same current angle via two independent (and independently rounded)
+        # normaliseAngles() calls, so for a 2*pi field of view they are mathematically but not always
+        # bit-identical. isInFieldOfVision() treats any minAngle != maxAngle as a real (if tiny)
+        # excluded slice rather than the intended "everything is visible", which silently dropped
+        # genuine in-radius neighbours whenever that rounding mismatch occurred.
+        combined = candidates
+    else:
+        minAngles, maxAngles = ServiceVision.determineMinMaxAngleOfVision(orientations=orientations, degreesOfVision=degreesOfVision)
+        inFieldOfVision = ServiceVision.isInFieldOfVision(positions=positions, minAngles=minAngles, maxAngles=maxAngles)
+        combined = candidates & inFieldOfVision
     np.fill_diagonal(combined, True)
     return combined
 

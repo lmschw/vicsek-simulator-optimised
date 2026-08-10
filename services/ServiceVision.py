@@ -36,9 +36,11 @@ def isInFieldOfVision(positions, minAngles, maxAngles):
     Returns:
         A boolean representing whether the given particle is in the field of vision of the current particle.
     """
-    posDiffs=positions-positions[:,np.newaxis,:]  
-    relativeAngles = np.arctan(posDiffs[:, :, 1], posDiffs[:, :, 0])
+    posDiffs=positions-positions[:,np.newaxis,:]
+    relativeAngles = np.arctan2(posDiffs[:, :, 1], posDiffs[:, :, 0])
     angles = relativeAngles % (2*np.pi)
+    minAngles = minAngles[:, np.newaxis]
+    maxAngles = maxAngles[:, np.newaxis]
     return ((minAngles < maxAngles) & ((angles >= minAngles) & (angles <= maxAngles))) | ((minAngles >= maxAngles) & ((angles >= minAngles) | (angles <= maxAngles)))
 
 

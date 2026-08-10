@@ -145,6 +145,7 @@ def createOrderedInitialDistributionEquidistanced(domainSize, numberOfParticles,
     # set the orientation for all particles
     orientations[:, 0] = angleX
     orientations[:, 1] = angleY
+    orientations = ServiceOrientations.normalizeOrientations(orientations)
 
     counter = 0
     # set the position of every particle
@@ -194,6 +195,7 @@ def createOrderedInitialDistributionEquidistancedForLowNumbers(domainSize, numbe
     # set the orientation for all particles
     orientations[:, 0] = angleX
     orientations[:, 1] = angleY
+    orientations = ServiceOrientations.normalizeOrientations(orientations)
 
     counter = 0
     # set the position of every particle

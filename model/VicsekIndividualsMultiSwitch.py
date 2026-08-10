@@ -380,7 +380,11 @@ class VicsekWithNeighbourSelection():
         kMax = np.max(ks)
         
         candidateIndices = ServiceVicsekHelper.getIndicesForTrueValues(neighbours, paddingType='repetition')
-        rng = np.random.default_rng()
+        # np.random.default_rng() with no argument seeds itself from OS entropy, independently of
+        # the legacy global np.random.seed(...) state used everywhere else in this class - so a
+        # seeded run would still not be reproducible here. Drawing its seed from the (seeded) global
+        # state instead makes it fully deterministic once the caller has seeded that global state.
+        rng = np.random.default_rng(np.random.randint(0, 2**32 - 1))
         rng.shuffle(candidateIndices, axis=1)
         if self.switchSummary != None and self.switchSummary.isActive(SwitchType.K):
             kMin, kMax = self.switchSummary.getMinMaxValuesForKSwitchIfPresent()
@@ -597,17 +601,18 @@ class VicsekWithNeighbourSelection():
         # Initialisations for the loop and the return variables
         self.numIntervals=int(tmax/dt+1)
 
-        self.thresholdEvaluationChoiceValuesHistory = []  
+        self.thresholdEvaluationChoiceValuesHistory = []
         if self.returnHistories:
-            self.positionsHistory = np.zeros((self.numIntervals+1,self.numberOfParticles,len(self.domainSize)))
-            self.orientationsHistory = np.zeros((self.numIntervals+1,self.numberOfParticles,len(self.domainSize)))  
+            # Sized (and filled, below in simulate()) to match the reference simulator: its
+            # history only ever contains post-update states, one entry per loop iteration, and
+            # never the true pre-loop initial state. So this deliberately does NOT record the
+            # initial positions/orientations here - the first entry gets written after the first
+            # update in simulate() instead, at index 0.
+            self.positionsHistory = np.zeros((self.numIntervals,self.numberOfParticles,len(self.domainSize)))
+            self.orientationsHistory = np.zeros((self.numIntervals,self.numberOfParticles,len(self.domainSize)))
             self.switchTypeValuesHistory = {'nsms': [], 'ks': [], 'speeds': [], 'activationTimeDelays': []}
             if self.colourType != None:
-                self.coloursHistory = (self.numIntervals+1) * [self.numberOfParticles * ['k']]
-
-            self.positionsHistory[0,:,:]=positions
-            self.orientationsHistory[0,:,:]=orientations
-            self.appendSwitchValues(nsms, ks, speeds, activationTimeDelays)
+                self.coloursHistory = self.numIntervals * [self.numberOfParticles * ['k']]
 
         if self.logPath:
             ServiceSavedModel.logModelParams(path=f"{self.logPath}_modelParams", modelParamsDict=self.getParameterSummary())
@@ -692,17 +697,25 @@ class VicsekWithNeighbourSelection():
                     activationTimeDelays = self.getDecisions(t, neighbours, thresholdEvaluationChoiceValues, self.thresholdEvaluationChoiceValuesHistory, SwitchType.ACTIVATION_TIME_DELAY, activationTimeDelays, blocked)
 
 
+            orientations = self.computeNewOrientations(neighbours, positions, orientations, nsms, ks, activationTimeDelays, posDiff=posDiff)
+
+            positions += self.dt*(orientations.T * speeds).T
+            positions += -self.domainSize*np.floor(positions/self.domainSize)
+
+            # Recorded (both here and to logPath below) only after the update above, matching the
+            # reference simulator: neither the returned history nor the CSV log ever contains the
+            # true pre-loop initial state, only post-update states, one per iteration.
             if self.returnHistories:
-                self.positionsHistory[t+1,:,:]=positions
-                self.orientationsHistory[t+1,:,:]=orientations
+                self.positionsHistory[t,:,:]=positions
+                self.orientationsHistory[t,:,:]=orientations
                 self.appendSwitchValues(nsms, ks, speeds, activationTimeDelays)
                 if self.colourType != None:
                     self.coloursHistory[t] = self.colours
-            
+
             if self.logPath and t % self.logInterval == 0:
                 switchValues = {'nsms': nsms, 'ks': ks, 'speeds': speeds, 'activationTimeDelays': activationTimeDelays}
-                ServiceSavedModel.saveModelTimestep(timestep=t, 
-                                                    positions=positions, 
+                ServiceSavedModel.saveModelTimestep(timestep=t,
+                                                    positions=positions,
                                                     orientations=orientations,
                                                     colours=self.colours,
                                                     path=self.logPath,
@@ -711,11 +724,6 @@ class VicsekWithNeighbourSelection():
                 ServiceSavedModel.saveGlobalOrderTimestep(timestep=t,
                                                           globalOrder=ServiceMetric.computeGlobalOrder(orientations),
                                                           path=f"{self.logPath}_globalOrder")
-
-            orientations = self.computeNewOrientations(neighbours, positions, orientations, nsms, ks, activationTimeDelays, posDiff=posDiff)
-
-            positions += self.dt*(orientations.T * speeds).T
-            positions += -self.domainSize*np.floor(positions/self.domainSize)
 
             # if t % 500 == 0:
             #     print(f"t={t}, th={self.thresholdEvaluationMethod.name}, order={ServiceMetric.computeGlobalOrder(orientations)}")
