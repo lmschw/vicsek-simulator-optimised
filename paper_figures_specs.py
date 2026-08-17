@@ -17,7 +17,7 @@ how the grid is labelled, and which metric it shows. Kept separate from the exec
 (services/ServicePaperFigureRunner.py) and the rendering engine (services/ServicePaperFigureGrid.py)
 so the figure-specific content here can be reviewed/corrected independently of that machinery.
 
-buildAll(dataRoot, numReps) is the entry point: it returns (runSpecs, figureSpecs) where runSpecs is
+buildAll(dataRoot, numReps, updateIfNoNeighbours=True) is the entry point: it returns (runSpecs, figureSpecs) where runSpecs is
 {path: runSpec} for every simulation run needed across every figure, already deduplicated (the same underlying
 combination is only generated once even if several figures use it, e.g. fig_4/switching_percentage/
 switching_clustering, or fig_4's default point coinciding with a duration=1000/threshold=0.1 point
@@ -55,14 +55,17 @@ DEFAULT_EVENT_DURATION = 1000
 DEFAULT_WINDOW = 100
 DEFAULT_THRESHOLD = 0.1
 DEFAULT_NOISE_PCT = 1
-DEFAULT_DENSITY = 0.09
+DEFAULT_DENSITY = 0.06
 DEFAULT_RADIUS = 10
 SPEED = 1
 DEGREES_OF_VISION = 2 * np.pi
 
 K_COMBO = (5, 1)
-NSM_COMBO_NEAREST_FARTHEST = [NeighbourSelectionMechanism.NEAREST, NeighbourSelectionMechanism.FARTHEST]
-NSM_COMBO_LOD_HOD = [NeighbourSelectionMechanism.LEAST_ORIENTATION_DIFFERENCE, NeighbourSelectionMechanism.HIGHEST_ORIENTATION_DIFFERENCE]
+# index 0 is always the order value, index 1 the disorder value (matches K_COMBO's convention and
+# SwitchInformation's values=(orderSwitchValue, disorderSwitchValue)). FARTHEST/HOD are the
+# order-associated mechanisms at k=1, not NEAREST/LOD - confirmed against s_d/s_o labelling.
+NSM_COMBO_NEAREST_FARTHEST = [NeighbourSelectionMechanism.FARTHEST, NeighbourSelectionMechanism.NEAREST]
+NSM_COMBO_LOD_HOD = [NeighbourSelectionMechanism.HIGHEST_ORIENTATION_DIFFERENCE, NeighbourSelectionMechanism.LEAST_ORIENTATION_DIFFERENCE]
 
 EVENT_EFFECTS = [
     (EventEffect.ALIGN_TO_FIXED_ANGLE, "distant"),
@@ -95,9 +98,13 @@ class ComboRegistry:
     exact same combination of parameters share the one underlying set of runs, keyed by the
     combination's save path (which is itself built deterministically from its parameters).
     """
-    def __init__(self, dataRoot, numReps):
+    def __init__(self, dataRoot, numReps, updateIfNoNeighbours=True):
         self.dataRoot = dataRoot
         self.numReps = numReps
+        # whether an isolated individual (no other neighbours in radius) is still allowed to switch
+        # strategy - passed straight through to VicsekWithNeighbourSelection. Only affects combos
+        # that actually switch (comboKSwitch/comboNsmSwitch); irrelevant to comboNoSwitch.
+        self.updateIfNoNeighbours = updateIfNoNeighbours
         self.runSpecs = {}  # savePathBase (with _ordered/_random suffix) -> run spec
 
     def register(self, savePathBase, tmax, n, logInterval, kwargsFnForStart):
@@ -140,7 +147,8 @@ class ComboRegistry:
         n = _n(density)
         hasEvent = eventEffect is not None
         evTag = f"_ee={eventEffect.val}_dur={duration}" if hasEvent else "_noev"
-        base = f"ksw_d={density}_r={radius}_noise={noisePct}_nsm={nsm.value}_th={threshold}_w={window}{evTag}"
+        noNeighbourTag = "" if self.updateIfNoNeighbours else "_blockiso"
+        base = f"ksw_d={density}_r={radius}_noise={noisePct}_nsm={nsm.value}_th={threshold}_w={window}{evTag}{noNeighbourTag}"
 
         def kwargsFn(sc):
             k = K_COMBO[0] if sc == "ordered" else K_COMBO[1]
@@ -148,7 +156,7 @@ class ComboRegistry:
                                                                thresholds=[threshold], numberPreviousStepsForThreshold=window)])
             kwargs = dict(domainSize=DOMAIN_SIZE, radius=radius, noise=_noise(noisePct), numberOfParticles=n,
                           k=k, neighbourSelectionMechanism=nsm, speed=SPEED, degreesOfVision=DEGREES_OF_VISION,
-                          switchSummary=switchSummary)
+                          switchSummary=switchSummary, updateIfNoNeighbours=self.updateIfNoNeighbours)
             if hasEvent:
                 kwargs["events"] = [_event(eventEffect, radius, duration)]
             return kwargs
@@ -159,15 +167,18 @@ class ComboRegistry:
     def comboNsmSwitch(self, density, radius, noisePct, k, nsmCombo, eventEffect=None, duration=DEFAULT_EVENT_DURATION,
                         window=DEFAULT_WINDOW, threshold=DEFAULT_THRESHOLD):
         """
-        nsm-switching on a fixed k. Ordered start = nsmCombo[0] (the "order" mechanism, e.g. NEAREST),
-        disordered start = nsmCombo[1] (e.g. FARTHEST) - so "percentage choosing switchTypeOptions[0]"
-        equals "percentage choosing the *first* item, not the second (e.g. "<nearest(1),
-        farthest(1)>"'s second item, farthest(1), is switchTypeOptions[1] - needs 100-x.
+        nsm-switching on a fixed k. Ordered start = nsmCombo[0] (the "order" mechanism - by
+        NSM_COMBO_NEAREST_FARTHEST/NSM_COMBO_LOD_HOD's construction this is FARTHEST/HOD, since those
+        are empirically the order-associated mechanisms at k=1, not NEAREST/LOD), disordered start =
+        nsmCombo[1] - so "percentage choosing switchTypeOptions[0]" already equals "percentage
+        choosing the *second* item" in labels like "<nearest(1), farthest(1)>" (farthest(1)), no
+        inversion needed.
         """
         n = _n(density)
         hasEvent = eventEffect is not None
         evTag = f"_ee={eventEffect.val}_dur={duration}" if hasEvent else "_noev"
-        base = f"nsmsw_d={density}_r={radius}_noise={noisePct}_nsmCombo={nsmCombo[0].value}-{nsmCombo[1].value}_k={k}_th={threshold}_w={window}{evTag}"
+        noNeighbourTag = "" if self.updateIfNoNeighbours else "_blockiso"
+        base = f"nsmsw_d={density}_r={radius}_noise={noisePct}_nsmCombo={nsmCombo[0].value}-{nsmCombo[1].value}_k={k}_th={threshold}_w={window}{evTag}{noNeighbourTag}"
 
         def kwargsFn(sc):
             nsm = nsmCombo[0] if sc == "ordered" else nsmCombo[1]
@@ -175,13 +186,13 @@ class ComboRegistry:
                                                                thresholds=[threshold], numberPreviousStepsForThreshold=window)])
             kwargs = dict(domainSize=DOMAIN_SIZE, radius=radius, noise=_noise(noisePct), numberOfParticles=n,
                           k=k, neighbourSelectionMechanism=nsm, speed=SPEED, degreesOfVision=DEGREES_OF_VISION,
-                          switchSummary=switchSummary)
+                          switchSummary=switchSummary, updateIfNoNeighbours=self.updateIfNoNeighbours)
             if hasEvent:
                 kwargs["events"] = [_event(eventEffect, radius, duration)]
             return kwargs
 
         ordered, random = self.register(base, TMAX_LOCAL, n, 100, kwargsFn)
-        return ordered, random, SwitchType.NEIGHBOUR_SELECTION_MECHANISM, tuple(nsmCombo), True  # invertPercentage=True
+        return ordered, random, SwitchType.NEIGHBOUR_SELECTION_MECHANISM, tuple(nsmCombo), False  # invertPercentage=False
 
 
 # The five row-combinations shared by fig_4_switching_order/switching_percentage/switching_clustering,
@@ -200,16 +211,14 @@ SWITCHING_COMBOS = [
          percentageLabel="hod(1)"),
 ]
 
-# The eight (mechanism, k) row-combinations for fig_3_nosw_1ev_order / nosw_1ev_clusters.
+# The (mechanism, k) row-combinations for fig_3_nosw_1ev_order / nosw_1ev_clusters. hod(1), hod(5)
+# and farthest(5) are intentionally excluded.
 NOSW_ROWS = [
     (NeighbourSelectionMechanism.NEAREST, 1, "nearest(1)"),
     (NeighbourSelectionMechanism.LEAST_ORIENTATION_DIFFERENCE, 1, "lod(1)"),
     (NeighbourSelectionMechanism.FARTHEST, 1, "farthest(1)"),
-    (NeighbourSelectionMechanism.HIGHEST_ORIENTATION_DIFFERENCE, 1, "hod(1)"),
     (NeighbourSelectionMechanism.NEAREST, 5, "nearest(5)"),
     (NeighbourSelectionMechanism.LEAST_ORIENTATION_DIFFERENCE, 5, "lod(5)"),
-    (NeighbourSelectionMechanism.FARTHEST, 5, "farthest(5)"),
-    (NeighbourSelectionMechanism.HIGHEST_ORIENTATION_DIFFERENCE, 5, "hod(5)"),
 ]
 
 MECHANISM_LABELS = {
@@ -246,8 +255,8 @@ def _standardFigure(kind, nRows, nCols, rowHeaders, colHeaders, yLabel, metric, 
                 yLabel=yLabel, metric=metric, cells=cells, legendEntries=None, ylim=ylim, backgroundSpan=backgroundSpan)
 
 
-def buildAll(dataRoot, numReps):
-    reg = ComboRegistry(dataRoot, numReps)
+def buildAll(dataRoot, numReps, updateIfNoNeighbours=True):
+    reg = ComboRegistry(dataRoot, numReps, updateIfNoNeighbours=updateIfNoNeighbours)
     figures = {}
 
     # ---------------------------------------------------------------- fig_2_global_order / app_global_clusters
@@ -284,9 +293,9 @@ def buildAll(dataRoot, numReps):
             cellsOrder[(r, c)] = _cell(ordered, random)
             cellsClusters[(r, c)] = _cell(ordered, random)
     span = (EVENT_START, EVENT_START + DEFAULT_EVENT_DURATION)
-    figures["fig_3_nosw_1ev_order"] = _standardFigure("grid", 8, 3, rowHeaders, colHeaders, "global order",
+    figures["fig_3_nosw_1ev_order"] = _standardFigure("grid", len(NOSW_ROWS), 3, rowHeaders, colHeaders, "global order",
                                                         Metrics.ORDER, cellsOrder, ylim=(0, 1.1), backgroundSpan=span)
-    figures["nosw_1ev_clusters"] = _standardFigure("grid", 8, 3, rowHeaders, colHeaders, "number of clusters",
+    figures["nosw_1ev_clusters"] = _standardFigure("grid", len(NOSW_ROWS), 3, rowHeaders, colHeaders, "number of clusters",
                                                      Metrics.CLUSTER_NUMBER_WITH_RADIUS, cellsClusters, backgroundSpan=span)
 
     # ---------------------------------------------------------------- fig_4_switching_order / _percentage / _clustering
@@ -298,10 +307,23 @@ def buildAll(dataRoot, numReps):
             ordered, random, switchType, switchTypeOptions, invert = _switchingCombo(reg, combo, DEFAULT_DENSITY, DEFAULT_RADIUS,
                                                                                        DEFAULT_NOISE_PCT, eventEffect=eventEffect)
             cellsOrder[(r, c)] = _cell(ordered, random)
-            cellsClusters[(r, c)] = _cell(ordered, random)
+            # clusters and percentage share the exact same underlying run data for these combos - attaching
+            # switchInfo to the clusters cell too (even though it doesn't need it) lets ServicePaperFigureRunner's
+            # data cache load the switch columns once and reuse them for both metrics instead of loading twice.
+            cellsClusters[(r, c)] = _cell(ordered, random, switchInfo=(switchType, switchTypeOptions, invert))
             cellsPct[(r, c)] = _cell(ordered, random, switchInfo=(switchType, switchTypeOptions, invert))
-    figures["fig_4_switching_order"] = _standardFigure("grid", 5, 3, rowHeaders, colHeaders, "global order",
-                                                         Metrics.ORDER, cellsOrder, ylim=(0, 1.1), backgroundSpan=span)
+
+    # fig_4_switching_order alone shows a reduced set of rows - <nearest(1), nearest(5)> [a],
+    # <nearest(1), farthest(1)> [d] and <lod(1), lod(5)> [b], in that order - while
+    # switching_clustering/switching_percentage (built from the same cellsClusters/cellsPct below)
+    # keep all five rows.
+    FIG_4_ROW_KEYS = ["a", "d", "b"]
+    fig4RowIndices = sorted((i for i, c in enumerate(SWITCHING_COMBOS) if c["key"] in FIG_4_ROW_KEYS),
+                            key=lambda i: FIG_4_ROW_KEYS.index(SWITCHING_COMBOS[i]["key"]))
+    fig4RowHeaders = [SWITCHING_COMBOS[i]["rowLabel"] for i in fig4RowIndices]
+    fig4CellsOrder = {(newR, c): cellsOrder[(origR, c)] for newR, origR in enumerate(fig4RowIndices) for c in range(len(EVENT_EFFECTS))}
+    figures["fig_4_switching_order"] = _standardFigure("grid", len(fig4RowIndices), 3, fig4RowHeaders, colHeaders, "global order",
+                                                         Metrics.ORDER, fig4CellsOrder, ylim=(0, 1.1), backgroundSpan=span)
     figures["switching_clustering"] = _standardFigure("grid", 5, 3, rowHeaders, colHeaders, "number of clusters",
                                                         Metrics.CLUSTER_NUMBER_WITH_RADIUS, cellsClusters, backgroundSpan=span)
     pctFig = _standardFigure("grid", 5, 3, rowHeaders, colHeaders, "% order-inducing", Metrics.ORDER_VALUE_PERCENTAGE,
@@ -339,7 +361,10 @@ def buildAll(dataRoot, numReps):
                     duration = sweepVal if sweepKwargName == "duration" else DEFAULT_EVENT_DURATION
                     ordered, random, switchType, switchTypeOptions, invert = _switchingCombo(
                         reg, combo, DEFAULT_DENSITY, DEFAULT_RADIUS, DEFAULT_NOISE_PCT, eventEffect=eventEffect, **kwargs)
-                    if metric == Metrics.ORDER_VALUE_PERCENTAGE:
+                    if metric in (Metrics.ORDER_VALUE_PERCENTAGE, Metrics.CLUSTER_NUMBER_WITH_RADIUS):
+                        # clusters and percentage share the same underlying run data for these combos -
+                        # attaching switchInfo to both (even though clusters doesn't need it) lets the
+                        # data cache load the switch columns once and reuse them for both metrics.
                         cells[(r, c)] = _cell(ordered, random, switchInfo=(switchType, switchTypeOptions, invert))
                     else:
                         cells[(r, c)] = _cell(ordered, random)
@@ -416,3 +441,14 @@ def buildAll(dataRoot, numReps):
                                              cells, ylim=(0, 1.1))
 
     return reg.runSpecs, figures
+
+
+# Figures that involve switching at all (i.e. built from comboKSwitch/comboNsmSwitch) - the only ones
+# affected by ComboRegistry's updateIfNoNeighbours flag, since it's meaningless without a switchSummary.
+# Used by run_paper_figures_no_neighbour_switch.py to only (re)generate this subset.
+SWITCHING_FIGURE_PREFIXES = ("fig_4_switching", "switching_percentage", "switching_clustering",
+                              "switching_no_ev_order", "event_duration_", "window_size_", "thresholds_")
+
+
+def isSwitchingFigure(name):
+    return name.startswith(SWITCHING_FIGURE_PREFIXES)

@@ -111,7 +111,7 @@ def main():
 
     with ProcessPoolExecutor(max_workers=numberOfWorkers) as executor:
 
-        for j in range(0, 51, 10):
+        for j in range(20, 30, 10):
             iStart = j+1
             iStop = j + 11  
             # ----------------------------- GLOBAL - no switching, no events --------------------------------------------------------

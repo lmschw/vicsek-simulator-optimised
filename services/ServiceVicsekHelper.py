@@ -9,17 +9,15 @@ def getDifferences(array, domainSize):
 
     Params:
         - array (array of floats): the values to be compared
-        - domainSize (array of floats): kept for API compatibility. No longer used: this
-          deliberately does NOT apply the minimum image convention (periodic wraparound), so
-          that neighbour-finding here matches the original (non-optimised) simulator, which
-          treats the domain as walled for distance purposes even though positions themselves
-          wrap around it. See the reference simulator's ServiceMetric.isNeighbour and
-          determineNeighbouringCells, neither of which account for wraparound either.
+        - domainSize (array of floats): the size of the domain, used to apply the minimum image
+          convention (periodic wraparound) so that distances reflect the shortest path across the
+          periodic boundary, consistent with how positions themselves wrap around it.
 
     Returns:
         An array of arrays of floats containing the difference between each pair of values.
     """
     rij=array[:,np.newaxis,:]-array
+    rij = rij - domainSize*np.rint(rij/domainSize) #minimum image convention
     return np.sum(rij**2,axis=2)
 
 def getOrientationDifferences(orientations, domainSize):

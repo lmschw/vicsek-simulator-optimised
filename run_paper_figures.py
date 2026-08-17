@@ -140,12 +140,15 @@ def renderFigure(name, figureSpec, numReps, runSpecs, outputRoot):
         raise ValueError(f"unknown figure kind {kind}")
 
 
-def run(dataRoot, outputRoot, numReps, workers, figureFilter, listOnly):
+def run(dataRoot, outputRoot, numReps, workers, figureFilter, listOnly, updateIfNoNeighbours=True):
     ServiceGeneral.logWithTime("building figure specs...")
-    runSpecs, figures = specs.buildAll(dataRoot, numReps)
+    runSpecs, figures = specs.buildAll(dataRoot, numReps, updateIfNoNeighbours=updateIfNoNeighbours)
     pathToFigures = computePathToFigures(figures)
     manifest = loadManifest(outputRoot)
     seedLogPath = os.path.join(outputRoot, "seeds.csv")
+
+    if callable(figureFilter):
+        figureFilter = sorted(n for n in figures if figureFilter(n))
 
     names = sorted(figures.keys()) if figureFilter is None else [n for n in figureFilter if n in figures]
     unknown = [] if figureFilter is None else [n for n in figureFilter if n not in figures]
@@ -153,7 +156,7 @@ def run(dataRoot, outputRoot, numReps, workers, figureFilter, listOnly):
         ServiceGeneral.logWithTime(f"WARNING: unknown figure names ignored: {unknown}")
 
     if listOnly:
-        for name in sorted(figures.keys()):
+        for name in names:
             status = "done" if manifest.get(name) == "done" else "pending"
             ServiceGeneral.logWithTime(f"{name}: {status}")
         return
@@ -161,8 +164,15 @@ def run(dataRoot, outputRoot, numReps, workers, figureFilter, listOnly):
     os.makedirs(dataRoot, exist_ok=True)
     os.makedirs(outputRoot, exist_ok=True)
 
-    ServiceGeneral.logWithTime(f"{len(figures)} figures total ({len(runSpecs)} unique combinations, "
-                                f"{len(runSpecs) * numReps} individual runs at {numReps} reps each)")
+    # scoped to `names` (the post-filter figure list), not the full unfiltered build - otherwise this
+    # always reports every figure/combination paper_figures_specs.py can produce, regardless of
+    # --figures or a predicate filter like run_paper_figures_no_neighbour_switch.py's.
+    neededPathsTotal = set()
+    for name in names:
+        for _key, cell in iterCells(figures[name]):
+            neededPathsTotal.update(cellPaths(cell))
+    ServiceGeneral.logWithTime(f"{len(names)} figures to process ({len(neededPathsTotal)} unique combinations, "
+                                f"{len(neededPathsTotal) * numReps} individual runs at {numReps} reps each)")
 
     for name in names:
         if manifest.get(name) == "done":
@@ -196,6 +206,8 @@ def run(dataRoot, outputRoot, numReps, workers, figureFilter, listOnly):
                 toClean.append(runSpecs[path])
         if toClean:
             removed = Runner.cleanupBatch(toClean, numReps)
+            for spec in toClean:
+                Runner.evictCache(spec["savePathBase"], numReps)
             ServiceGeneral.logWithTime(f"  cleaned up {len(toClean)} combinations ({removed} files)")
 
         ServiceGeneral.logWithTime(f"--- {name} done: {ServiceGeneral.formatTime(time.time() - figureStart)} ---")
@@ -206,7 +218,7 @@ def main():
     parser.add_argument("--data-root", default=os.path.expanduser("~/paper_figures_tmp"),
                          help="scratch directory for raw simulation data (deleted per-figure as it's used)")
     parser.add_argument("--output-root", default="plots/paper_figures", help="where the rendered figures/manifest/seed log go")
-    parser.add_argument("--num-reps", type=int, default=20)
+    parser.add_argument("--num-reps", type=int, default=50)
     parser.add_argument("--workers", type=int, default=max(1, os.cpu_count() - 2))
     parser.add_argument("--figures", nargs="+", default=None, help="only process these figure names (default: all)")
     parser.add_argument("--list", action="store_true", help="list all figure names and their manifest status, then exit")

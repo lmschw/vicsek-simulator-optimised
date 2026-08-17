@@ -25,13 +25,13 @@ EVENT_SHADING_COLOUR = "#1baf7a"
 STANDARD_LEGEND = [("ordered start", ORDERED_COLOUR, "-"), ("disordered start", DISORDERED_COLOUR, "-")]
 
 plt.rcParams.update({
-    "font.size": 9,
-    "axes.titlesize": 9,
-    "axes.labelsize": 9,
-    "xtick.labelsize": 8,
-    "ytick.labelsize": 8,
-    "legend.fontsize": 8,
-    "figure.titlesize": 10,
+    "font.size": 13,
+    "axes.titlesize": 13,
+    "axes.labelsize": 13,
+    "xtick.labelsize": 11,
+    "ytick.labelsize": 11,
+    "legend.fontsize": 11,
+    "figure.titlesize": 15,
     "svg.fonttype": "none",  # keep text as text (not paths) in the SVG output
 })
 

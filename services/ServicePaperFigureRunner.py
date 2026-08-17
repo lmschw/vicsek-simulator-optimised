@@ -13,7 +13,9 @@ from enums.EnumMetrics import Metrics
 
 import services.ServicePreparation as ServicePreparation
 import services.ServiceGeneral as ServiceGeneral
+import services.ServiceSavedModel as ServiceSavedModel
 import services.ServiceNeighbourSelectionEval as ServiceNeighbourSelectionEval
+import evaluators.EvaluatorMultiComp as EvaluatorMultiComp
 
 """
 Seeded, resumable execution of the runs needed for the paper figures (see paper_figures_specs.py),
@@ -153,11 +155,92 @@ def runBatch(runSpecs, seedLogPath, numReps, workers):
     return completed
 
 
+# Cache of loaded per-run CSV data, keyed by (basePath, i): (modelParams, simulationData, switchValuesDict
+# or None). Several figures can need the CLUSTER_NUMBER_WITH_RADIUS and/or ORDER_VALUE_PERCENTAGE metric
+# for the exact same underlying combination (e.g. switching_clustering/switching_percentage, or fig_4's
+# default point coinciding with a sweep figure's default-value column) - both metrics need the full
+# per-timestep position/orientation/switch-value data, which is the expensive part to load (not the metric
+# computation itself), so loading it once per run and reusing it across metrics/figures avoids re-reading
+# and re-parsing the same CSV file repeatedly. Cleared per-combination via evictCache() once every figure
+# referencing it is done (see run_paper_figures.py), so it stays bounded to whatever's currently in flight.
+_rawDataCache = {}
+
+
+def _loadRunDataCached(basePath, i, switchTypes):
+    """
+    switchTypes: list of SwitchType to load switch values for (empty if the metric doesn't need them).
+    If an earlier call cached this run without switch data but a later call needs it, reloads (with
+    switch data) rather than returning a stale, incomplete cache entry.
+    """
+    key = (basePath, i)
+    cached = _rawDataCache.get(key)
+    if cached is not None and (not switchTypes or cached[2] is not None):
+        return cached
+    try:
+        if switchTypes:
+            params, simData, switchVals = ServiceSavedModel.loadModelFromCsv(
+                filepathData=f"{basePath}_{i}.csv", filePathModelParams=f"{basePath}_{i}_modelParams.csv",
+                switchTypes=switchTypes)
+        else:
+            params, simData = ServiceSavedModel.loadModelFromCsv(
+                filepathData=f"{basePath}_{i}.csv", filePathModelParams=f"{basePath}_{i}_modelParams.csv")
+            switchVals = None
+    except Exception:
+        return None
+    result = (params, simData, switchVals)
+    _rawDataCache[key] = result
+    return result
+
+
+def evictCache(basePath, numReps):
+    """Drops cached loaded data for a combination once nothing still needs it (see run_paper_figures.py)."""
+    for i in range(numReps):
+        _rawDataCache.pop((basePath, i), None)
+
+
+def _evaluateMetricSeriesCached(basePath, indices, metric, evalInterval, switchType=None, switchTypeOptions=None):
+    """
+    Same contract as ServiceNeighbourSelectionEval.evaluateMetricSeries, but reads through
+    _loadRunDataCached instead of always hitting disk, and feeds the already-loaded data into
+    EvaluatorMultiAvgComp directly (its simulationData= path) instead of its from_csv=True path.
+    """
+    switchTypes = [switchType] if switchType is not None else []
+    modelParamsList, simDataList, switchValsForKey = [], [], []
+    for i in indices:
+        loaded = _loadRunDataCached(basePath, i, switchTypes)
+        if loaded is None:
+            continue
+        params, simData, switchVals = loaded
+        modelParamsList.append(params)
+        simDataList.append(simData)
+        if switchType is not None:
+            switchValsForKey.append(switchVals[switchType.switchTypeValueKey])
+    if not modelParamsList:
+        return None
+
+    switchTypeValuesArg = [{switchType.switchTypeValueKey: switchValsForKey}] if switchType is not None else None
+    evaluator = EvaluatorMultiComp.EvaluatorMultiAvgComp(
+        metric=metric, modelParams=[modelParamsList], simulationData=[simDataList],
+        evaluationTimestepInterval=evalInterval, threshold=ServiceNeighbourSelectionEval.CLUSTER_THRESHOLD,
+        switchTypeValues=switchTypeValuesArg, switchType=switchType, switchTypeOptions=switchTypeOptions,
+        use_median=False,
+    )
+    dd, varianceData = evaluator.evaluate()
+    if not dd:
+        return None
+    times = np.array(sorted(dd.keys()))
+    means = np.array([dd[t][0] for t in times])
+    bounds = np.array(varianceData[0])
+    stds = (bounds[:, 1] - bounds[:, 0]) / 2
+    return times, means, stds
+
+
 def evaluateCell(basePathOrdered, basePathRandom, numReps, metric, evalInterval, switchType=None, switchTypeOptions=None):
     """
-    Evaluates one grid cell's two series (ordered start, disordered start) for the given metric,
-    reusing the existing evaluation code in ServiceNeighbourSelectionEval.py. Returns a dict
-    {"ordered": (t, mean, std) or None, "disordered": (t, mean, std) or None}.
+    Evaluates one grid cell's two series (ordered start, disordered start) for the given metric.
+    Returns a dict {"ordered": (t, mean, std) or None, "disordered": (t, mean, std) or None}. The
+    ORDER metric reads the small precomputed globalOrder.csv directly (already cheap, no caching
+    needed); other metrics go through the shared run-data cache (see _loadRunDataCached).
     """
     indices = list(range(numReps))
     results = {}
@@ -165,7 +248,7 @@ def evaluateCell(basePathOrdered, basePathRandom, numReps, metric, evalInterval,
         if metric == Metrics.ORDER:
             results[label] = ServiceNeighbourSelectionEval.loadGlobalOrderSeries(basePath, indices)
         else:
-            results[label] = ServiceNeighbourSelectionEval.evaluateMetricSeries(
+            results[label] = _evaluateMetricSeriesCached(
                 basePath, indices, metric, evalInterval, switchType=switchType, switchTypeOptions=switchTypeOptions
             )
     return results

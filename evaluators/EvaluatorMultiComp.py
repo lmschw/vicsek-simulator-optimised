@@ -65,9 +65,12 @@ class EvaluatorMultiAvgComp(object):
                     evaluator = Evaluator.Evaluator(self.modelParams[model][individualRun], self.metric, self.simulationData[model][individualRun], self.evaluationTimestepInterval, self.threshold)
                 else:
                     # self.switchTypeValues[model] is {switchTypeValueKey: [perTimestepList for each run]}
-                    # (see ServiceSavedModel.loadModels' switchValArr) - the switchTypeValueKey lookup was
-                    # missing here, so this indexed straight into the dict with an int run index instead.
-                    evaluator = Evaluator.Evaluator(self.modelParams[model][individualRun], self.metric, self.simulationData[model][individualRun], self.evaluationTimestepInterval, self.threshold, self.switchTypeValues[model][self.switchType.switchTypeValueKey][individualRun], self.switchType, self.switchTypeOptions)
+                    # (see ServiceSavedModel.loadModels' switchValArr). Evaluator.evaluate() expects its
+                    # own switchTypeValues arg to be a {switchTypeValueKey: perTimestepList} dict for the
+                    # one run being evaluated (matching what the from_csv branch below passes it) - so the
+                    # per-run array extracted here has to be re-wrapped in a single-key dict, not passed bare.
+                    switchValsForRun = {self.switchType.switchTypeValueKey: self.switchTypeValues[model][self.switchType.switchTypeValueKey][individualRun]}
+                    evaluator = Evaluator.Evaluator(self.modelParams[model][individualRun], self.metric, self.simulationData[model][individualRun], self.evaluationTimestepInterval, self.threshold, switchValsForRun, self.switchType, self.switchTypeOptions)
             else:
                 # from_csv reads may race a simulation run that is still actively writing to this
                 # exact file (e.g. an evaluation started while the data-generating sweep is still

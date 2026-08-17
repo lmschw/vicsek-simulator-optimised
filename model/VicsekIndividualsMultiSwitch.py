@@ -482,7 +482,14 @@ class VicsekWithNeighbourSelection():
                                                                                     ks=ks,
                                                                                     posDiff=posDiff,
                                                                                     orientDiff=orientDiff)
-            pickedNeighbours = np.where(((nsms == nsmsSwitch.orderSwitchValue.value)), neighboursOrder, neighboursDisorder)
+            # nsms == ... has shape (numberOfParticles,); reshaped to a column vector here so it
+            # broadcasts against the (numberOfParticles, numberOfParticles) neighbour masks per ROW
+            # (i.e. by which mechanism the deciding particle itself uses). Without the reshape, numpy
+            # broadcasts a 1D array of this shape against the trailing (last) axis instead, so the
+            # selection would run per COLUMN - by which mechanism the candidate neighbour uses - letting
+            # any particle using the order mechanism leak into every other particle's mask regardless of
+            # that particle's own value.
+            pickedNeighbours = np.where(((nsms == nsmsSwitch.orderSwitchValue.value)[:, None]), neighboursOrder, neighboursDisorder)
 
         else:
             orientDiff = None
@@ -514,8 +521,14 @@ class VicsekWithNeighbourSelection():
      
     def getDecisions(self, t, neighbours, thresholdEvaluationChoiceValues, previousthresholdEvaluationChoiceValues, switchType, switchTypeValues, blocked):
         """
-        Computes whether the individual chooses to use option A or option B as its value based on the local order, 
+        Computes whether the individual chooses to use option A or option B as its value based on the local order,
         the average previous local order and a threshold.
+
+        Matches the reference simulator's ThresholdType.HYSTERESIS: a particle only switches to the
+        order value while its local order is both above the upper threshold AND trending upward
+        (i.e. above the strictly-prior windowed average), and only switches to the disorder value
+        while its local order is both below the lower threshold AND NOT trending upward. A plain
+        threshold crossing without the matching trend leaves the previous value in place.
 
         Params:
             - t (int): the current timestep
@@ -532,10 +545,21 @@ class VicsekWithNeighbourSelection():
         switchDifferenceThresholdLower = switchInfo.lowerThreshold
         switchDifferenceThresholdUpper = switchInfo.upperThreshold
 
-        prev = np.average(previousthresholdEvaluationChoiceValues[max(t-switchInfo.numberPreviousStepsForThreshold, 0):t+1], axis=0)
+        # previousthresholdEvaluationChoiceValues already has the current step's value appended (the
+        # caller does so just before this call), so it is excluded here - the windowed average must
+        # only ever reflect strictly-prior steps, matching the reference's previousLocalOrder. At t=0
+        # there is no prior history yet, so the current value is compared against itself (difference
+        # of 0, i.e. no upward trend), exactly reproducing the reference's bootstrapping behaviour.
+        if t > 0:
+            windowStart = max(t - switchInfo.numberPreviousStepsForThreshold, 0)
+            prev = np.average(previousthresholdEvaluationChoiceValues[windowStart:t], axis=0)
+        else:
+            prev = thresholdEvaluationChoiceValues
 
-        oldWithNewOrderValues = np.where(((thresholdEvaluationChoiceValues >= switchDifferenceThresholdUpper) & (prev <= switchDifferenceThresholdUpper) & (blocked != True)), np.full(len(switchTypeValues), switchInfo.getOrderValue()), switchTypeValues)
-        updatedSwitchValues = np.where(((thresholdEvaluationChoiceValues <= switchDifferenceThresholdLower) & (prev >= switchDifferenceThresholdLower) & (blocked != True)), np.full(len(switchTypeValues), switchInfo.getDisorderValue()), oldWithNewOrderValues)
+        trendingUp = thresholdEvaluationChoiceValues > prev
+
+        oldWithNewOrderValues = np.where((trendingUp & (thresholdEvaluationChoiceValues >= switchDifferenceThresholdUpper) & (blocked != True)), np.full(len(switchTypeValues), switchInfo.getOrderValue()), switchTypeValues)
+        updatedSwitchValues = np.where((~trendingUp & (thresholdEvaluationChoiceValues <= switchDifferenceThresholdLower) & (blocked != True)), np.full(len(switchTypeValues), switchInfo.getDisorderValue()), oldWithNewOrderValues)
         if self.updateIfNoNeighbours == False:
             neighbour_counts = np.count_nonzero(neighbours, axis=1)
             updatedSwitchValues = np.where((neighbour_counts <= 1), switchTypeValues, updatedSwitchValues)
