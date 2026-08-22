@@ -23,9 +23,13 @@ from animator.Animator2D import Animator2D
 Generates two extra deliverables beyond the main paper_figures pipeline, reusing its combination
 definitions (paper_figures_specs.py) and execution engine (services/ServicePaperFigureRunner.py):
 
-1) A LaTeX table of min/avg/max transition duration (event exposure -> switch into the order value
-   s_o) for the 5 switching combinations x 3 events, measured on the disordered-start runs, pooled
-   across TABLE_REPS repetitions.
+1) A LaTeX table of min/avg/max transition duration (event exposure -> switch), measured in whichever
+   direction is actually physically meaningful for each event - see EVENT_TRANSITION_DIRECTION and
+   fig_4_switching_order: "distant" pulls a disordered swarm into order (s_d -> s_o, measured on the
+   disordered-start runs), while "predator" and "random" push an ordered swarm into disorder (s_o ->
+   s_d, measured on the ordered-start runs) - the other starting condition barely responds to that
+   event type at all, so measuring it there would mostly capture noise rather than the event's actual
+   effect. Pooled across TABLE_REPS repetitions per combination.
 2) mp4 videos (ordered start + disordered start) for:
    - the 4 reduced neighbour selection mechanisms x k=1,5 x 3 events, no switching (matches
      fig_3_nosw_1ev_order's combinations)
@@ -54,6 +58,15 @@ EVENT_ORIGIN = (specs.DOMAIN_SIZE[0] / 2, specs.DOMAIN_SIZE[1] / 2)
 LOG_INTERVAL = 100  # matches comboNoSwitch/comboKSwitch/comboNsmSwitch's logInterval for event runs
 EVENT_START_INDEX = specs.EVENT_START // LOG_INTERVAL
 SENTINEL_DURATION = specs.TMAX_LOCAL  # for particles that switch without ever being exposed
+
+# Which starting condition to read the transition from, and which switchTypeOptions slot ([0] = order
+# value, [1] = disorder value) counts as "switched", per event - the direction that's actually
+# physically meaningful for that event type (see the module docstring).
+EVENT_TRANSITION_DIRECTION = {
+    "distant": dict(startKey="randomPath", targetIndex=0, directionLabel=r"$s_d \to s_o$"),
+    "predator": dict(startKey="orderedPath", targetIndex=1, directionLabel=r"$s_o \to s_d$"),
+    "random": dict(startKey="orderedPath", targetIndex=1, directionLabel=r"$s_o \to s_d$"),
+}
 
 
 # ------------------------------------------------------------------ combination definitions --
@@ -137,9 +150,10 @@ def computeTransitionDurations(positions, switchValues, targetValue):
 def buildTable(switchingEntries):
     rows = []
     for entry in switchingEntries:
+        direction = EVENT_TRANSITION_DIRECTION[entry["eventLabel"]]
         allDurations = []
         for i in range(TABLE_REPS):
-            path = entry["randomPath"]
+            path = entry[direction["startKey"]]
             try:
                 _params, simData, switchVals = ServiceSavedModel.loadModelFromCsv(
                     filepathData=f"{path}_{i}.csv", filePathModelParams=f"{path}_{i}_modelParams.csv",
@@ -149,16 +163,19 @@ def buildTable(switchingEntries):
                 continue
             _times, positions, _orientations = simData
             switchArr = np.array(switchVals[entry["switchType"].switchTypeValueKey])
-            targetValue = entry["switchTypeOptions"][0]
+            targetValue = entry["switchTypeOptions"][direction["targetIndex"]]
             allDurations.extend(computeTransitionDurations(positions, switchArr, targetValue))
 
-        ServiceGeneral.logWithTime(f"  {entry['rowLabel']} / {entry['eventLabel']}: {len(allDurations)} transitions")
+        ServiceGeneral.logWithTime(f"  {entry['rowLabel']} / {entry['eventLabel']} ({direction['directionLabel']}): "
+                                    f"{len(allDurations)} transitions")
         if allDurations:
             arr = np.array(allDurations)
             rows.append(dict(rowLabel=entry["rowLabel"], eventLabel=entry["eventLabel"],
+                              directionLabel=direction["directionLabel"],
                               minD=arr.min(), avgD=arr.mean(), maxD=arr.max(), n=len(arr)))
         else:
             rows.append(dict(rowLabel=entry["rowLabel"], eventLabel=entry["eventLabel"],
+                              directionLabel=direction["directionLabel"],
                               minD=None, avgD=None, maxD=None, n=0))
     return rows
 
@@ -168,23 +185,26 @@ def writeLatexTable(rows, outputPath):
         "% requires \\usepackage{booktabs} in the preamble",
         r"\begin{table}[htbp]",
         r"\centering",
-        r"\begin{tabular}{llrrr}",
+        r"\begin{tabular}{lllrrr}",
         r"\toprule",
-        r"Combination ($s_d \to s_o$) & Event & Min & Avg & Max \\",
+        r"Combination & Event & Direction & Min & Avg & Max \\",
         r"\midrule",
     ]
     for row in rows:
         label = row["rowLabel"].replace("_", r"\_")
         if row["n"] == 0:
-            lines.append(f"{label} & {row['eventLabel']} & -- & -- & -- \\\\")
+            lines.append(f"{label} & {row['eventLabel']} & {row['directionLabel']} & -- & -- & -- \\\\")
         else:
-            lines.append(f"{label} & {row['eventLabel']} & {row['minD']:.0f} & {row['avgD']:.1f} & {row['maxD']:.0f} \\\\")
+            lines.append(f"{label} & {row['eventLabel']} & {row['directionLabel']} & "
+                          f"{row['minD']:.0f} & {row['avgD']:.1f} & {row['maxD']:.0f} \\\\")
     lines += [
         r"\bottomrule",
         r"\end{tabular}",
-        r"\caption{Transition duration (in timesteps) from $s_d$ to $s_o$ after event exposure, "
-        f"pooled across {TABLE_REPS} repetitions per combination (disordered-start runs only). "
-        f"Particles that switched to $s_o$ without ever being exposed to the event are counted "
+        r"\caption{Transition duration (in timesteps) from event exposure to switching, measured in "
+        r"the direction physically driven by that event: $s_d \to s_o$ for distant (measured on "
+        r"disordered-start runs), $s_o \to s_d$ for predator and random (measured on ordered-start "
+        f"runs) - see EVENT_TRANSITION_DIRECTION. Pooled across {TABLE_REPS} repetitions per "
+        f"combination. Particles that switched without ever being exposed to the event are counted "
         f"with a duration of {SENTINEL_DURATION} (the full simulation length).}}",
         r"\label{tab:transition-durations}",
         r"\end{table}",

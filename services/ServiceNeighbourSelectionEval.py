@@ -21,7 +21,17 @@ future bugfixes to it - only needs to exist in one place.
 """
 
 COLOURS = EvaluatorMultiComp.COLOURS
-CLUSTER_THRESHOLD = 0.01
+# The orientation-similarity cutoff used by ServiceClusters.find_clusters_with_radius (in Euclidean
+# distance between unit orientation vectors). 0.01 was too tight to ever merge a genuinely ordered
+# swarm into one cluster: at 1% noise (the pipeline default), independent per-step noise alone gives
+# neighbouring particles' instantaneous orientations a typical pairwise distance well above 0.01, so a
+# fully-converged, order~0.998 swarm was still reported as ~10 separate clusters. Empirically (15
+# reps, order~0.998, 1% noise), cluster counts stop decreasing anywhere past ~0.1 - beyond that point
+# the only clusters left are genuine spatial fragments (particles that drifted outside the perception
+# radius of the rest of the flock), not an orientation-threshold artifact. 0.1 is set at that plateau:
+# large enough to absorb all the noise-driven scatter, not so large it starts merging particles that
+# are only coincidentally similar in orientation.
+CLUSTER_THRESHOLD = 0.1
 
 
 # ------------------------------------------------------------------ run-file discovery ------

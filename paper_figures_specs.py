@@ -41,10 +41,9 @@ CellSpec (a dict):
       combination" doesn't always mean the same switchTypeOptions slot - see comboKSwitch/
       comboNsmSwitch docstrings)
     - "seriesLabelSuffix": optional string appended to "ordered start"/"disordered start" labels,
-      used only by switching_no_ev_order, which needs its own 10-entry legend instead of the
-      standard 2-entry one
-    - "colourOverride": optional (colour, colour) pair for (ordered, disordered), used by
-      switching_no_ev_order for its per-combo colours
+      for figures that need to distinguish more than one ordered/disordered pair on the same panel
+    - "colourOverride": optional (colour, colour) pair for (ordered, disordered), for figures that
+      need non-standard per-cell colours
 """
 
 DOMAIN_SIZE = (50, 50)
@@ -331,18 +330,15 @@ def buildAll(dataRoot, numReps, updateIfNoNeighbours=True):
     pctFig["cellPercentageLabels"] = {(r, 0): combo["percentageLabel"] for r, combo in enumerate(SWITCHING_COMBOS)}
     figures["switching_percentage"] = pctFig
 
-    # ---------------------------------------------------------------- switching_no_ev_order (single panel, 10 lines)
-    from services.ServicePaperFigureGrid import CATEGORICAL_COLOURS
-    singleCells = []
-    for i, combo in enumerate(SWITCHING_COMBOS):
+    # ---------------------------------------------------------------- switching_no_ev_order_{a..e} (one figure per combo)
+    # Previously a single 10-line panel (all 5 combos x ordered/disordered overlaid) - split into five
+    # separate figures, one per combo, each with the standard 2-line ordered/disordered legend, so
+    # they're actually readable individually.
+    for combo in SWITCHING_COMBOS:
         ordered, random, _switchType, _opts, _invert = _switchingCombo(reg, combo, DEFAULT_DENSITY, DEFAULT_RADIUS, DEFAULT_NOISE_PCT)
-        colour = CATEGORICAL_COLOURS[i % len(CATEGORICAL_COLOURS)]
-        singleCells.append(_cell(ordered, random))
-        singleCells[-1]["seriesLabelSuffix"] = f" {combo['rowLabel']}"
-        singleCells[-1]["colourOverride"] = (colour, colour)
-        singleCells[-1]["linestyleOverride"] = ("-", "--")
-    figures["switching_no_ev_order"] = dict(kind="single", yLabel="global order", ylim=(0, 1.1), metric=Metrics.ORDER,
-                                             cells=singleCells, legendEntries="perCell", backgroundSpan=None)
+        figures[f"switching_no_ev_order_{combo['key']}"] = dict(
+            kind="single", yLabel="global order", ylim=(0, 1.1), metric=Metrics.ORDER,
+            cells=[_cell(ordered, random)], legendEntries=None, backgroundSpan=None)
 
     # ---------------------------------------------------------------- event_duration_* / window_size_* / thresholds_*
     durations = [1, 10, 50, 100, 200, 500, 1000]
